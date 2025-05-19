@@ -1,0 +1,47 @@
+.custom-antd-menu {
+    display: flex;
+    justify-content: center;
+    background-color: transparent !important;
+    border-bottom: none !important;
+  }
+  
+  .custom-antd-menu .ant-menu-item {
+    color: #d4af37 !important;
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    margin: 0 20px !important;
+    padding: 0 10px !important;
+  }
+  
+  .custom-antd-menu .ant-menu-item:hover {
+    color: #fff !important;
+  }
+  
+  .custom-antd-menu .ant-menu-item::after {
+    border-bottom: 2px solid #d4af37 !important;
+  }
+  
+  .custom-antd-menu .ant-menu-item-selected {
+    color: #fff !important;
+    background-color: #d4af37 !important;
+    border-radius: 0 !important;
+  }
+  
+  /* Override Ant Design focus styles */
+  .custom-antd-menu .ant-menu-item:focus-visible {
+    outline: none;
+  }
+  
+  /* Responsive styles */
+  @media (max-width: 768px) {
+    .custom-antd-menu {
+      flex-direction: column;
+      align-items: center;
+    }
+    
+    .custom-antd-menu .ant-menu-item {
+      margin: 5px 0 !important;
+      padding: 5px 10px !important;
+    }
+  }

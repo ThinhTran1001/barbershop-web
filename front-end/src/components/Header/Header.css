@@ -1,0 +1,169 @@
+.main-header {
+  background-color: #000;
+  background-image: url('/images/barbershop-bg.jpg');
+  background-size: cover;
+  background-position: center;
+  height: 100vh;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.header-overlay {
+  background-color: rgba(0, 0, 0, 0.7);
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.top-nav {
+  padding: 15px 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.header-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.logo-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Logo styling */
+.berger-logo {
+  margin-bottom: 30px;
+  max-width: 100%;
+}
+
+/* For custom logo styling if needed */
+.berger-logo img {
+  max-width: 350px;
+  height: auto;
+}
+
+/* Override Ant Design button */
+.book-now-btn {
+  background-color: transparent !important;
+  border: 1px solid #d4af37 !important;
+  color: #d4af37 !important;
+  padding: 8px 30px !important;
+  font-size: 16px !important;
+  letter-spacing: 2px !important;
+  height: auto !important;
+  transition: all 0.3s ease !important;
+  text-align: center;
+  margin-top: 20px;
+}
+
+.book-now-btn:hover {
+  background-color: #d4af37 !important;
+  color: #000 !important;
+}
+
+/* For responsive design */
+@media (max-width: 768px) {
+  .berger-logo img {
+    max-width: 250px;
+  }
+}
+
+.custom-antd-menu {
+  display: flex;
+  justify-content: center;
+  background-color: transparent !important;
+  border-bottom: none !important;
+  width: 100%;
+}
+
+.custom-antd-menu .ant-menu-item {
+  color: #d4af37 !important;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  margin: 0 20px !important;
+  padding: 0 10px !important;
+  text-align: center;
+}
+
+.custom-antd-menu .ant-menu-item:hover {
+  color: #fff !important;
+}
+
+.custom-antd-menu .ant-menu-item::after {
+  border-bottom: 2px solid #d4af37 !important;
+}
+
+.custom-antd-menu .ant-menu-item-selected {
+  color: #fff !important;
+  background-color: #d4af37 !important;
+  border-radius: 0 !important;
+}
+
+/* Override Ant Design focus styles */
+.custom-antd-menu .ant-menu-item:focus-visible {
+  outline: none;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .custom-antd-menu {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .custom-antd-menu .ant-menu-item {
+    margin: 5px 0 !important;
+    padding: 5px 10px !important;
+  }
+}
+
+/* Bootstrap utility classes if needed */
+.mt-4 {
+  margin-top: 1.5rem;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.container {
+  width: 100%;
+  padding-right: 15px;
+  padding-left: 15px;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+@media (min-width: 576px) {
+  .container {
+    max-width: 540px;
+  }
+}
+
+@media (min-width: 768px) {
+  .container {
+    max-width: 720px;
+  }
+}
+
+@media (min-width: 992px) {
+  .container {
+    max-width: 960px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .container {
+    max-width: 1140px;
+  }
+}
