@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-
+//suggestedFor: [String]
 const serviceSchema = new mongoose.Schema({
   name: { type: String, required: true },
   description: String,
