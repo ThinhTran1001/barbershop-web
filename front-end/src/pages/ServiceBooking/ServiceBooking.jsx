@@ -6,7 +6,6 @@ import { getAllServices } from '../../services/api';
 import './ServiceBooking.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
-// ✅ Import ảnh từ src/assets/images
 import barber1 from '../../assets/images/barber1.png';
 import barber2 from '../../assets/images/barber2.png';
 import barber3 from '../../assets/images/barber3.png';

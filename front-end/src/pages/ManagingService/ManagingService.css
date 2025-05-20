@@ -1,3 +1,18 @@
+.managing-service-container {
+  padding: 24px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.header h2 {
+  margin-bottom: 0;
+}
+
 /* Reset toàn bộ màu chữ sang đen */
 .ant-modal-title,
 .ant-modal-body,
@@ -10,6 +25,53 @@
 .ant-select-item-option-content,
 .ant-select-arrow {
   color: #000000 !important;
+}
+
+/* Chỉnh màu chữ cho notification */
+.ant-notification-notice {
+  background-color: #ffffff !important;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.ant-notification-notice-message {
+  color: #000000 !important;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.ant-notification-notice-description {
+  color: #000000 !important;
+  font-size: 14px;
+}
+
+.ant-notification-notice-close {
+  color: #000000 !important;
+}
+
+/* Chỉnh màu biểu tượng trong notification */
+.ant-notification-notice-icon {
+  color: inherit;
+}
+
+/* Giữ màu biểu tượng success là xanh lá */
+.ant-notification-notice-success .ant-notification-notice-icon {
+  color: #52c41a !important;
+}
+
+/* Giữ màu biểu tượng error là đỏ */
+.ant-notification-notice-error .ant-notification-notice-icon {
+  color: #ff4d4f !important;
+}
+
+/* Giữ màu biểu tượng info là xanh dương */
+.ant-notification-notice-info .ant-notification-notice-icon {
+  color: #1890ff !important;
+}
+
+/* Giữ màu biểu tượng warning là vàng/cam */
+.ant-notification-notice-warning .ant-notification-notice-icon {
+  color: #faad14 !important;
 }
 
 .managing-service-container {
@@ -33,12 +95,6 @@
 .ant-table-thead > tr > th {
   background-color: #ffffff; /* Nền tiêu đề */
   color: #000000; /* Chữ tiêu đề */
-}
-
-.ant-table,
-.ant-table th,
-.ant-table td {
-  /* border: 1px solid #000000 !important; Viền đen đậm */
 }
 
 /* Để tránh ghi đè từ các style khác */
