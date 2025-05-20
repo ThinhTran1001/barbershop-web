@@ -1,9 +1,8 @@
 import React from 'react';
-import { ConfigProvider } from 'antd';
+import { ConfigProvider, App as AntApp } from 'antd';
 import './App.css';
 import ServiceBooking from './pages/ServiceBooking/ServiceBooking';
 import ManagingService from './pages/ManagingService/ManagingService';
-
 
 const theme = {
   token: {
@@ -17,10 +16,12 @@ const theme = {
 function App() {
   return (
     <ConfigProvider theme={theme}>
-      <div className="app">
-        <ServiceBooking />
-        <ManagingService />
-      </div>
+      <AntApp>
+        <div className="app">
+          <ServiceBooking />
+          <ManagingService />
+        </div>
+      </AntApp>
     </ConfigProvider>
   );
 }

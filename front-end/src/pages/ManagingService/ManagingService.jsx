@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Table, Button, Modal, Form, Space, Popconfirm, message } from "antd";
+import { Table, Button, Modal, Form, Space, Popconfirm, App } from "antd";
 import {
   getAllServices,
   createService,
@@ -14,6 +14,7 @@ const ManagingService = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingService, setEditingService] = useState(null);
   const [form] = Form.useForm();
+  const { notification } = App.useApp();
 
   useEffect(() => {
     fetchServices();
@@ -23,8 +24,13 @@ const ManagingService = () => {
     try {
       const res = await getAllServices();
       setServices(res.data);
-    } catch {
-      message.error("Lỗi khi tải dịch vụ");
+    // eslint-disable-next-line no-unused-vars
+    } catch (error) {
+      notification.error({
+        message: "Lỗi",
+        description: "Lỗi khi tải dịch vụ",
+        placement: "topRight",
+      });
     }
   };
 
@@ -43,10 +49,19 @@ const ManagingService = () => {
   const handleDelete = async (id) => {
     try {
       await removeService(id);
-      message.success("Xóa dịch vụ thành công");
+      notification.success({
+        message: "Thành công",
+        description: "Xóa dịch vụ thành công",
+        placement: "topRight",
+      });
       fetchServices();
-    } catch {
-      message.error("Lỗi khi xóa dịch vụ");
+    // eslint-disable-next-line no-unused-vars
+    } catch (error) {
+      notification.error({
+        message: "Lỗi",
+        description: "Lỗi khi xóa dịch vụ",
+        placement: "topRight",
+      });
     }
   };
 
@@ -55,15 +70,28 @@ const ManagingService = () => {
       const values = await form.validateFields();
       if (editingService) {
         await updateService(editingService._id, values);
-        message.success("Cập nhật dịch vụ thành công");
+        notification.success({
+          message: "Thành công",
+          description: "Cập nhật dịch vụ thành công",
+          placement: "topRight",
+        });
       } else {
         await createService(values);
-        message.success("Thêm dịch vụ thành công");
+        notification.success({
+          message: "Thành công",
+          description: "Thêm dịch vụ thành công",
+          placement: "topRight",
+        });
       }
       fetchServices();
       handleCancel();
-    } catch {
-      message.error("Lỗi khi lưu dịch vụ");
+    // eslint-disable-next-line no-unused-vars
+    } catch (error) {
+      notification.error({
+        message: "Lỗi",
+        description: "Lỗi khi lưu dịch vụ",
+        placement: "topRight",
+      });
     }
   };
 

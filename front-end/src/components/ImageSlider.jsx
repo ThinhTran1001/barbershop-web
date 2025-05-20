@@ -1,7 +1,6 @@
-// src/components/ImageSlider.jsx
 import React, { useEffect, useState } from 'react';
 import { Image } from 'antd';
-import '../pages/ServiceBooking/ServiceBooking.css'; // Import CSS
+import '../pages/ServiceBooking/ServiceBooking.css';
 
 const ImageSlider = ({ images, interval = 5000 }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -18,7 +17,7 @@ const ImageSlider = ({ images, interval = 5000 }) => {
     <div className="image-gallery">
       <Image
         src={images[currentImageIndex]}
-        alt={`Barber service ${currentImageIndex + 1}`}
+        alt={`Slide ${currentImageIndex + 1}`}
         preview={false}
         className="gallery-image"
       />
