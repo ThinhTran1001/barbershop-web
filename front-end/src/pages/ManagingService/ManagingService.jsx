@@ -1,4 +1,3 @@
-// src/pages/ManagingService.jsx
 import React, { useState, useEffect } from "react";
 import { Table, Button, Modal, Form, Space, Popconfirm, message } from "antd";
 import {
