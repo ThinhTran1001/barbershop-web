@@ -22,4 +22,11 @@ export const createBrand = (data) => api.post('/admin/brands', data);
 export const updateBrand = (id, data) => api.put(`/admin/brands/${id}`, data);
 export const deleteBrand = (id) => api.delete(`/admin/brands/${id}`);
 
+export const getAllServices = () => api.get("/services");
+export const createService = (data) => api.post("/services", data);
+export const updateService = (id, data) => api.put(`/services/${id}`, data);
+export const removeService = (id) => api.delete(`/services/${id}`);
+
 export default api;
+
+
