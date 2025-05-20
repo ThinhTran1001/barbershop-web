@@ -4,7 +4,7 @@ const serviceSchema = new mongoose.Schema({
   name: { type: String, required: true },
   description: String,
   steps: [String],
-  suggestedFor:["tóc mỏng", "tóc dài"],
+  suggestedFor:[String],
   price: { type: Number, required: true },
   durationMinutes: Number,
   isActive: { type: Boolean, default: true },
