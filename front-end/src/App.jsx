@@ -1,16 +1,20 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import './App.css';
 import Landing from "./pages/home/Landing";
 import "bootstrap/dist/css/bootstrap.min.css";
-import "antd/dist/reset.css"; // với v5
-
+import "antd/dist/reset.css"; 
+import ProductDetail from './components/product/ProductDetail';
 
 function App() {
-  
-    return <Landing />;
-  }
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Landing />} />
+       <Route path="/products/:id" element={<ProductDetail />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
 
-
-export default App
+export default App;

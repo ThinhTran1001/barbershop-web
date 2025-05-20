@@ -133,6 +133,25 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
+.detail-button{
+  background-color: #dbc606;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: 5px;
+}
+.detail-button:hover {
+  background-color: #d4a449;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
 
 .purchase-button:hover {
   background-color: #d4a449;
