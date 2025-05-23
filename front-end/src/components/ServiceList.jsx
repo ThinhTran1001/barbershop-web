@@ -3,7 +3,7 @@ import { Typography, List } from "antd";
 
 const { Title } = Typography;
 
-const ServiceList = ({ services }) => {
+const ServiceList = ({ services, tabs, activeTab, handleTabClick }) => {
   const [expandedService, setExpandedService] = useState(null);
   const displayServices = services || [];
 
@@ -14,6 +14,19 @@ const ServiceList = ({ services }) => {
   return (
     <div className="services-list">
       <Title level={2} className="services-title">DỊCH VỤ & BẢNG GIÁ</Title>
+      {/* Tabs moved here, below the title */}
+      <div className="service-tabs row mb-4">
+        {tabs.map((tab) => (
+          <div key={tab.id} className="col-2 px-1">
+            <div
+              className={`service-tab ${activeTab === tab.id ? 'active' : ''}`}
+              onClick={() => handleTabClick(tab.id)}
+            >
+              <div className="tab-label">{tab.label}</div>
+            </div>
+          </div>
+        ))}
+      </div>
       <List
         dataSource={displayServices}
         renderItem={(service, index) => (

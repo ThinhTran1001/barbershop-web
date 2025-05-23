@@ -1,13 +1,7 @@
 import React from "react";
-import { Form, Input, Select } from "antd";
+import { Form, Input, InputNumber } from "antd";
 
-const serviceTemplates = [
-  { name: "Cắt tóc", price: 100000, description: "Cắt tóc theo yêu cầu", steps: "Tư vấn, Gội đầu, Cắt tạo kiểu, Sấy tóc", durationMinutes: 30, suggestedFor: ["tóc mỏng", "tóc dài"] },
-  { name: "Gội đầu", price: 50000, description: "Gội đầu thư giãn", steps: "Gội nước, Thoa dầu gội, Massage da đầu, Xả sạch", durationMinutes: 20, suggestedFor: ["mọi loại tóc"] },
-  { name: "Nhuộm tóc", price: 300000, description: "Nhuộm màu tóc theo ý muốn", steps: "Tư vấn màu, Thử thuốc, Nhuộm, Gội, Sấy", durationMinutes: 60, suggestedFor: ["tóc mỏng", "tóc dài"] },
-];
-
-const ServiceForm = ({ form, editing }) => {
+const ServiceForm = () => {
   return (
     <>
       <Form.Item
@@ -15,30 +9,7 @@ const ServiceForm = ({ form, editing }) => {
         label="Tên dịch vụ"
         rules={[{ required: true, message: "Vui lòng nhập tên dịch vụ" }]}
       >
-        <Select
-          placeholder="Chọn dịch vụ"
-          disabled={!!editing}
-          onChange={(value) => {
-            const selected = serviceTemplates.find((item) => item.name === value);
-            if (selected) {
-              form.setFieldsValue({
-                name: selected.name,
-                price: selected.price,
-                description: selected.description,
-                steps: selected.steps,
-                durationMinutes: selected.durationMinutes,
-                suggestedFor: selected.suggestedFor,
-              });
-            }
-          }}
-          allowClear
-        >
-          {serviceTemplates.map((item) => (
-            <Select.Option key={item.name} value={item.name}>
-              {item.name}
-            </Select.Option>
-          ))}
-        </Select>
+        <Input placeholder="Nhập tên dịch vụ" />
       </Form.Item>
 
       <Form.Item
@@ -46,10 +17,18 @@ const ServiceForm = ({ form, editing }) => {
         label="Giá (VND)"
         rules={[
           { required: true, message: "Vui lòng nhập giá" },
-          { type: "number", min: 0, message: "Giá phải là số không âm" },
+          { type: "number", min: 1, message: "Giá phải là số dương" },
         ]}
       >
-        <Input type="number" placeholder="Nhập giá dịch vụ" />
+        <InputNumber
+          style={{ width: "100%" }}
+          placeholder="Nhập giá dịch vụ"
+          min={1}
+          formatter={(value) =>
+            `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+          }
+          parser={(value) => value.replace(/\$\s?|(,*)/g, "")}
+        />
       </Form.Item>
 
       <Form.Item
@@ -76,15 +55,21 @@ const ServiceForm = ({ form, editing }) => {
           { type: "number", min: 1, message: "Thời gian phải là số dương" },
         ]}
       >
-        <Input type="number" placeholder="Nhập thời gian (phút)" />
+        <InputNumber
+          style={{ width: "100%" }}
+          placeholder="Nhập thời gian (phút)"
+          min={1}
+        />
       </Form.Item>
 
       <Form.Item
         name="suggestedFor"
-        label="Phù hợp với"
-        rules={[{ required: true, message: "Vui lòng nhập thông tin phù hợp" }]}
+        label="Phù hợp với loại tóc"
+        rules={[
+          { required: true, message: "Vui lòng nhập thông tin phù hợp" },
+        ]}
       >
-        <Select mode="tags" style={{ width: "100%" }} placeholder="Nhập hoặc chọn đối tượng phù hợp" />
+        <Input placeholder="Nhập thông tin phù hợp" />
       </Form.Item>
     </>
   );

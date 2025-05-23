@@ -1,5 +1,7 @@
 .managing-service-container {
   padding: 24px;
+  background: #ffffff;
+  border-radius: 8px;
 }
 
 .header {
@@ -7,10 +9,12 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
+  color: #000000;
 }
 
 .header h2 {
   margin-bottom: 0;
+  color: #000000;
 }
 
 /* Reset toàn bộ màu chữ sang đen */
@@ -27,7 +31,220 @@
   color: #000000 !important;
 }
 
-/* Chỉnh màu chữ cho notification */
+/* Modal styling */
+.ant-modal-content {
+  border-radius: 12px;
+  padding: 24px;
+  background-color: #ffffff !important;
+}
+
+.ant-modal-title {
+  font-size: 20px;
+  font-weight: 600;
+  text-align: center;
+  color: #000000 !important;
+}
+
+.ant-modal-body {
+  padding-top: 12px;
+  background-color: #ffffff !important;
+}
+
+/* Form styling */
+.ant-form-item {
+  margin-bottom: 20px;
+}
+
+.ant-form-item-label > label {
+  color: #000000 !important;
+}
+
+.ant-form-item-required::before {
+  color: #ff4d4f !important;
+}
+
+/* Input styling */
+.ant-input {
+  height: 40px;
+  border-radius: 8px;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #d9d9d9;
+}
+
+.ant-input::placeholder {
+  color: #666666 !important;
+  opacity: 1;
+}
+
+/* InputNumber styling */
+.ant-input-number {
+  width: 100%;
+  height: 40px;
+  border-radius: 8px;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #d9d9d9;
+}
+
+.ant-input-number-input {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* TextArea styling */
+.ant-input-textarea textarea {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #d9d9d9;
+  border-radius: 8px;
+}
+
+/* Select styling */
+.ant-select-selector {
+  height: 40px !important;
+  border-radius: 8px !important;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #d9d9d9 !important;
+}
+
+.ant-select-selection-item {
+  color: #000000 !important;
+  line-height: 38px !important;
+}
+
+.ant-select-selection-placeholder {
+  color: #666666 !important;
+  line-height: 38px !important;
+}
+
+.ant-select-arrow {
+  color: #000000 !important;
+}
+
+/* Select dropdown */
+.ant-select-dropdown {
+  background-color: #ffffff !important;
+  border-radius: 8px;
+}
+
+.ant-select-item-option {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+.ant-select-item-option-active,
+.ant-select-item-option-selected {
+  background-color: #f5f5f5 !important;
+  color: #000000 !important;
+}
+
+.ant-select-item {
+  color: #000000 !important;
+}
+
+/* Override dropdown menu styling specifically for tags mode */
+.ant-select-dropdown .rc-virtual-list-holder {
+  background-color: #ffffff !important;
+}
+
+.ant-select-dropdown .rc-virtual-list-holder-inner {
+  background-color: #ffffff !important;
+}
+
+/* Force all dropdown items to have white background */
+.ant-select-dropdown .ant-select-item,
+.ant-select-dropdown .ant-select-item-option,
+.ant-select-dropdown .ant-select-item-option-content {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* Hover state for dropdown items */
+.ant-select-dropdown .ant-select-item-option:hover {
+  background-color: #f5f5f5 !important;
+  color: #000000 !important;
+}
+
+/* Selected state for dropdown items */
+.ant-select-dropdown .ant-select-item-option-selected {
+  background-color: #e6f7ff !important;
+  color: #000000 !important;
+}
+
+/* Multiple select (tags) styling */
+.ant-select-multiple .ant-select-selector {
+  min-height: 40px !important;
+  background-color: #ffffff !important;
+  border: 1px solid #d9d9d9 !important;
+  border-radius: 8px !important;
+  padding: 4px 8px !important;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ant-select-multiple .ant-select-selection-item {
+  background-color: #f0f0f0 !important;
+  color: #000000 !important;
+  border: 1px solid #d9d9d9 !important;
+  border-radius: 6px !important;
+  padding: 2px 8px !important;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+}
+
+.ant-select-multiple .ant-select-selection-item-remove {
+  color: #000000 !important;
+  margin-left: 4px;
+}
+
+.ant-select-multiple .ant-select-selection-placeholder {
+  color: #666666 !important;
+  opacity: 1;
+  line-height: 38px !important;
+}
+
+/* Table styling */
+.ant-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  background-color: #ffffff !important;
+}
+
+.ant-table-thead > tr > th {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+.ant-table th,
+.ant-table td {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* Button styling */
+.ant-btn {
+  border-radius: 8px;
+  height: 40px;
+}
+
+.ant-btn-default {
+  background-color: #464646;
+  color: #ffffff !important;
+  border: none;
+}
+
+.ant-btn-primary {
+  background-color: #e1bd5e;
+  color: #ffffff !important;
+  border: none;
+}
+
+/* Notification styling */
 .ant-notification-notice {
   background-color: #ffffff !important;
   border-radius: 8px;
@@ -49,93 +266,43 @@
   color: #000000 !important;
 }
 
-/* Chỉnh màu biểu tượng trong notification */
 .ant-notification-notice-icon {
   color: inherit;
 }
 
-/* Giữ màu biểu tượng success là xanh lá */
 .ant-notification-notice-success .ant-notification-notice-icon {
   color: #52c41a !important;
 }
 
-/* Giữ màu biểu tượng error là đỏ */
 .ant-notification-notice-error .ant-notification-notice-icon {
   color: #ff4d4f !important;
 }
 
-/* Giữ màu biểu tượng info là xanh dương */
 .ant-notification-notice-info .ant-notification-notice-icon {
   color: #1890ff !important;
 }
 
-/* Giữ màu biểu tượng warning là vàng/cam */
 .ant-notification-notice-warning .ant-notification-notice-icon {
   color: #faad14 !important;
 }
 
-.managing-service-container {
-  padding: 24px;
-  background: #fff;
-  border-radius: 8px;
+/* Popconfirm styling */
+.ant-popconfirm-title {
+  color: #000000 !important;
 }
 
-.managing-service-container .header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.ant-table {
-  border-collapse: separate;
-  border-spacing: 0;
-}
-
-.ant-table-thead > tr > th {
-  background-color: #ffffff; /* Nền tiêu đề */
-  color: #000000; /* Chữ tiêu đề */
-}
-
-/* Để tránh ghi đè từ các style khác */
-.ant-table th,
-.ant-table td {
+/* Popover styling */
+.ant-popover-inner {
   background-color: #ffffff !important;
+}
+
+.ant-popover-inner-content {
   color: #000000 !important;
 }
 
-/* Tùy chỉnh Modal */
-.ant-modal-content {
-  border-radius: 12px;
-  padding: 24px;
-}
-
-.ant-modal-title {
-  font-size: 20px;
-  font-weight: 600;
-  text-align: center;
-  color: #000000 !important;
-}
-
-.ant-modal-body {
-  padding-top: 12px;
-}
-
-.ant-form-item {
-  margin-bottom: 20px;
-}
-
-/* Chỉnh input nền trắng chữ đen */
-.ant-input {
-  height: 40px;
-  border-radius: 8px;
-  background-color: #ffffff !important;
-  color: #000000 !important;
-  border: 1px solid #d9d9d9;
-}
-
-/* Đảm bảo select box có nền trắng chữ đen */
-.ant-select-selector {
+/* InputNumber styling - Complete override */
+.ant-input-number {
+  width: 100% !important;
   height: 40px !important;
   border-radius: 8px !important;
   background-color: #ffffff !important;
@@ -143,135 +310,62 @@
   border: 1px solid #d9d9d9 !important;
 }
 
-/* Chữ trong select box khi đã chọn */
-.ant-select-selection-item {
-  color: #000000 !important;
-  line-height: 38px !important;
-}
-
-/* Selection placeholder - đặt màu đen cho placeholder */
-.ant-select-selection-placeholder {
-  color: #000000 !important;
-  line-height: 38px !important;
-}
-
-/* Arrow trong select box */
-.ant-select-arrow {
-  color: #000000 !important;
-}
-
-/* Dropdown options */
-.ant-select-dropdown {
+.ant-input-number-input {
   background-color: #ffffff !important;
+  color: #000000 !important;
+  height: 38px !important;
+  border: none !important;
 }
 
-.ant-select-item-option {
+.ant-input-number-input::placeholder {
+  color: #666666 !important;
+  opacity: 1;
+}
+
+/* InputNumber handler (up/down buttons) */
+.ant-input-number-handler-wrap {
+  background-color: #ffffff !important;
+  border-left: 1px solid #d9d9d9 !important;
+}
+
+.ant-input-number-handler {
   background-color: #ffffff !important;
   color: #000000 !important;
 }
 
-.ant-select-item-option-active,
-.ant-select-item-option-selected {
-  background-color: #ffffff !important; /* Đổi màu nền khi chọn thành trắng */
+.ant-input-number-handler:hover {
+  background-color: #f5f5f5 !important;
   color: #000000 !important;
 }
 
-/* Đảm bảo tất cả các lựa chọn trong dropdown có chữ đen */
-.ant-select-item {
-  color: #000000 !important;
-}
-
-/* Đảm bảo placeholder trong input cũng có màu đen */
-.ant-input::placeholder {
-  color: #000000 !important;
-  opacity: 0.8;
-}
-
-/* Chỉnh nút Lưu và Hủy */
-.ant-btn {
-  border-radius: 8px;
-  height: 40px;
-}
-
-/* Nút Hủy - giữ chữ màu trắng */
-.ant-btn-default {
-  background-color: #464646;
-  color: #ffffff !important;
-  border: none;
-}
-
-/* Nút Lưu - giữ chữ màu trắng */
-.ant-btn-primary {
-  background-color: #e1bd5e;
-  color: #ffffff !important;
-  border: none;
-}
-
-/* Form labels */
-.ant-form-item-label > label {
-  color: #000000 !important;
-}
-
-/* Đánh dấu yêu cầu (*) - giữ màu đỏ */
-.ant-form-item-required::before {
-  color: #ff4d4f !important;
-}
-/* Vùng chọn nhiều tags */
-.ant-select-multiple .ant-select-selector {
-  min-height: 40px !important;
+/* InputNumber focused state */
+.ant-input-number:focus,
+.ant-input-number-focused {
+  border-color: #40a9ff !important;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2) !important;
   background-color: #ffffff !important;
+}
+
+.ant-input-number:focus .ant-input-number-input,
+.ant-input-number-focused .ant-input-number-input {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* Override any dark theme for InputNumber */
+.ant-input-number-affix-wrapper {
+  background-color: #ffffff !important;
+  color: #000000 !important;
   border: 1px solid #d9d9d9 !important;
-  border-radius: 8px !important;
-  padding: 4px 8px !important;
-  display: flex;
-  align-items: center;
-  gap: 4px;
 }
 
-/* Tag đã chọn - chỉnh lại màu nền + viền + chữ */
-.ant-select-multiple .ant-select-selection-item {
-  background-color: #fff5cc !important; /* vàng nhạt */
-  color: #000000 !important;
-  border: 1px solid #e1bd5e !important;
-  border-radius: 6px !important;
-  padding: 2px 8px !important;
-  font-size: 14px;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-}
-
-/* Icon 'x' trong tag */
-.ant-select-multiple .ant-select-selection-item-remove {
-  color: #000000 !important;
-  margin-left: 4px;
-}
-
-/* Placeholder */
-.ant-select-multiple .ant-select-selection-placeholder {
-  color: #000000 !important;
-  opacity: 0.8;
-  line-height: 38px !important;
-}
-
-/* Dropdown */
-.ant-select-dropdown {
+/* Ensure the input wrapper has white background */
+.ant-input-number-group-wrapper {
   background-color: #ffffff !important;
-  border-radius: 8px;
 }
 
-/* Option trong dropdown */
-.ant-select-item-option {
+/* Additional override for any remaining dark background */
+[class*="ant-input-number"] {
   background-color: #ffffff !important;
-  color: #000000 !important;
-}
-
-/* Khi chọn hoặc hover */
-.ant-select-item-option-active,
-.ant-select-item-option-selected {
-  background-color: #f9f5e3 !important;
-  color: #000000 !important;
-}
-.ant-popconfirm-title {
   color: #000000 !important;
 }

@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { Table, Button, Modal, Form, Space, Popconfirm, App } from "antd";
+import {
+  Table,
+  Button,
+  Modal,
+  Form,
+  Space,
+  Popconfirm,
+  Input,
+  Select,
+  App,
+} from "antd";
 import {
   getAllServices,
   createService,
@@ -9,6 +19,8 @@ import {
 import ServiceForm from "../../components/ServiceForm";
 import "./ManagingService.css";
 
+const { Option } = Select;
+
 const ManagingService = () => {
   const [services, setServices] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -16,16 +28,20 @@ const ManagingService = () => {
   const [form] = Form.useForm();
   const { notification } = App.useApp();
 
+  const [searchText, setSearchText] = useState("");
+  const [filterSuggested, setFilterSuggested] = useState([]);
+  const [priceFilter, setPriceFilter] = useState(null);
+
   useEffect(() => {
     fetchServices();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchServices = async () => {
     try {
       const res = await getAllServices();
       setServices(res.data);
-    // eslint-disable-next-line no-unused-vars
-    } catch (error) {
+    } catch {
       notification.error({
         message: "Lỗi",
         description: "Lỗi khi tải dịch vụ",
@@ -55,8 +71,7 @@ const ManagingService = () => {
         placement: "topRight",
       });
       fetchServices();
-    // eslint-disable-next-line no-unused-vars
-    } catch (error) {
+    } catch {
       notification.error({
         message: "Lỗi",
         description: "Lỗi khi xóa dịch vụ",
@@ -68,6 +83,23 @@ const ManagingService = () => {
   const handleSave = async () => {
     try {
       const values = await form.validateFields();
+  
+      // Kiểm tra trùng tên dịch vụ
+      const isDuplicate = services.some(
+        (service) =>
+          service.name.trim().toLowerCase() === values.name.trim().toLowerCase() &&
+          (!editingService || service._id !== editingService._id)
+      );
+  
+      if (isDuplicate) {
+        notification.error({
+          message: "Lỗi",
+          description: "Tên dịch vụ đã tồn tại, vui lòng chọn tên khác.",
+          placement: "topRight",
+        });
+        return; // không tiếp tục lưu
+      }
+  
       if (editingService) {
         await updateService(editingService._id, values);
         notification.success({
@@ -85,8 +117,7 @@ const ManagingService = () => {
       }
       fetchServices();
       handleCancel();
-    // eslint-disable-next-line no-unused-vars
-    } catch (error) {
+    } catch {
       notification.error({
         message: "Lỗi",
         description: "Lỗi khi lưu dịch vụ",
@@ -94,6 +125,23 @@ const ManagingService = () => {
       });
     }
   };
+  
+  // Lọc dữ liệu
+  const filteredServices = services
+    .filter((item) =>
+      item.name.toLowerCase().includes(searchText.toLowerCase())
+    )
+    .filter((item) =>
+      filterSuggested.length === 0 ||
+      (item.suggestedFor || []).some((v) => filterSuggested.includes(v))
+    )
+    .filter((item) => {
+      if (priceFilter === "low") return item.price < 100000;
+      if (priceFilter === "medium")
+        return item.price >= 100000 && item.price <= 300000;
+      if (priceFilter === "high") return item.price > 300000;
+      return true;
+    });
 
   const columns = [
     { title: "Tên dịch vụ", dataIndex: "name", key: "name" },
@@ -139,10 +187,59 @@ const ManagingService = () => {
     },
   ];
 
+  // Trích danh sách gợi ý từ dịch vụ có sẵn
+  const allSuggestedFor = [...new Set(services.flatMap((s) => s.suggestedFor || []))];
+
   return (
     <div className="managing-service-container">
       <div className="header">
         <h2>Quản lý dịch vụ</h2>
+      </div>
+
+      <div
+        style={{
+          marginBottom: 16,
+          display: "flex",
+          gap: 16,
+          flexWrap: "wrap",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <div style={{ display: "flex", gap: 16, flexWrap: "wrap", flex: 1 }}>
+          <Input
+            placeholder="Tìm kiếm theo tên"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            style={{ width: 200, minWidth: 150 }}
+          />
+          <Select
+            mode="multiple"
+            placeholder="Lọc theo đối tượng"
+            value={filterSuggested}
+            onChange={setFilterSuggested}
+            style={{ minWidth: 200 }}
+            allowClear
+          >
+            {allSuggestedFor.map((tag) => (
+              <Option key={tag} value={tag}>
+                {tag}
+              </Option>
+            ))}
+          </Select>
+          <Select
+            placeholder="Lọc theo giá"
+            value={priceFilter}
+            onChange={setPriceFilter}
+            style={{ width: 180 }}
+            allowClear
+          >
+            <Option value="low">Dưới 100,000 VND</Option>
+            <Option value="medium">100,000 – 300,000 VND</Option>
+            <Option value="high">Trên 300,000 VND</Option>
+          </Select>
+        </div>
+
         <Button type="primary" onClick={() => showModal()}>
           Thêm dịch vụ
         </Button>
@@ -150,7 +247,7 @@ const ManagingService = () => {
 
       <Table
         rowKey="_id"
-        dataSource={services}
+        dataSource={filteredServices}
         columns={columns}
         pagination={{ pageSize: 5 }}
       />
