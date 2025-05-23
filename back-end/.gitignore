@@ -3,4 +3,4 @@ dist
 dist-ssr
 
 .idea
-
+.env
