@@ -1,9 +1,10 @@
 import React from 'react';
-<<<<<<< HEAD
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { ConfigProvider, App as AntApp } from 'antd';
 import './App.css';
 import ServiceBooking from './pages/ServiceBooking/ServiceBooking';
 import ManagingService from './pages/ManagingService/ManagingService';
+import AdminDashboard from './pages/AdminDashboard';
 
 const theme = {
   token: {
@@ -19,23 +20,15 @@ function App() {
     <ConfigProvider theme={theme}>
       <AntApp>
         <div className="app">
-          <ServiceBooking />
-          <ManagingService />
+          <Router>
+            <Routes>
+              {/* <Route path="/" element={<ServiceBooking />} /> */}
+              <Route path="/admin" element={<AdminDashboard />} />
+            </Routes>
+          </Router>
         </div>
       </AntApp>
     </ConfigProvider>
-=======
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import AdminDashboard from './pages/AdminDashboard';
-
-function App() {
-  return (
-    <Router>
-      <Routes>
-        <Route path="/admin" element={<AdminDashboard />} />
-      </Routes>
-    </Router>
->>>>>>> origin/master
   );
 }
 
