@@ -1,0 +1,176 @@
+{
+    "barbers": [
+      {
+        "id": 1,
+        "name": "BABER JOHN",
+        "image": "/assets/images/barber1.jpg",
+        "specialty": "Master Barber"
+      },
+      {
+        "id": 2,
+        "name": "BABER DAVID",
+        "image": "/assets/images/barber2.jpg",
+        "specialty": "Style Expert"
+      },
+      {
+        "id": 3,
+        "name": "BABER PETER",
+        "image": "/assets/images/barber3.jpg",
+        "specialty": "Beard Specialist"
+      }
+    ],
+    "products": [
+      {
+        "id": "1",
+        "name": "Kem tạo bọt",
+        "price": "1.200.000 VND",
+        "image": "/assets/images/product1.jpg",
+        "description": "Kem tạo bọt cao cấp giúp tạo kiểu tóc mềm mại, tự nhiên với độ giữ nếp vừa phải. Thích hợp cho mọi loại tóc và không gây khô tóc.",
+        "details": {
+          "brand": "BarberPro",
+          "volume": "150ml",
+          "ingredients": "Nước, Glycerin, Panthenol, Vitamin E, Chiết xuất lô hội",
+          "usage": "Lấy một lượng vừa đủ, xoa đều trên lòng bàn tay và thoa lên tóc ẩm hoặc khô. Tạo kiểu theo ý thích.",
+          "benefits": ["Giữ nếp tự nhiên", "Không gây bết dính", "Bảo vệ tóc khỏi tác hại của môi trường"]
+        },
+        "rating": 4.8,
+        "reviews": 42,
+        "stock": 25,
+        "discount": 0,
+        "featured": true,
+        "categories": ["styling", "premium"],
+        "longDescription": "Kem tạo bọt cao cấp của chúng tôi là sự lựa chọn hoàn hảo cho những quý ông muốn có kiểu tóc tự nhiên nhưng vẫn giữ được nếp. Với công thức đặc biệt chứa các thành phần dưỡng ẩm như Panthenol và Vitamin E, sản phẩm không chỉ giúp tạo kiểu mà còn nuôi dưỡng tóc từ bên trong. Phù hợp cho mọi loại tóc, đặc biệt hiệu quả với tóc mỏng hoặc tóc thẳng khó giữ nếp. Hương thơm nam tính kéo dài suốt cả ngày.",
+        "howToUse": "1. Lấy một lượng sản phẩm bằng hạt đậu vào lòng bàn tay\n2. Xoa đều sản phẩm giữa hai lòng bàn tay\n3. Thoa đều lên tóc ẩm hoặc khô\n4. Tạo kiểu bằng tay hoặc lược\n5. Có thể sấy khô để tăng độ bồng bềnh",
+        "additionalImages": [
+          "/assets/images/product1_detail1.jpg",
+          "/assets/images/product1_detail2.jpg",
+          "/assets/images/product1_detail3.jpg"
+        ],
+        "relatedProducts": [2, 4],
+        "specifications": {
+          "xuatXu": "Pháp",
+          "tinhTrang": "Mới 100%",
+          "baoHanh": "12 tháng"
+        }
+      },
+      {
+        "id": "2",
+        "name": "Sáp vuốt tóc",
+        "price": "800.000 VND",
+        "image": "/assets/images/product2.jpg",
+        "description": "Sáp vuốt tóc với độ giữ nếp mạnh mẽ, thích hợp cho kiểu tóc cần định hình rõ ràng. Công thức không chứa cồn, an toàn cho da đầu nhạy cảm.",
+        "details": {
+          "brand": "BarberStyle",
+          "volume": "100g",
+          "ingredients": "Sáp ong, Dầu jojoba, Dầu dừa, Dầu hạnh nhân, Bơ hạt mỡ",
+          "usage": "Lấy một lượng nhỏ sáp, xoa đều trên lòng bàn tay cho đến khi sáp tan chảy. Vuốt lên tóc khô và tạo kiểu mong muốn.",
+          "benefits": ["Độ giữ nếp cao", "Không gây bóng nhờn", "Dễ dàng gội sạch"]
+        },
+        "rating": 4.6,
+        "reviews": 38,
+        "stock": 30,
+        "discount": 10,
+        "featured": true,
+        "categories": ["styling", "strong-hold"],
+        "longDescription": "Sáp vuốt tóc của chúng tôi được sản xuất từ các nguyên liệu tự nhiên như sáp ong và các loại dầu dưỡng, mang đến độ giữ nếp mạnh mẽ mà vẫn đảm bảo mềm mại cho mái tóc. Công thức không chứa cồn và paraben, an toàn cho mọi loại da đầu, kể cả da nhạy cảm. Sáp dễ dàng tạo kiểu và có thể điều chỉnh trong suốt ngày mà không cần thêm sản phẩm.",
+        "howToUse": "1. Lấy một lượng nhỏ sáp bằng đầu móng tay\n2. Xoa đều trên lòng bàn tay cho đến khi sáp tan chảy\n3. Vuốt lên tóc khô từ gốc đến ngọn\n4. Tạo kiểu theo ý muốn\n5. Có thể thêm một lượng nhỏ nếu cần độ giữ nếp cao hơn",
+        "additionalImages": [
+          "/assets/images/product2_detail1.jpg",
+          "/assets/images/product2_detail2.jpg"
+        ],
+        "relatedProducts": [1, 4],
+        "specifications": {
+          "xuatXu": "Ý",
+          "tinhTrang": "Mới 100%",
+          "baoHanh": "12 tháng"
+        }
+      },
+      {
+        "id": "3",
+        "name": "Cọ tạo bọt",
+        "price": "700.000 VND",
+        "image": "/assets/images/product3.jpg",
+        "description": "Cọ tạo bọt chuyên nghiệp với lông tự nhiên mềm mại, giúp tạo bọt xà phòng cạo râu dày mịn. Thiết kế cán gỗ cao cấp, chống trơn trượt khi sử dụng.",
+        "details": {
+          "brand": "BarberTools",
+          "material": "Lông cáo tự nhiên, Cán gỗ sồi",
+          "dimensions": "Chiều dài: 10cm, Đường kính đầu cọ: 5cm",
+          "usage": "Làm ẩm đầu cọ với nước ấm, tạo bọt với xà phòng cạo râu. Quét bọt lên vùng râu cần cạo.",
+          "benefits": ["Tạo bọt mịn", "Giữ ẩm lâu", "Cán gỗ bền đẹp"]
+        },
+        "rating": 4.9,
+        "reviews": 65,
+        "stock": 15,
+        "discount": 0,
+        "featured": false,
+        "categories": ["tools", "premium"],
+        "longDescription": "Cọ tạo bọt chuyên nghiệp của chúng tôi được chế tác thủ công với lông cáo tự nhiên cao cấp, giúp tạo bọt xà phòng dày mịn trong thời gian ngắn. Thiết kế cán gỗ sồi không chỉ mang đến vẻ đẹp sang trọng mà còn đảm bảo cầm nắm chắc chắn, không trơn trượt khi sử dụng. Sản phẩm là công cụ không thể thiếu cho những quý ông yêu thích trải nghiệm cạo râu truyền thống.",
+        "howToUse": "1. Làm ẩm đầu cọ với nước ấm (không nóng)\n2. Nhẹ nhàng đặt cọ lên xà phòng cạo râu và xoay tròn để lấy sản phẩm\n3. Trong chén hoặc tô nhỏ, xoay cọ theo chuyển động tròn để tạo bọt\n4. Tiếp tục cho đến khi bọt đạt độ dày mịn mong muốn\n5. Quét bọt lên vùng râu cần cạo bằng chuyển động tròn\n6. Sau khi sử dụng, rửa sạch cọ và để khô tự nhiên",
+        "additionalImages": [
+          "/assets/images/product3_detail1.jpg",
+          "/assets/images/product3_detail2.jpg",
+          "/assets/images/product3_detail3.jpg"
+        ],
+        "relatedProducts": [1, 2],
+        "specifications": {
+          "xuatXu": "Anh",
+          "tinhTrang": "Mới 100%",
+          "baoHanh": "24 tháng"
+        }
+      },
+      {
+        "id": "4",
+        "name": "Gel vuốt tóc",
+        "price": "300.000 VND",
+        "image": "/assets/images/product4.jpg",
+        "description": "Gel vuốt tóc với công thức chống UV, bảo vệ tóc khỏi ánh nắng mặt trời. Độ giữ nếp trung bình, thích hợp cho tạo kiểu hàng ngày.",
+        "details": {
+          "brand": "BarberEssentials",
+          "volume": "250ml",
+          "ingredients": "Nước, Alcohol Denat, VP/VA Copolymer, Triethanolamine, Carbomer, Perfume",
+          "usage": "Lấy một lượng vừa đủ vào lòng bàn tay, thoa đều lên tóc ẩm hoặc khô. Tạo kiểu như mong muốn.",
+          "benefits": ["Bảo vệ tóc khỏi tia UV", "Không để lại cặn trắng", "Dễ dàng gội sạch"]
+        },
+        "rating": 4.3,
+        "reviews": 27,
+        "stock": 50,
+        "discount": 15,
+        "featured": false,
+        "categories": ["styling", "everyday-use"],
+        "longDescription": "Gel vuốt tóc với công thức chống UV tiên tiến, không chỉ giúp tạo kiểu mà còn bảo vệ tóc khỏi tác hại của ánh nắng mặt trời. Độ giữ nếp trung bình phù hợp cho việc sử dụng hàng ngày, mang đến vẻ ngoài tự nhiên nhưng vẫn gọn gàng. Sản phẩm không để lại cặn trắng và dễ dàng gội sạch, là lựa chọn lý tưởng cho những quý ông bận rộn.",
+        "howToUse": "1. Lấy một lượng gel vừa đủ vào lòng bàn tay\n2. Xoa đều giữa hai lòng bàn tay\n3. Thoa đều lên tóc ẩm để có độ bóng tự nhiên, hoặc tóc khô để có độ bóng cao\n4. Tạo kiểu như mong muốn\n5. Để tóc khô tự nhiên hoặc sấy khô",
+        "additionalImages": [
+          "/assets/images/product4_detail1.jpg",
+          "/assets/images/product4_detail2.jpg"
+        ],
+        "relatedProducts": [1, 2],
+        "specifications": {
+          "xuatXu": "Mỹ",
+          "tinhTrang": "Mới 100%",
+          "baoHanh": "6 tháng"
+        }
+      }
+    ],
+    "services": [
+      {
+        "id": 1,
+        "name": "CẮT TÓC",
+        "price": "100.000 VND"
+      },
+      {
+        "id": 2,
+        "name": "CẠO RÂU",
+        "price": "100.000 VND"
+      },
+      {
+        "id": 3,
+        "name": "CẮT TÓC + CẠO RÂU",
+        "price": "250.000 VND"
+      },
+      {
+        "id": 4,
+        "name": "TẠO KIỂU + SẤY",
+        "price": "250.000 VND"
+      }
+    ]
+  }
