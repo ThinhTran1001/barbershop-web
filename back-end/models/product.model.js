@@ -6,7 +6,7 @@ const productSchema = new mongoose.Schema({
   image: { type: String },
   description: { type: String },
   details: {
-    brandId: { type: mongoose.Schema.Types.ObjectId, ref: 'Brand' },
+    brandId: { type: mongoose.Schema.Types.ObjectId, ref: 'Brand', required: true },
     volume: { type: String },
     ingredients: { type: String },
     usage: { type: String },
@@ -17,7 +17,7 @@ const productSchema = new mongoose.Schema({
   stock: { type: Number, required: true },
   discount: { type: Number },
   featured: { type: Boolean },
-  categorieId: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Category' }],
+  categoryId: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true }],
   longDescription: { type: String },
   howToUse: { type: String },
   additionalImages: [{ type: String }],

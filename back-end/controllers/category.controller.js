@@ -6,14 +6,19 @@ exports.createCategory = async (req, res) => {
     const savedCategory = await category.save();
     res.status(201).json(savedCategory);
   } catch (error) {
+    console.error('Error creating category:', error.message);
     res.status(400).json({ message: error.message });
   }
 };
 
 exports.getAllCategories = async (req, res) => {
   try {
-    const categories = await Category.find();
-    res.status(200).json(categories);
+    const { name, page = 1, limit = 100 } = req.query;
+    const query = {};
+    if (name) query.name = { $regex: name, $options: 'i' };
+    const categories = await Category.find(query);
+    console.log('Categories fetched:', categories);
+    res.status(200).json(categories); // Trả về mảng trực tiếp
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
