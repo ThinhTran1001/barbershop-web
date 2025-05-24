@@ -1,23 +1,34 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { ConfigProvider, App as AntApp } from 'antd';
+import './App.css';
+import ServiceBooking from './pages/ServiceBooking/ServiceBooking';
+import ManagingService from './pages/ManagingService/ManagingService';
 import AdminDashboard from './pages/AdminDashboard';
 
-import './App.css';
-import Landing from "./pages/home/Landing";
-import "bootstrap/dist/css/bootstrap.min.css";
-import "antd/dist/reset.css"; 
-import ProductDetail from './components/product/ProductDetail';
+const theme = {
+  token: {
+    colorPrimary: '#d4af37',
+    colorBgContainer: '#333',
+    colorText: '#fff',
+    colorBorder: '#444',
+  },
+};
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/products/:id" element={<ProductDetail />} />
-      </Routes>
-    </BrowserRouter>
-
+    <ConfigProvider theme={theme}>
+      <AntApp>
+        <div className="app">
+          <Router>
+            <Routes>
+              <Route path="/services" element={<ServiceBooking />} />
+              <Route path="/admin" element={<AdminDashboard />} />
+            </Routes>
+          </Router>
+        </div>
+      </AntApp>
+    </ConfigProvider>
   );
 }
 

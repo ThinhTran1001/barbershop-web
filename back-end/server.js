@@ -22,7 +22,6 @@ app.use('/api', productRoutes);
 app.use('/api', categoryRoutes);
 app.use('/api', brandRoutes);
 
-
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
