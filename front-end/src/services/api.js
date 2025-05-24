@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://localhost:3000/api',
+  baseURL: 'http://localhost:9999/api',
 });
 
 // Service APIs
@@ -30,5 +30,6 @@ export const getBrandById = (id) => api.get(`/admin/brands/${id}`);
 export const createBrand = (data) => api.post(`/admin/brands`, data);
 export const updateBrand = (id, data) => api.put(`/admin/brands/${id}`, data);
 export const deleteBrand = (id) => api.delete(`/admin/brands/${id}`);
+
 
 export default api;
