@@ -3,8 +3,8 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { ConfigProvider, App as AntApp } from 'antd';
 import './App.css';
 import ServiceBooking from './pages/ServiceBooking/ServiceBooking';
-import ManagingService from './pages/ManagingService/ManagingService';
 import AdminDashboard from './pages/AdminDashboard';
+import Landing from "./pages/home/Landing.jsx";
 
 const theme = {
   token: {
@@ -22,6 +22,7 @@ function App() {
         <div className="app">
           <Router>
             <Routes>
+              <Route path="/" element={<Landing/>}/>
               <Route path="/services" element={<ServiceBooking />} />
               <Route path="/admin" element={<AdminDashboard />} />
             </Routes>
