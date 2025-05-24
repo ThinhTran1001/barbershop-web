@@ -19,9 +19,9 @@ app.use(cors());
 // Kết nối MongoDB
 connectDB();
 
-app.use('/api', productRoutes);
-app.use('/api', categoryRoutes);
-app.use('/api', brandRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/brands', brandRoutes);
 app.use('/api/services', serviceRoutes);
 
 const PORT = process.env.PORT || 3000;

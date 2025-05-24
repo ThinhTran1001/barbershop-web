@@ -1,23 +1,13 @@
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { ConfigProvider, App as AntApp } from 'antd';
-import './App.css';
-import ServiceBooking from './pages/ServiceBooking/ServiceBooking';
 import AdminDashboard from './pages/AdminDashboard';
 import Landing from "./pages/home/Landing.jsx";
-
-const theme = {
-  token: {
-    colorPrimary: '#d4af37',
-    colorBgContainer: '#333',
-    colorText: '#fff',
-    colorBorder: '#444',
-  },
-};
+import ServiceBooking from "./pages/ServiceBooking/ServiceBooking.jsx";
 
 function App() {
   return (
-    <ConfigProvider theme={theme}>
+    <ConfigProvider>
       <AntApp>
         <div className="app">
           <Router>
@@ -30,6 +20,7 @@ function App() {
         </div>
       </AntApp>
     </ConfigProvider>
+
   );
 }
 
