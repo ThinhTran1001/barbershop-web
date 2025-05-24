@@ -6,14 +6,19 @@ exports.createBrand = async (req, res) => {
     const savedBrand = await brand.save();
     res.status(201).json(savedBrand);
   } catch (error) {
+    console.error('Error creating brand:', error.message);
     res.status(400).json({ message: error.message });
   }
 };
 
 exports.getAllBrands = async (req, res) => {
   try {
-    const brands = await Brand.find();
-    res.status(200).json(brands);
+    const { name, page = 1, limit = 100 } = req.query;
+    const query = {};
+    if (name) query.name = { $regex: name, $options: 'i' };
+    const brands = await Brand.find(query);
+    console.log('Brands fetched:', brands);
+    res.status(200).json(brands); // Trả về mảng trực tiếp
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
