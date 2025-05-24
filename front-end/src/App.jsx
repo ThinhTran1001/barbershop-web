@@ -1,5 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import AdminDashboard from './pages/AdminDashboard';
+
 import './App.css';
 import Landing from "./pages/home/Landing";
 import "bootstrap/dist/css/bootstrap.min.css";
@@ -11,9 +13,11 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Landing />} />
-       <Route path="/products/:id" element={<ProductDetail />} />
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/products/:id" element={<ProductDetail />} />
       </Routes>
     </BrowserRouter>
+
   );
 }
 
