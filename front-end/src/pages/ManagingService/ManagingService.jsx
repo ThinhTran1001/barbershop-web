@@ -8,14 +8,18 @@ import {
   Popconfirm,
   Input,
   Select,
-  App,
-} from "antd";
+  notification,
+} from "antd"; 
+import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import { Tooltip } from "antd";
+
 import {
   getAllServices,
   createService,
   updateService,
   removeService,
 } from "../../services/api";
+
 import ServiceForm from "../../components/ServiceForm";
 import "./ManagingService.css";
 
@@ -26,7 +30,6 @@ const ManagingService = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingService, setEditingService] = useState(null);
   const [form] = Form.useForm();
-  const { notification } = App.useApp();
 
   const [searchText, setSearchText] = useState("");
   const [filterSuggested, setFilterSuggested] = useState([]);
@@ -113,6 +116,7 @@ const ManagingService = () => {
           placement: "topRight",
         });
       }
+
       fetchServices();
       handleCancel();
     } catch {
@@ -140,49 +144,54 @@ const ManagingService = () => {
       return true;
     });
 
-  const columns = [
-    { title: "Service Name", dataIndex: "name", key: "name" },
-    {
-      title: "Price",
-      dataIndex: "price",
-      key: "price",
-      render: (text) => `${text} VND`,
-    },
-    { title: "Description", dataIndex: "description", key: "description" },
-    { title: "Steps", dataIndex: "steps", key: "steps" },
-    {
-      title: "Duration (minutes)",
-      dataIndex: "durationMinutes",
-      key: "durationMinutes",
-    },
-    {
-      title: "Suggested For",
-      dataIndex: "suggestedFor",
-      key: "suggestedFor",
-      render: (arr) => arr?.join(", "),
-    },
-    {
-      title: "Actions",
-      key: "action",
-      render: (_, record) => (
-        <Space>
-          <Button type="link" onClick={() => showModal(record)}>
-            Edit
-          </Button>
-          <Popconfirm
-            title="Are you sure you want to delete this service?"
-            onConfirm={() => handleDelete(record._id)}
-            okText="Delete"
-            cancelText="Cancel"
-          >
-            <Button type="link" danger>
-              Delete
-            </Button>
-          </Popconfirm>
-        </Space>
-      ),
-    },
-  ];
+    const columns = [
+      { title: "Service Name", dataIndex: "name", key: "name" },
+      {
+        title: "Price",
+        dataIndex: "price",
+        key: "price",
+        render: (text) => `${text} VND`,
+      },
+      { title: "Description", dataIndex: "description", key: "description" },
+      { title: "Steps", dataIndex: "steps", key: "steps" },
+      {
+        title: "Duration (minutes)",
+        dataIndex: "durationMinutes",
+        key: "durationMinutes",
+      },
+      {
+        title: "Suggested For",
+        dataIndex: "suggestedFor",
+        key: "suggestedFor",
+        render: (arr) => arr?.join(", "),
+      },
+      {
+        title: "Actions",
+        key: "action",
+        render: (_, record) => (
+          <Space>
+            <Tooltip title="Edit">
+              <Button
+                type="text"
+                icon={<EditOutlined />}
+                onClick={() => showModal(record)}
+              />
+            </Tooltip>
+            <Tooltip title="Delete">
+              <Popconfirm
+                title="Are you sure you want to delete this service?"
+                onConfirm={() => handleDelete(record._id)}
+                okText="Delete"
+                cancelText="Cancel"
+              >
+                <Button type="text" danger icon={<DeleteOutlined />} />
+              </Popconfirm>
+            </Tooltip>
+          </Space>
+        ),
+      },
+    ];
+    
 
   const allSuggestedFor = [...new Set(services.flatMap((s) => s.suggestedFor || []))];
 
