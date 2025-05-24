@@ -34,7 +34,6 @@ const ManagingService = () => {
 
   useEffect(() => {
     fetchServices();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchServices = async () => {
@@ -43,8 +42,8 @@ const ManagingService = () => {
       setServices(res.data);
     } catch {
       notification.error({
-        message: "Lỗi",
-        description: "Lỗi khi tải dịch vụ",
+        message: "Error",
+        description: "Failed to load services",
         placement: "topRight",
       });
     }
@@ -66,15 +65,15 @@ const ManagingService = () => {
     try {
       await removeService(id);
       notification.success({
-        message: "Thành công",
-        description: "Xóa dịch vụ thành công",
+        message: "Success",
+        description: "Service deleted successfully",
         placement: "topRight",
       });
       fetchServices();
     } catch {
       notification.error({
-        message: "Lỗi",
-        description: "Lỗi khi xóa dịch vụ",
+        message: "Error",
+        description: "Failed to delete service",
         placement: "topRight",
       });
     }
@@ -83,35 +82,34 @@ const ManagingService = () => {
   const handleSave = async () => {
     try {
       const values = await form.validateFields();
-  
-      // Kiểm tra trùng tên dịch vụ
+
       const isDuplicate = services.some(
         (service) =>
           service.name.trim().toLowerCase() === values.name.trim().toLowerCase() &&
           (!editingService || service._id !== editingService._id)
       );
-  
+
       if (isDuplicate) {
         notification.error({
-          message: "Lỗi",
-          description: "Tên dịch vụ đã tồn tại, vui lòng chọn tên khác.",
+          message: "Error",
+          description: "Service name already exists, please choose another name.",
           placement: "topRight",
         });
-        return; // không tiếp tục lưu
+        return;
       }
-  
+
       if (editingService) {
         await updateService(editingService._id, values);
         notification.success({
-          message: "Thành công",
-          description: "Cập nhật dịch vụ thành công",
+          message: "Success",
+          description: "Service updated successfully",
           placement: "topRight",
         });
       } else {
         await createService(values);
         notification.success({
-          message: "Thành công",
-          description: "Thêm dịch vụ thành công",
+          message: "Success",
+          description: "Service added successfully",
           placement: "topRight",
         });
       }
@@ -119,14 +117,13 @@ const ManagingService = () => {
       handleCancel();
     } catch {
       notification.error({
-        message: "Lỗi",
-        description: "Lỗi khi lưu dịch vụ",
+        message: "Error",
+        description: "Failed to save service",
         placement: "topRight",
       });
     }
   };
-  
-  // Lọc dữ liệu
+
   const filteredServices = services
     .filter((item) =>
       item.name.toLowerCase().includes(searchText.toLowerCase())
@@ -144,42 +141,42 @@ const ManagingService = () => {
     });
 
   const columns = [
-    { title: "Tên dịch vụ", dataIndex: "name", key: "name" },
+    { title: "Service Name", dataIndex: "name", key: "name" },
     {
-      title: "Giá",
+      title: "Price",
       dataIndex: "price",
       key: "price",
       render: (text) => `${text} VND`,
     },
-    { title: "Mô tả", dataIndex: "description", key: "description" },
-    { title: "Các bước", dataIndex: "steps", key: "steps" },
+    { title: "Description", dataIndex: "description", key: "description" },
+    { title: "Steps", dataIndex: "steps", key: "steps" },
     {
-      title: "Thời gian (phút)",
+      title: "Duration (minutes)",
       dataIndex: "durationMinutes",
       key: "durationMinutes",
     },
     {
-      title: "Phù hợp với",
+      title: "Suggested For",
       dataIndex: "suggestedFor",
       key: "suggestedFor",
       render: (arr) => arr?.join(", "),
     },
     {
-      title: "Hành động",
+      title: "Actions",
       key: "action",
       render: (_, record) => (
         <Space>
           <Button type="link" onClick={() => showModal(record)}>
-            Sửa
+            Edit
           </Button>
           <Popconfirm
-            title="Bạn có chắc muốn xóa dịch vụ này?"
+            title="Are you sure you want to delete this service?"
             onConfirm={() => handleDelete(record._id)}
-            okText="Xóa"
-            cancelText="Hủy"
+            okText="Delete"
+            cancelText="Cancel"
           >
             <Button type="link" danger>
-              Xóa
+              Delete
             </Button>
           </Popconfirm>
         </Space>
@@ -187,15 +184,10 @@ const ManagingService = () => {
     },
   ];
 
-  // Trích danh sách gợi ý từ dịch vụ có sẵn
   const allSuggestedFor = [...new Set(services.flatMap((s) => s.suggestedFor || []))];
 
   return (
     <div className="managing-service-container">
-      <div className="header">
-        <h2>Quản lý dịch vụ</h2>
-      </div>
-
       <div
         style={{
           marginBottom: 16,
@@ -208,14 +200,14 @@ const ManagingService = () => {
       >
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap", flex: 1 }}>
           <Input
-            placeholder="Tìm kiếm theo tên"
+            placeholder="Search by name"
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             style={{ width: 200, minWidth: 150 }}
           />
           <Select
             mode="multiple"
-            placeholder="Lọc theo đối tượng"
+            placeholder="Filter by target audience"
             value={filterSuggested}
             onChange={setFilterSuggested}
             style={{ minWidth: 200 }}
@@ -228,20 +220,20 @@ const ManagingService = () => {
             ))}
           </Select>
           <Select
-            placeholder="Lọc theo giá"
+            placeholder="Filter by price"
             value={priceFilter}
             onChange={setPriceFilter}
             style={{ width: 180 }}
             allowClear
           >
-            <Option value="low">Dưới 100,000 VND</Option>
+            <Option value="low">Under 100,000 VND</Option>
             <Option value="medium">100,000 – 300,000 VND</Option>
-            <Option value="high">Trên 300,000 VND</Option>
+            <Option value="high">Over 300,000 VND</Option>
           </Select>
         </div>
 
         <Button type="primary" onClick={() => showModal()}>
-          Thêm dịch vụ
+          Add Service
         </Button>
       </div>
 
@@ -253,12 +245,12 @@ const ManagingService = () => {
       />
 
       <Modal
-        title={editingService ? "Chỉnh sửa dịch vụ" : "Thêm dịch vụ"}
+        title={editingService ? "Edit Service" : "Add Service"}
         open={isModalVisible}
         onCancel={handleCancel}
         onOk={handleSave}
-        okText="Lưu"
-        cancelText="Hủy"
+        okText="Save"
+        cancelText="Cancel"
       >
         <Form form={form} layout="vertical">
           <ServiceForm form={form} editing={editingService} />
