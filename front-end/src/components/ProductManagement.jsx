@@ -323,13 +323,13 @@ const ProductManagement = () => {
           <Form.Item name={['details', 'usage']} label="Usage">
             <Input />
           </Form.Item>
-          <Form.Item name={['details', 'benefits']} label="Benefits (comma-separated)">
+          <Form.Item name={['details', 'benefits']} label="Benefits">
             <Input />
           </Form.Item>
           <Form.Item name="stock" label="Stock" rules={[{ required: true, message: 'Please input the stock!' }]}>
             <InputNumber min={0} />
           </Form.Item>
-          <Form.Item name="categoryId" label="Category IDs" rules={[{ required: true, message: 'Please select at least one category!' }]}>
+          <Form.Item name="categoryId" label="Category" rules={[{ required: true, message: 'Please select at least one category!' }]}>
             <Select mode="multiple" placeholder="Select categories" allowClear>
               {categories.map(category => (
                 <Option key={category._id} value={category._id}>{category.name}</Option>
