@@ -212,7 +212,7 @@
 }
 
 .managing-service-container .ant-btn-primary {
-  background-color: #e1bd5e;
+  /* background-color: #e1bd5e; */
   color: #ffffff !important;
   border: none;
 }
