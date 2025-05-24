@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, message } from 'antd';
+import { Table, Button, Modal, Form, Input, message, Modal as AntModal } from 'antd';
 import { getBrands, createBrand, updateBrand, deleteBrand } from '../services/api';
+import { DeleteFilled, InfoCircleFilled } from '@ant-design/icons';
 
 const BrandManagement = () => {
   const [brands, setBrands] = useState([]);
-  const [allBrands, setAllBrands] = useState([]); 
+  const [allBrands, setAllBrands] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [form] = Form.useForm();
   const [editingBrand, setEditingBrand] = useState(null);
@@ -18,9 +19,9 @@ const BrandManagement = () => {
 
   const fetchInitialData = async () => {
     try {
-      const response = await getBrands({ limit: 100 }); 
+      const response = await getBrands();
       setAllBrands(response.data);
-      setBrands(response.data); 
+      setBrands(response.data);
     } catch (error) {
       message.error('Failed to fetch brands: ' + error.message);
     }
@@ -53,7 +54,7 @@ const BrandManagement = () => {
       setIsModalVisible(false);
       form.resetFields();
       setEditingBrand(null);
-      fetchInitialData(); 
+      fetchInitialData();
     } catch (error) {
       console.error('Error in handleAddOrUpdateBrand:', error.response?.data || error.message);
       message.error('Failed to save brand: ' + (error.response?.data?.message || error.message));
@@ -61,13 +62,29 @@ const BrandManagement = () => {
   };
 
   const handleDeleteBrand = async (id) => {
-    try {
-      await deleteBrand(id);
-      message.success('Brand deleted successfully');
-      fetchInitialData();
-    } catch (error) {
-      message.error('Failed to delete brand: ' + error.message);
-    }
+    console.log('handleDeleteBrand called with ID:', id); // Debug ngay đầu hàm
+    AntModal.confirm({
+      title: 'Are you sure you want to delete this brand?',
+      content: 'This action cannot be undone.',
+      okText: 'Yes',
+      okType: 'danger',
+      cancelText: 'No',
+      onOk: async () => {
+        try {
+          console.log('Attempting to delete brand with ID:', id); // Debug
+          const response = await deleteBrand(id);
+          console.log('Delete response:', response); // Debug
+          message.success('Brand deleted successfully');
+          fetchInitialData();
+        } catch (error) {
+          console.error('Error deleting brand:', error.response?.data || error.message);
+          message.error('Failed to delete brand: ' + (error.response?.data?.message || error.message));
+        }
+      },
+      onCancel: () => {
+        console.log('Delete action canceled'); // Debug
+      },
+    });
   };
 
   const showModal = (brand = null) => {
@@ -89,8 +106,8 @@ const BrandManagement = () => {
       key: 'actions',
       render: (text, record) => (
         <>
-          <Button onClick={() => showModal(record)} className="me-2">Edit</Button>
-          <Button onClick={() => handleDeleteBrand(record._id)} danger>Delete</Button>
+          <Button onClick={() => showModal(record)} className="me-2"><InfoCircleFilled /></Button>
+          <Button onClick={() => handleDeleteBrand(record._id)} danger><DeleteFilled /></Button>
         </>
       ),
     },
