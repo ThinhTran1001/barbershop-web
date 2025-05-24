@@ -22,7 +22,7 @@ function App() {
         <div className="app">
           <Router>
             <Routes>
-              {/* <Route path="/" element={<ServiceBooking />} /> */}
+              <Route path="/services" element={<ServiceBooking />} />
               <Route path="/admin" element={<AdminDashboard />} />
             </Routes>
           </Router>

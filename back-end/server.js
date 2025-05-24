@@ -19,7 +19,6 @@ app.use(express.json());
 app.use('/api/admin', productRoutes);
 app.use('/api/admin', categoryRoutes);
 app.use('/api/admin', brandRoutes);
-
 app.use("/api/services", serviceRoutes);
 
 mongoose
