@@ -1,0 +1,371 @@
+.managing-service-container {
+  padding: 24px;
+  background: #ffffff;
+  border-radius: 8px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  color: #000000;
+}
+
+.header h2 {
+  margin-bottom: 0;
+  color: #000000;
+}
+
+/* Reset toàn bộ màu chữ sang đen */
+.ant-modal-title,
+.ant-modal-body,
+.ant-form-item-label > label,
+.ant-input,
+.ant-select,
+.ant-select-selection-item,
+.ant-select-selection-placeholder,
+.ant-select-item,
+.ant-select-item-option-content,
+.ant-select-arrow {
+  color: #000000 !important;
+}
+
+/* Modal styling */
+.ant-modal-content {
+  border-radius: 12px;
+  padding: 24px;
+  background-color: #ffffff !important;
+}
+
+.ant-modal-title {
+  font-size: 20px;
+  font-weight: 600;
+  text-align: center;
+  color: #000000 !important;
+}
+
+.ant-modal-body {
+  padding-top: 12px;
+  background-color: #ffffff !important;
+}
+
+/* Form styling */
+.ant-form-item {
+  margin-bottom: 20px;
+}
+
+.ant-form-item-label > label {
+  color: #000000 !important;
+}
+
+.ant-form-item-required::before {
+  color: #ff4d4f !important;
+}
+
+/* Input styling */
+.ant-input {
+  height: 40px;
+  border-radius: 8px;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #d9d9d9;
+}
+
+.ant-input::placeholder {
+  color: #666666 !important;
+  opacity: 1;
+}
+
+/* InputNumber styling */
+.ant-input-number {
+  width: 100%;
+  height: 40px;
+  border-radius: 8px;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #d9d9d9;
+}
+
+.ant-input-number-input {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* TextArea styling */
+.ant-input-textarea textarea {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #d9d9d9;
+  border-radius: 8px;
+}
+
+/* Select styling */
+.ant-select-selector {
+  height: 40px !important;
+  border-radius: 8px !important;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #d9d9d9 !important;
+}
+
+.ant-select-selection-item {
+  color: #000000 !important;
+  line-height: 38px !important;
+}
+
+.ant-select-selection-placeholder {
+  color: #666666 !important;
+  line-height: 38px !important;
+}
+
+.ant-select-arrow {
+  color: #000000 !important;
+}
+
+/* Select dropdown */
+.ant-select-dropdown {
+  background-color: #ffffff !important;
+  border-radius: 8px;
+}
+
+.ant-select-item-option {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+.ant-select-item-option-active,
+.ant-select-item-option-selected {
+  background-color: #f5f5f5 !important;
+  color: #000000 !important;
+}
+
+.ant-select-item {
+  color: #000000 !important;
+}
+
+/* Override dropdown menu styling specifically for tags mode */
+.ant-select-dropdown .rc-virtual-list-holder {
+  background-color: #ffffff !important;
+}
+
+.ant-select-dropdown .rc-virtual-list-holder-inner {
+  background-color: #ffffff !important;
+}
+
+/* Force all dropdown items to have white background */
+.ant-select-dropdown .ant-select-item,
+.ant-select-dropdown .ant-select-item-option,
+.ant-select-dropdown .ant-select-item-option-content {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* Hover state for dropdown items */
+.ant-select-dropdown .ant-select-item-option:hover {
+  background-color: #f5f5f5 !important;
+  color: #000000 !important;
+}
+
+/* Selected state for dropdown items */
+.ant-select-dropdown .ant-select-item-option-selected {
+  background-color: #e6f7ff !important;
+  color: #000000 !important;
+}
+
+/* Multiple select (tags) styling */
+.ant-select-multiple .ant-select-selector {
+  min-height: 40px !important;
+  background-color: #ffffff !important;
+  border: 1px solid #d9d9d9 !important;
+  border-radius: 8px !important;
+  padding: 4px 8px !important;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ant-select-multiple .ant-select-selection-item {
+  background-color: #f0f0f0 !important;
+  color: #000000 !important;
+  border: 1px solid #d9d9d9 !important;
+  border-radius: 6px !important;
+  padding: 2px 8px !important;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+}
+
+.ant-select-multiple .ant-select-selection-item-remove {
+  color: #000000 !important;
+  margin-left: 4px;
+}
+
+.ant-select-multiple .ant-select-selection-placeholder {
+  color: #666666 !important;
+  opacity: 1;
+  line-height: 38px !important;
+}
+
+/* Table styling */
+.ant-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  background-color: #ffffff !important;
+}
+
+.ant-table-thead > tr > th {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+.ant-table th,
+.ant-table td {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* Button styling */
+.ant-btn {
+  border-radius: 8px;
+  height: 40px;
+}
+
+.ant-btn-default {
+  background-color: #464646;
+  color: #ffffff !important;
+  border: none;
+}
+
+.ant-btn-primary {
+  background-color: #e1bd5e;
+  color: #ffffff !important;
+  border: none;
+}
+
+/* Notification styling */
+.ant-notification-notice {
+  background-color: #ffffff !important;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.ant-notification-notice-message {
+  color: #000000 !important;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.ant-notification-notice-description {
+  color: #000000 !important;
+  font-size: 14px;
+}
+
+.ant-notification-notice-close {
+  color: #000000 !important;
+}
+
+.ant-notification-notice-icon {
+  color: inherit;
+}
+
+.ant-notification-notice-success .ant-notification-notice-icon {
+  color: #52c41a !important;
+}
+
+.ant-notification-notice-error .ant-notification-notice-icon {
+  color: #ff4d4f !important;
+}
+
+.ant-notification-notice-info .ant-notification-notice-icon {
+  color: #1890ff !important;
+}
+
+.ant-notification-notice-warning .ant-notification-notice-icon {
+  color: #faad14 !important;
+}
+
+/* Popconfirm styling */
+.ant-popconfirm-title {
+  color: #000000 !important;
+}
+
+/* Popover styling */
+.ant-popover-inner {
+  background-color: #ffffff !important;
+}
+
+.ant-popover-inner-content {
+  color: #000000 !important;
+}
+
+/* InputNumber styling - Complete override */
+.ant-input-number {
+  width: 100% !important;
+  height: 40px !important;
+  border-radius: 8px !important;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #d9d9d9 !important;
+}
+
+.ant-input-number-input {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  height: 38px !important;
+  border: none !important;
+}
+
+.ant-input-number-input::placeholder {
+  color: #666666 !important;
+  opacity: 1;
+}
+
+/* InputNumber handler (up/down buttons) */
+.ant-input-number-handler-wrap {
+  background-color: #ffffff !important;
+  border-left: 1px solid #d9d9d9 !important;
+}
+
+.ant-input-number-handler {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+.ant-input-number-handler:hover {
+  background-color: #f5f5f5 !important;
+  color: #000000 !important;
+}
+
+/* InputNumber focused state */
+.ant-input-number:focus,
+.ant-input-number-focused {
+  border-color: #40a9ff !important;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2) !important;
+  background-color: #ffffff !important;
+}
+
+.ant-input-number:focus .ant-input-number-input,
+.ant-input-number-focused .ant-input-number-input {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* Override any dark theme for InputNumber */
+.ant-input-number-affix-wrapper {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #d9d9d9 !important;
+}
+
+/* Ensure the input wrapper has white background */
+.ant-input-number-group-wrapper {
+  background-color: #ffffff !important;
+}
+
+/* Additional override for any remaining dark background */
+[class*="ant-input-number"] {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}

@@ -1,0 +1,153 @@
+
+.barbers-section {
+    padding: 5rem 0;
+    background-color: #f9f9f9;
+  }
+  
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 15px;
+  }
+  
+ 
+  .barbers-header {
+    text-align: center;
+    margin-bottom: 4rem;
+  }
+  
+  .barbers-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #333;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+    letter-spacing: 2px;
+  }
+  
+  .title-divider {
+    width: 120px;
+    height: 2px;
+    background-color: #d4a449;
+    margin: 0 auto;
+    position: relative;
+  }
+  
+  .title-divider::before {
+    content: "";
+    position: absolute;
+    top: -3px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #d4a449;
+  }
+  
+ 
+  .barbers-grid {
+    display: flex;
+    justify-content: center;
+    gap: 13rem;
+    flex-wrap: wrap;
+  }
+  
+
+  .barber-card {
+    text-align: center;
+    max-width: 280px;
+  }
+  
+  .barber-image-container {
+    width: 220px;
+    height: 220px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin: 0 auto 1.5rem;
+    border: 5px solid white;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+  }
+  
+  .barber-card:hover .barber-image-container {
+    transform: translateY(-10px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    border-color: rgba(212, 164, 73, 0.3);
+  }
+  
+  .barber-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+  }
+  
+  .barber-card:hover .barber-image {
+    transform: scale(1.1);
+  }
+  
+  .barber-name {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #d4a449;
+    margin-bottom: 0.5rem;
+    letter-spacing: 1px;
+  }
+  .pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: 1.5rem;
+    gap: 10px;
+  }
+  
+  .pagination-button {
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    background-color: white;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    border-radius: 5px;
+
+  }
+  
+  .pagination-button.active {
+    background-color: #d4a449;
+    color: white;
+    border-color: #d4a449;
+  }
+  
+  
+
+  @media (max-width: 991px) {
+    .barbers-grid {
+      gap: 3rem;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .barbers-title {
+      font-size: 2.2rem;
+    }
+    
+    .barber-image-container {
+      width: 200px;
+      height: 200px;
+    }
+  }
+  
+  @media (max-width: 576px) {
+    .barbers-section {
+      padding: 4rem 0;
+    }
+    
+    .barbers-grid {
+      gap: 2.5rem;
+    }
+    
+    .barber-image-container {
+      width: 180px;
+      height: 180px;
+    }
+  }
