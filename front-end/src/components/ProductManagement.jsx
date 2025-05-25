@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, InputNumber, Select, message, Modal as AntModal } from 'antd';
+import { DeleteFilled, EyeOutlined, InfoCircleFilled } from '@ant-design/icons';
 import { getProducts, createProduct, updateProduct, deleteProduct, getCategories, getBrands } from '../services/api';
 
 const { Option } = Select;
 
 const ProductManagement = () => {
   const [products, setProducts] = useState([]);
-  const [allProducts, setAllProducts] = useState([]); 
+  const [allProducts, setAllProducts] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isViewModalVisible, setIsViewModalVisible] = useState(false);
+  const [viewingProduct, setViewingProduct] = useState(null);
   const [form] = Form.useForm();
   const [editingProduct, setEditingProduct] = useState(null);
   const [categories, setCategories] = useState([]);
@@ -15,8 +18,8 @@ const ProductManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBrand, setSelectedBrand] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [minPrice, setMinPrice] = useState(null); 
-  const [maxPrice, setMaxPrice] = useState(null); 
+  const [minPrice, setMinPrice] = useState(null);
+  const [maxPrice, setMaxPrice] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
 
@@ -28,9 +31,9 @@ const ProductManagement = () => {
 
   const fetchInitialData = async () => {
     try {
-      const response = await getProducts({ page: 1, limit: 100 }); 
+      const response = await getProducts();
       setAllProducts(response.data);
-      setProducts(response.data); 
+      setProducts(response.data);
     } catch (error) {
       message.error('Failed to fetch products: ' + error.message);
     }
@@ -124,6 +127,7 @@ const ProductManagement = () => {
   };
 
   const handleDeleteProduct = async (id) => {
+    console.log('handleDeleteProduct called with ID:', id); // Debug ngay đầu hàm
     AntModal.confirm({
       title: 'Are you sure you want to delete this product?',
       content: 'This action cannot be undone.',
@@ -132,12 +136,18 @@ const ProductManagement = () => {
       cancelText: 'No',
       onOk: async () => {
         try {
-          await deleteProduct(id);
+          console.log('Attempting to delete product with ID:', id); // Debug
+          const response = await deleteProduct(id);
+          console.log('Delete response:', response); // Debug
           message.success('Product deleted successfully');
-          fetchInitialData(); 
+          fetchInitialData();
         } catch (error) {
-          message.error('Failed to delete product: ' + error.message);
+          console.error('Error deleting product:', error.response?.data || error.message);
+          message.error('Failed to delete product: ' + (error.response?.data?.message || error.message));
         }
+      },
+      onCancel: () => {
+        console.log('Delete action canceled'); // Debug
       },
     });
   };
@@ -163,6 +173,11 @@ const ProductManagement = () => {
       form.resetFields();
     }
     setIsModalVisible(true);
+  };
+
+  const showViewModal = (product) => {
+    setViewingProduct(product);
+    setIsViewModalVisible(true);
   };
 
   const columns = [
@@ -203,8 +218,9 @@ const ProductManagement = () => {
       key: 'actions',
       render: (text, record) => (
         <>
-          <Button onClick={() => showModal(record)} className="me-2">Edit</Button>
-          <Button onClick={() => handleDeleteProduct(record._id)} danger>Delete</Button>
+          <Button className="me-2" onClick={() => showViewModal(record)}><EyeOutlined/></Button>
+          <Button onClick={() => showModal(record)} className="me-2"><InfoCircleFilled /></Button>
+          <Button onClick={() => handleDeleteProduct(record._id)} danger><DeleteFilled /></Button>
         </>
       ),
     },
@@ -264,7 +280,7 @@ const ProductManagement = () => {
         pagination={{
           current: currentPage,
           pageSize: pageSize,
-          total: allProducts.length, 
+          total: allProducts.length,
           onChange: (page, pageSize) => {
             setCurrentPage(page);
             setPageSize(pageSize);
@@ -307,13 +323,13 @@ const ProductManagement = () => {
           <Form.Item name={['details', 'usage']} label="Usage">
             <Input />
           </Form.Item>
-          <Form.Item name={['details', 'benefits']} label="Benefits (comma-separated)">
+          <Form.Item name={['details', 'benefits']} label="Benefits">
             <Input />
           </Form.Item>
           <Form.Item name="stock" label="Stock" rules={[{ required: true, message: 'Please input the stock!' }]}>
             <InputNumber min={0} />
           </Form.Item>
-          <Form.Item name="categoryId" label="Category IDs" rules={[{ required: true, message: 'Please select at least one category!' }]}>
+          <Form.Item name="categoryId" label="Category" rules={[{ required: true, message: 'Please select at least one category!' }]}>
             <Select mode="multiple" placeholder="Select categories" allowClear>
               {categories.map(category => (
                 <Option key={category._id} value={category._id}>{category.name}</Option>
@@ -324,6 +340,66 @@ const ProductManagement = () => {
             <Button type="primary" htmlType="submit">Save</Button>
           </Form.Item>
         </Form>
+      </Modal>
+      <Modal
+        title="Product Details"
+        visible={isViewModalVisible}
+        onCancel={() => setIsViewModalVisible(false)}
+        footer={null}
+        width={800}
+      >
+        {viewingProduct && (
+          <div style={{ display: 'flex', gap: '20px' }}>
+            <div style={{ flex: '1', maxWidth: '300px' }}>
+              {viewingProduct.image ? (
+                <img
+                  src={viewingProduct.image}
+                  alt={viewingProduct.name}
+                  style={{ width: '100%', height: 'auto', objectFit: 'cover', borderRadius: '8px' }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: '100%',
+                    height: '200px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: '#f0f0f0',
+                    borderRadius: '8px',
+                  }}
+                >
+                  No Image Available
+                </div>
+              )}
+            </div>
+            <div style={{ flex: '2' }}>
+              <p><strong>Name:</strong> {viewingProduct.name}</p>
+              <p><strong>Price:</strong> ${viewingProduct.price?.toFixed(2)}</p>
+              <p>
+                <strong>Brand:</strong>{' '}
+                {brands.find(b => b._id === viewingProduct.details?.brandId)?.name || 'N/A'}
+              </p>
+              <p>
+                <strong>Categories:</strong>{' '}
+                {viewingProduct.categoryId
+                  ?.map(catId => categories.find(c => c._id === catId)?.name)
+                  .filter(name => name)
+                  .join(', ') || 'N/A'}
+              </p>
+              <p><strong>Rating:</strong> {viewingProduct.rating || 'N/A'}</p>
+              <p><strong>Stock:</strong> {viewingProduct.stock || 'N/A'}</p>
+              <p><strong>Volume:</strong> {viewingProduct.details?.volume || 'N/A'}</p>
+              <p><strong>Ingredients:</strong> {viewingProduct.details?.ingredients || 'N/A'}</p>
+              <p><strong>Usage:</strong> {viewingProduct.details?.usage || 'N/A'}</p>
+              <p>
+                <strong>Benefits:</strong>{' '}
+                {viewingProduct.details?.benefits?.join(', ') || 'N/A'}
+              </p>
+              <p><strong>Description:</strong> {viewingProduct.description || 'N/A'}</p>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );
