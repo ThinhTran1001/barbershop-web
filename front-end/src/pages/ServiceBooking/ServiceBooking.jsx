@@ -6,13 +6,13 @@ import { getAllServices } from '../../services/api';
 import './ServiceBooking.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
-// import barber1 from '../../assets/images/barber1.png';
-// import barber2 from '../../assets/images/barber2.png';
-// import barber3 from '../../assets/images/barber3.png';
-// import barber4 from '../../assets/images/barber4.png';
-// import barber5 from '../../assets/images/barber5.png';
+import barber1 from '../../assets/images/barber1.png';
+import barber2 from '../../assets/images/barber2.png';
+import barber3 from '../../assets/images/barber3.png';
+import barber4 from '../../assets/images/barber4.png';
+import barber5 from '../../assets/images/barber5.png';
 
-// const images = [barber1, barber2, barber3, barber4, barber5];
+const images = [barber1, barber2, barber3, barber4, barber5];
 
 const comboNames = [
   'uốn và ép',
@@ -103,7 +103,7 @@ const ServiceBooking = () => {
           />
         </div>
         <div className="col-md-6">
-          {/*<ImageSlider />*/}
+          <ImageSlider src={images} />
         </div>
       </div>
     </div>

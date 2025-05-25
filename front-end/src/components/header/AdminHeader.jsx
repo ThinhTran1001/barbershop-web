@@ -55,6 +55,9 @@ const AdminHeader = () => {
         <Menu.Item key="category" onClick={() => navigate("/admin/category")}>
           Category
         </Menu.Item>
+        <Menu.Item key="service" onClick={() => navigate("/admin/service")}>
+          Service
+        </Menu.Item>
       </Menu>
 
       {/* User info + logout */}
