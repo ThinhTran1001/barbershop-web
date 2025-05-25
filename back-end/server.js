@@ -1,5 +1,6 @@
 const express = require('express');
 const dotenv = require('dotenv');
+dotenv.config();
 const connectDB = require('./config/db.config');
 const productRoutes = require("./routes/product.route");
 const categoryRoutes = require("./routes/category.route");
@@ -7,13 +8,16 @@ const brandRoutes = require("./routes/brand.route");
 const authRoutes = require("./routes/auth.route");
 const serviceRoutes = require('./routes/service.route');
 const cors = require('cors');
-
-dotenv.config();
+const cookieParser = require("cookie-parser");
 
 const app = express();
 
 app.use(express.json());
-app.use(cors());
+app.use(cookieParser());
+app.use(cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+}));
 
 connectDB();
 const kafkaConsumer = require('./services/kafka-consumer.service');

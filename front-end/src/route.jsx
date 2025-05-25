@@ -9,12 +9,14 @@ import Login from "./pages/auth/LoginPage.jsx";
 import ProductManagement from "./components/ProductManagement.jsx";
 import BrandManagement from "./components/BrandManagement.jsx";
 import CategoryManagement from "./components/CategoryManagement.jsx";
+import Register from "./pages/auth/RegisterPage.jsx";
 
 const publicRoutes = {
   element: <CommonLayout />,
   children: [
     { path: "/", element: <Landing /> },
-    { path: "/login", element: <Login /> }
+    { path: "/login", element: <Login /> },
+    {path: "/register", element: <Register/>}
   ],
 };
 
