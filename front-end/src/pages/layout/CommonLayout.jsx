@@ -1,16 +1,18 @@
 import { Layout } from "antd";
 import { Outlet } from "react-router-dom";
 import UserHeader from "../../components/Header/UserHeader.jsx";
-import Footer from "../../components/Footer/Footer";
+import Footer from "../../components/Footer/Footer.jsx";
 
 const { Content } = Layout;
 
 const CommonLayout = () => {
   return (
-    <Layout>
+    <Layout style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <UserHeader />
-      <Content style={{ height: "700px" }}>
-        <Outlet />
+      <Content style={{ flex: 1, backgroundColor: "#f5f5f5" }}>
+        <div className="container py-5" style={{ maxWidth: 600 }}>
+          <Outlet />
+        </div>
       </Content>
       <Footer />
     </Layout>
