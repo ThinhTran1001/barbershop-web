@@ -6,6 +6,7 @@ import product1 from "../../assets/images/product1.jpg";
 import product2 from "../../assets/images/product2.jpg";
 import product3 from "../../assets/images/product3.jpg";
 import product4 from "../../assets/images/product4.jpg";
+import {getProducts} from "../../services/api.js";
 
 
 const imageMap = {
@@ -24,11 +25,11 @@ export default function ShopItems() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const response = await fetch("http://localhost:9999/products");
+        const response = await getProducts();
         if (!response.ok) {
           throw new Error("Network response was not ok");
         }
-        const data = await response.json();
+        const data = await response.data;
         setProducts(data);
         setLoading(false);
       } catch (error) {

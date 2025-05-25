@@ -1,8 +1,4 @@
-import axios from 'axios';
-
-const api = axios.create({
-  baseURL: 'http://localhost:3000/api',
-});
+import api from "./axiosInstance";
 
 export const getProducts = () => api.get(`/products`);
 export const getProductById = (id) => api.get(`/products/${id}`);
@@ -27,5 +23,13 @@ export const getAllServices = () => api.get(`/services`);
 export const createService = (data) => api.post(`/services`, data);
 export const updateService = (id, data) => api.put(`/services/${id}`, data);
 export const removeService = (id) => api.delete(`/services/${id}`);
+
+export const loginUser = (data) => api.post('/auth/login', data);
+export const register = (data) => api.post('/auth/register', data);
+export const verify = (data) => api.post('/auth/verify-otp', data);
+export const resend = (data) => api.post('/auth/resend-otp', data);
+export const logoutUser = () => api.post('/auth/logout');
+export const refreshToken = () => api.post('/auth/refresh-token');
+export const getMe = () => api.get(`/auth/me`);
 
 export default api;

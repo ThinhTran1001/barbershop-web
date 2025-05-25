@@ -1,0 +1,21 @@
+/* Mặc định: chữ vàng, nền trong */
+.ant-menu-dark .ant-menu-item,
+.ant-menu-dark .ant-menu-submenu-title {
+  color: #ffc107 !important;
+  background-color: transparent !important;
+}
+
+/* Hover: chữ trắng, nền hơi vàng */
+.ant-menu-dark .ant-menu-item:hover,
+.ant-menu-dark .ant-menu-submenu-title:hover {
+  color: #fff !important;
+  background-color: rgba(255, 193, 7, 0.1) !important;
+}
+
+/* ĐANG CHỌN (active): chữ vàng, nền ĐEN */
+.ant-menu-dark .ant-menu-item-selected {
+  color: #ffc107 !important;
+  background-color: #000 !important;
+  font-weight: 700;
+  border-bottom: 2px solid #ffc107; /* tùy chọn */
+}
