@@ -1,16 +1,44 @@
 import React from 'react';
 import { Tabs } from 'antd';
-import ProductManagement from '../components/ProductManagement';
-import CategoryManagement from '../components/CategoryManagement';
-import BrandManagement from '../components/BrandManagement';
+import { useLocation, useNavigate } from 'react-router-dom';
+import ProductManagement from '../../components/ProductManagement.jsx';
+import CategoryManagement from '../../components/CategoryManagement.jsx';
+import BrandManagement from '../../components/BrandManagement.jsx';
 
 const { TabPane } = Tabs;
 
+// Map giữa key và path
+const tabKeyToPath = {
+  '1': 'product',
+  '2': 'category',
+  '3': 'brand',
+};
+
+const pathToTabKey = {
+  'product': '1',
+  'category': '2',
+  'brand': '3',
+};
+
 const AdminDashboard = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const currentTabPath = location.pathname.split('/').pop();
+  const activeKey = pathToTabKey[currentTabPath] || '1';
+
+  const handleTabChange = (key) => {
+    const path = tabKeyToPath[key] || 'product';
+    navigate(`/admin/${path}`);
+  };
+
   return (
     <div className="container mt-4">
-      <h1>Admin Dashboard</h1>
-      <Tabs defaultActiveKey="1" tabPosition='left'>
+      <Tabs
+        activeKey={activeKey}
+        onChange={handleTabChange}
+        tabPosition="left"
+      >
         <TabPane tab="Product Management" key="1">
           <ProductManagement />
         </TabPane>
