@@ -16,13 +16,11 @@ exports.getAllCategories = async (req, res) => {
   try {
     const { name, page = 1, limit = 100, isActive } = req.query;
     const query = {};
-    // Chỉ lọc isActive nếu query string isActive được cung cấp
     if (isActive !== undefined) {
       query.isActive = isActive === 'true';
     }
     if (name) query.name = { $regex: name, $options: 'i' };
     const categories = await Category.find(query);
-    console.log('Categories fetched:', categories);
     res.status(200).json(categories);
   } catch (error) {
     res.status(500).json({ message: error.message });

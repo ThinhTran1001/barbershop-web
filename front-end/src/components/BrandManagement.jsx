@@ -25,7 +25,6 @@ const BrandManagement = () => {
     try {
       const response = await getBrands();
       let fetchedBrands = response.data;
-      console.log('Fetched brands:', fetchedBrands);
       if (sortName) {
         fetchedBrands.sort((a, b) => sortName === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name));
       }
@@ -70,8 +69,6 @@ const BrandManagement = () => {
   };
 
   const handleDeleteBrand = async (id) => {
-    console.log('handleDeleteBrand called with ID:', id);
-    // Thay AntModal.confirm bằng window.confirm
     const confirmed = window.confirm('Are you sure you want to deactivate this brand?');
     if (confirmed) {
       try {
@@ -178,7 +175,7 @@ const BrandManagement = () => {
       />
       <AntModal
         title={editingBrand ? 'Edit Brand' : 'Add Brand'}
-        open={isModalVisible} // Thay visible thành open
+        open={isModalVisible} 
         onCancel={() => setIsModalVisible(false)}
         footer={null}
       >

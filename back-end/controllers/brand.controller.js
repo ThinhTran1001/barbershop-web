@@ -16,13 +16,11 @@ exports.getAllBrands = async (req, res) => {
   try {
     const { name, page = 1, limit = 100, isActive } = req.query;
     const query = {};
-    // Chỉ lọc isActive nếu query string isActive được cung cấp
     if (isActive !== undefined) {
       query.isActive = isActive === 'true';
     }
     if (name) query.name = { $regex: name, $options: 'i' };
     const brands = await Brand.find(query);
-    console.log('Brands fetched:', brands);
     res.status(200).json(brands);
   } catch (error) {
     res.status(500).json({ message: error.message });

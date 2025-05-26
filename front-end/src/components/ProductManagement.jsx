@@ -36,7 +36,6 @@ const ProductManagement = () => {
     try {
       const response = await getProducts();
       let fetchedProducts = response.data;
-      console.log('Fetched products:', fetchedProducts);
       if (sortName) {
         fetchedProducts.sort((a, b) => sortName === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name));
       }
@@ -127,8 +126,6 @@ const ProductManagement = () => {
   };
 
   const handleDeleteProduct = async (id) => {
-    console.log('handleDeleteProduct called with ID:', id);
-    // Thay AntModal.confirm bằng window.confirm
     const confirmed = window.confirm('Are you sure you want to deactivate this product?');
     if (confirmed) {
       try {
@@ -324,7 +321,7 @@ const ProductManagement = () => {
       />
       <AntModal
         title={editingProduct ? 'Edit Product' : 'Add Product'}
-        open={isModalVisible} // Thay visible thành open để tương thích với antd v5
+        open={isModalVisible} 
         onCancel={() => setIsModalVisible(false)}
         footer={null}
       >
@@ -377,7 +374,7 @@ const ProductManagement = () => {
       </AntModal>
       <AntModal
         title="Product Details"
-        open={isViewModalVisible} // Thay visible thành open
+        open={isViewModalVisible} 
         onCancel={() => setIsViewModalVisible(false)}
         footer={null}
         width={800}

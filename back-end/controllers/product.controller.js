@@ -3,7 +3,6 @@ const mongoose = require('mongoose');
 
 exports.createProduct = async (req, res) => {
   try {
-    console.log('Request body for createProduct:', req.body);
     if (req.body.categoryId && typeof req.body.categoryId === 'string') {
       req.body.categoryId = req.body.categoryId.split(',').map(id => mongoose.Types.ObjectId(id.trim()));
     }
@@ -23,7 +22,6 @@ exports.getAllProducts = async (req, res) => {
   try {
     const { name, brandId, categoryId, price, page = 1, limit = 5, isActive } = req.query;
     const query = {};
-    // Chỉ lọc isActive nếu query string isActive được cung cấp
     if (isActive !== undefined) {
       query.isActive = isActive === 'true';
     }

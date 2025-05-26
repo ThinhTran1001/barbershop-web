@@ -25,7 +25,6 @@ const CategoryManagement = () => {
     try {
       const response = await getCategories();
       let fetchedCategories = response.data;
-      console.log('Fetched categories:', fetchedCategories);
       if (sortName) {
         fetchedCategories.sort((a, b) => sortName === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name));
       }
@@ -70,8 +69,6 @@ const CategoryManagement = () => {
   };
 
   const handleDeleteCategory = async (id) => {
-    console.log('handleDeleteCategory called with ID:', id);
-    // Thay AntModal.confirm bằng window.confirm
     const confirmed = window.confirm('Are you sure you want to deactivate this category?');
     if (confirmed) {
       try {
@@ -178,7 +175,7 @@ const CategoryManagement = () => {
       />
       <AntModal
         title={editingCategory ? 'Edit Category' : 'Add Category'}
-        open={isModalVisible} // Thay visible thành open
+        open={isModalVisible}
         onCancel={() => setIsModalVisible(false)}
         footer={null}
       >
