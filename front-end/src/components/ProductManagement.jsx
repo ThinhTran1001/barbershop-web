@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, InputNumber, Select, message, Modal as AntModal } from 'antd';
-import { DeleteFilled, EyeOutlined, InfoCircleFilled } from '@ant-design/icons';
+import { Table, Button, Modal as AntModal, Form, Input, InputNumber, Select, message } from 'antd';
+import { DeleteFilled, EyeOutlined, InfoCircleFilled, SortAscendingOutlined, SortDescendingOutlined } from '@ant-design/icons';
 import { getProducts, createProduct, updateProduct, deleteProduct, getCategories, getBrands } from '../services/api';
 
 const { Option } = Select;
@@ -22,18 +22,29 @@ const ProductManagement = () => {
   const [maxPrice, setMaxPrice] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
+  const [isActiveFilter, setIsActiveFilter] = useState(undefined);
+  const [sortName, setSortName] = useState(null);
+  const [sortStock, setSortStock] = useState(null);
 
   useEffect(() => {
     fetchInitialData();
     fetchCategories();
     fetchBrands();
-  }, []);
+  }, [sortName, sortStock]);
 
   const fetchInitialData = async () => {
     try {
       const response = await getProducts();
-      setAllProducts(response.data);
-      setProducts(response.data);
+      let fetchedProducts = response.data;
+      console.log('Fetched products:', fetchedProducts);
+      if (sortName) {
+        fetchedProducts.sort((a, b) => sortName === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name));
+      }
+      if (sortStock) {
+        fetchedProducts.sort((a, b) => sortStock === 'asc' ? a.stock - b.stock : b.stock - a.stock);
+      }
+      setAllProducts(fetchedProducts);
+      applyFilters(fetchedProducts);
     } catch (error) {
       message.error('Failed to fetch products: ' + error.message);
     }
@@ -42,10 +53,8 @@ const ProductManagement = () => {
   const fetchCategories = async () => {
     try {
       const response = await getCategories();
-      console.log('Fetched categories:', response.data);
       setCategories(response.data);
     } catch (error) {
-      console.error('Error fetching categories:', error.response?.data || error.message);
       message.error('Failed to fetch categories: ' + error.message);
     }
   };
@@ -53,31 +62,25 @@ const ProductManagement = () => {
   const fetchBrands = async () => {
     try {
       const response = await getBrands();
-      console.log('Fetched brands:', response.data);
       setBrands(response.data);
     } catch (error) {
-      console.error('Error fetching brands:', error.response?.data || error.message);
       message.error('Failed to fetch brands: ' + error.message);
     }
   };
 
-  const filterProducts = () => {
-    let filtered = [...allProducts];
-
+  const applyFilters = (data) => {
+    let filtered = [...data];
+    if (isActiveFilter !== undefined) {
+      filtered = filtered.filter(product => product.isActive === isActiveFilter);
+    }
     if (searchTerm) {
-      filtered = filtered.filter(product =>
-        product.name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      filtered = filtered.filter(product => product.name.toLowerCase().includes(searchTerm.toLowerCase()));
     }
     if (selectedBrand) {
-      filtered = filtered.filter(product =>
-        product.details?.brandId === selectedBrand
-      );
+      filtered = filtered.filter(product => product.details?.brandId === selectedBrand);
     }
     if (selectedCategory) {
-      filtered = filtered.filter(product =>
-        product.categoryId?.includes(selectedCategory)
-      );
+      filtered = filtered.filter(product => product.categoryId?.includes(selectedCategory));
     }
     if (minPrice !== null || maxPrice !== null) {
       filtered = filtered.filter(product => {
@@ -87,13 +90,12 @@ const ProductManagement = () => {
         return price >= min && price <= max;
       });
     }
-
     setProducts(filtered);
   };
 
   useEffect(() => {
-    filterProducts();
-  }, [searchTerm, selectedBrand, selectedCategory, minPrice, maxPrice]);
+    applyFilters(allProducts);
+  }, [searchTerm, selectedBrand, selectedCategory, minPrice, maxPrice, isActiveFilter, allProducts]);
 
   const handleAddOrUpdateProduct = async (values) => {
     try {
@@ -112,7 +114,6 @@ const ProductManagement = () => {
         await updateProduct(editingProduct._id, payload);
         message.success('Product updated successfully');
       } else {
-        console.log('Creating product with data:', payload);
         await createProduct(payload);
         message.success('Product created successfully');
       }
@@ -121,35 +122,25 @@ const ProductManagement = () => {
       setEditingProduct(null);
       fetchInitialData();
     } catch (error) {
-      console.error('Error in handleAddOrUpdateProduct:', error.response?.data || error.message);
-      message.error('Failed to save product: ' + (error.response?.data?.message || error.message));
+      message.error('Failed to save product: ' + error.message);
     }
   };
 
   const handleDeleteProduct = async (id) => {
-    console.log('handleDeleteProduct called with ID:', id); // Debug ngay đầu hàm
-    AntModal.confirm({
-      title: 'Are you sure you want to delete this product?',
-      content: 'This action cannot be undone.',
-      okText: 'Yes',
-      okType: 'danger',
-      cancelText: 'No',
-      onOk: async () => {
-        try {
-          console.log('Attempting to delete product with ID:', id); // Debug
-          const response = await deleteProduct(id);
-          console.log('Delete response:', response); // Debug
-          message.success('Product deleted successfully');
-          fetchInitialData();
-        } catch (error) {
-          console.error('Error deleting product:', error.response?.data || error.message);
-          message.error('Failed to delete product: ' + (error.response?.data?.message || error.message));
-        }
-      },
-      onCancel: () => {
-        console.log('Delete action canceled'); // Debug
-      },
-    });
+    console.log('handleDeleteProduct called with ID:', id);
+    // Thay AntModal.confirm bằng window.confirm
+    const confirmed = window.confirm('Are you sure you want to deactivate this product?');
+    if (confirmed) {
+      try {
+        await deleteProduct(id);
+        message.success('Product deactivated successfully');
+        fetchInitialData();
+      } catch (error) {
+        message.error('Failed to deactivate product: ' + error.message);
+      }
+    } else {
+      console.log('Delete action canceled');
+    }
   };
 
   const showModal = (product = null) => {
@@ -186,7 +177,16 @@ const ProductManagement = () => {
       key: 'index',
       render: (text, record, index) => (currentPage - 1) * pageSize + index + 1,
     },
-    { title: 'Name', dataIndex: 'name', key: 'name' },
+    {
+      title: () => (
+        <span>
+          Name{' '}
+          {sortName ? (sortName === 'asc' ? <SortAscendingOutlined onClick={() => setSortName('desc')} /> : <SortDescendingOutlined onClick={() => setSortName('asc')} />) : <SortAscendingOutlined onClick={() => setSortName('asc')} />}
+        </span>
+      ),
+      dataIndex: 'name',
+      key: 'name',
+    },
     {
       title: 'Price',
       dataIndex: 'price',
@@ -212,13 +212,37 @@ const ProductManagement = () => {
         return categoryNames || 'N/A';
       },
     },
-    { title: 'Rating', dataIndex: 'rating', key: 'rating' },
+    {
+      title: () => (
+        <span>
+          Stock{' '}
+          {sortStock ? (sortStock === 'asc' ? <SortAscendingOutlined onClick={() => setSortStock('desc')} /> : <SortDescendingOutlined onClick={() => setSortStock('asc')} />) : <SortAscendingOutlined onClick={() => setSortStock('asc')} />}
+        </span>
+      ),
+      dataIndex: 'stock',
+      key: 'stock',
+    },
+    {
+      title: 'Rating',
+      dataIndex: 'rating',
+      key: 'rating',
+    },
+    {
+      title: 'Active',
+      dataIndex: 'isActive',
+      key: 'isActive',
+      render: (isActive) => (
+        <span style={{ color: isActive ? 'green' : 'red' }}>
+          {isActive ? 'Active' : 'Inactive'}
+        </span>
+      ),
+    },
     {
       title: 'Actions',
       key: 'actions',
       render: (text, record) => (
         <>
-          <Button className="me-2" onClick={() => showViewModal(record)}><EyeOutlined/></Button>
+          <Button className="me-2" onClick={() => showViewModal(record)}><EyeOutlined /></Button>
           <Button onClick={() => showModal(record)} className="me-2"><InfoCircleFilled /></Button>
           <Button onClick={() => handleDeleteProduct(record._id)} danger><DeleteFilled /></Button>
         </>
@@ -271,6 +295,16 @@ const ProductManagement = () => {
           style={{ width: 100, marginRight: 10 }}
           min={0}
         />
+        <Select
+          placeholder="Filter by active status"
+          value={isActiveFilter}
+          onChange={(value) => setIsActiveFilter(value)}
+          allowClear
+          style={{ width: 150, marginRight: 10 }}
+        >
+          <Option value={true}>Active</Option>
+          <Option value={false}>Inactive</Option>
+        </Select>
         <Button type="primary" onClick={() => showModal()}>Add Product</Button>
       </div>
       <Table
@@ -288,9 +322,9 @@ const ProductManagement = () => {
           showSizeChanger: true,
         }}
       />
-      <Modal
+      <AntModal
         title={editingProduct ? 'Edit Product' : 'Add Product'}
-        visible={isModalVisible}
+        open={isModalVisible} // Thay visible thành open để tương thích với antd v5
         onCancel={() => setIsModalVisible(false)}
         footer={null}
       >
@@ -323,13 +357,13 @@ const ProductManagement = () => {
           <Form.Item name={['details', 'usage']} label="Usage">
             <Input />
           </Form.Item>
-          <Form.Item name={['details', 'benefits']} label="Benefits">
+          <Form.Item name={['details', 'benefits']} label="Benefits (comma-separated)">
             <Input />
           </Form.Item>
           <Form.Item name="stock" label="Stock" rules={[{ required: true, message: 'Please input the stock!' }]}>
             <InputNumber min={0} />
           </Form.Item>
-          <Form.Item name="categoryId" label="Category" rules={[{ required: true, message: 'Please select at least one category!' }]}>
+          <Form.Item name="categoryId" label="Category IDs" rules={[{ required: true, message: 'Please select at least one category!' }]}>
             <Select mode="multiple" placeholder="Select categories" allowClear>
               {categories.map(category => (
                 <Option key={category._id} value={category._id}>{category.name}</Option>
@@ -340,10 +374,10 @@ const ProductManagement = () => {
             <Button type="primary" htmlType="submit">Save</Button>
           </Form.Item>
         </Form>
-      </Modal>
-      <Modal
+      </AntModal>
+      <AntModal
         title="Product Details"
-        visible={isViewModalVisible}
+        open={isViewModalVisible} // Thay visible thành open
         onCancel={() => setIsViewModalVisible(false)}
         footer={null}
         width={800}
@@ -400,7 +434,7 @@ const ProductManagement = () => {
             </div>
           </div>
         )}
-      </Modal>
+      </AntModal>
     </div>
   );
 };
