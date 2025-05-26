@@ -3,6 +3,8 @@ import { Tabs } from 'antd';
 import ProductManagement from '../components/ProductManagement';
 import CategoryManagement from '../components/CategoryManagement';
 import BrandManagement from '../components/BrandManagement';
+import BarberManagement from '../components/BarberManagement';
+import UserManagement from '../components/UserManagement';
 
 const { TabPane } = Tabs;
 
@@ -19,6 +21,12 @@ const AdminDashboard = () => {
         </TabPane>
         <TabPane tab="Brand Management" key="3">
           <BrandManagement />
+        </TabPane>
+        <TabPane tab="Barber Management" key="4">
+          <BarberManagement />
+        </TabPane>
+        <TabPane tab="User Management" key="5">
+          <UserManagement />
         </TabPane>
       </Tabs>
     </div>
