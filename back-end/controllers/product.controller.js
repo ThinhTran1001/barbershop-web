@@ -23,21 +23,20 @@ exports.createProduct = async (req, res) => {
 
 exports.getAllProducts = async (req, res) => {
   try {
-    const { name, brandId, categoryId, price, page = 1, limit = 5 } = req.query;
+    const { name, brandId, categoryId, price } = req.query;
     const query = {};
     if (name) query.name = { $regex: name, $options: 'i' };
     if (brandId) query['details.brandId'] = brandId;
     if (categoryId) query.categoryId = { $in: categoryId.split(',') };
     if (price) query.price = { $lte: parseFloat(price) };
 
-    const products = await Product.find(query)
-      .skip((page - 1) * limit)
-      .limit(parseInt(limit));
+    const products = await Product.find(query);
     res.status(200).json(products);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 exports.getProductById = async (req, res) => {
   try {

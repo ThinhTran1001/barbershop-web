@@ -11,6 +11,7 @@ import BrandManagement from "./components/BrandManagement.jsx";
 import CategoryManagement from "./components/CategoryManagement.jsx";
 import Register from "./pages/auth/RegisterPage.jsx";
 import ProductDetail from "./components/product/ProductDetail.jsx";
+import ProductList from "./pages/home/productList.jsx";
 
 const publicRoutes = {
   element: <CommonLayout />,
@@ -18,7 +19,8 @@ const publicRoutes = {
     { path: "/", element: <Landing /> },
     { path: "/products/:id", element: <ProductDetail/> },
     { path: "/login", element: <Login /> },
-    {path: "/register", element: <Register/>}
+    {path: "/register", element: <Register/>},
+    {path: "/products", element: <ProductList/>}
   ],
 };
 
@@ -33,6 +35,7 @@ const adminRoutes = {
         { path: "product", element: <ProductManagement /> },
         { path: "brand", element: <BrandManagement /> },
         { path: "category", element: <CategoryManagement /> },
+        
       ],
     },
   ],
