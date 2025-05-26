@@ -1,4 +1,17 @@
 
+/* App.css */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Montserrat', sans-serif;
+  background-color: #000000;
+  color: #fff;
+
+}
 #root {
   max-width: none; 
   margin: 0;       
@@ -22,31 +35,57 @@
 
 .logo.react:hover {
   filter: drop-shadow(0 0 2em #61dafbaa);
+
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.app {
+  min-height: 100vh;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+/* Tùy chỉnh Ant Design */
+.ant-select-dropdown {
+  background-color: #333 !important;
 }
 
-.card {
-  padding: 2em;
+.ant-select-item-option-content {
+  color: #fff !important;
 }
 
-.read-the-docs {
-  color: #888;
+.ant-select-item-option-active:not(.ant-select-item-option-disabled) {
+  background-color: #444 !important;
 }
 
+
+.ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+  background-color: #d4af37 !important;
+  color: #000 !important;
+}
+
+.ant-picker-panel {
+  background-color: #333 !important;
+}
+
+.ant-picker-header {
+  color: #d4af37 !important;
+}
+
+.ant-picker-header button {
+  color: #fff !important;
+}
+
+.ant-picker-content th,
+.ant-picker-content td {
+  color: #fff !important;
+}
+
+.ant-picker-cell:hover:not(.ant-picker-cell-selected):not(.ant-picker-cell-range-start):not(.ant-picker-cell-range-end):not(.ant-picker-cell-range-hover-start):not(.ant-picker-cell-range-hover-end) .ant-picker-cell-inner {
+  background-color: #444 !important;
+}
+
+.ant-picker-cell-in-view.ant-picker-cell-selected .ant-picker-cell-inner {
+  background-color: #d4af37 !important;
+  color: #000 !important;
+}
 
 .content-container {
   max-width: 1280px;
@@ -60,4 +99,5 @@ body, html {
   padding: 0;
   width: 100%;
   overflow-x: hidden;
+
 }

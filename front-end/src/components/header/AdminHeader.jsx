@@ -17,10 +17,11 @@ const AdminHeader = () => {
 
   const selectedKey = location.pathname.includes("brand")
     ? "brand"
-    : location.pathname.includes("category")
-      ? "category"
-      : "product";
-
+     : location.pathname.includes("category")
+        ? "category"
+        : location.pathname.includes("service")
+        ? "service"
+        : "product";
   return (
     <Header
       className="d-flex align-items-center justify-content-between px-4"
@@ -54,6 +55,9 @@ const AdminHeader = () => {
         </Menu.Item>
         <Menu.Item key="category" onClick={() => navigate("/admin/category")}>
           Category
+        </Menu.Item>
+        <Menu.Item key="service" onClick={() => navigate("/admin/service")}>
+          Service
         </Menu.Item>
       </Menu>
 

@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import ProductManagement from '../../components/ProductManagement.jsx';
 import CategoryManagement from '../../components/CategoryManagement.jsx';
 import BrandManagement from '../../components/BrandManagement.jsx';
+import ManagingService from '../pages/ManagingService/ManagingService.jsx';
 
 const { TabPane } = Tabs;
 
@@ -47,6 +48,9 @@ const AdminDashboard = () => {
         </TabPane>
         <TabPane tab="Brand Management" key="3">
           <BrandManagement />
+        </TabPane>
+        <TabPane tab="Service Management" key="4">
+          <ManagingService />
         </TabPane>
       </Tabs>
     </div>

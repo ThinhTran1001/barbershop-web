@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, message, Modal as AntModal } from 'antd';
-import { getCategories, createCategory, updateCategory, deleteCategory } from '../services/api';
-import { DeleteFilled, InfoCircleFilled } from '@ant-design/icons';
+import { Table, Button, Modal as AntModal, Form, Input, message, Select } from 'antd';
+import { DeleteFilled, InfoCircleFilled, SortAscendingOutlined, SortDescendingOutlined } from '@ant-design/icons';
+import { getCategories, createCategory, updateCategory, deleteCategory, getProducts } from '../services/api';
+
+const { Option } = Select;
 
 const CategoryManagement = () => {
   const [categories, setCategories] = useState([]);
@@ -12,34 +14,42 @@ const CategoryManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
+  const [isActiveFilter, setIsActiveFilter] = useState(undefined);
+  const [sortName, setSortName] = useState(null);
 
   useEffect(() => {
     fetchInitialData();
-  }, []);
+  }, [sortName]);
 
   const fetchInitialData = async () => {
     try {
       const response = await getCategories();
-      setAllCategories(response.data);
-      setCategories(response.data);
+      let fetchedCategories = response.data;
+      console.log('Fetched categories:', fetchedCategories);
+      if (sortName) {
+        fetchedCategories.sort((a, b) => sortName === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name));
+      }
+      setAllCategories(fetchedCategories);
+      applyFilters(fetchedCategories);
     } catch (error) {
       message.error('Failed to fetch categories: ' + error.message);
     }
   };
 
-  const filterCategories = () => {
-    let filtered = [...allCategories];
+  const applyFilters = (data) => {
+    let filtered = [...data];
+    if (isActiveFilter !== undefined) {
+      filtered = filtered.filter(category => category.isActive === isActiveFilter);
+    }
     if (searchTerm) {
-      filtered = filtered.filter(category =>
-        category.name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      filtered = filtered.filter(category => category.name.toLowerCase().includes(searchTerm.toLowerCase()));
     }
     setCategories(filtered);
   };
 
   useEffect(() => {
-    filterCategories();
-  }, [searchTerm]);
+    applyFilters(allCategories);
+  }, [searchTerm, isActiveFilter, allCategories]);
 
   const handleAddOrUpdateCategory = async (values) => {
     try {
@@ -47,7 +57,6 @@ const CategoryManagement = () => {
         await updateCategory(editingCategory._id, values);
         message.success('Category updated successfully');
       } else {
-        console.log('Creating category with data:', values);
         await createCategory(values);
         message.success('Category created successfully');
       }
@@ -56,35 +65,34 @@ const CategoryManagement = () => {
       setEditingCategory(null);
       fetchInitialData();
     } catch (error) {
-      console.error('Error in handleAddOrUpdateCategory:', error.response?.data || error.message);
-      message.error('Failed to save category: ' + (error.response?.data?.message || error.message));
+      message.error('Failed to save category: ' + error.message);
     }
   };
 
   const handleDeleteCategory = async (id) => {
-    console.log('handleDeleteCategory called with ID:', id); // Debug ngay đầu hàm
-    AntModal.confirm({
-      title: 'Are you sure you want to delete this category?',
-      content: 'This action cannot be undone.',
-      okText: 'Yes',
-      okType: 'danger',
-      cancelText: 'No',
-      onOk: async () => {
-        try {
-          console.log('Attempting to delete category with ID:', id); // Debug
-          const response = await deleteCategory(id);
-          console.log('Delete response:', response); // Debug
-          message.success('Category deleted successfully');
-          fetchInitialData();
-        } catch (error) {
-          console.error('Error deleting category:', error.response?.data || error.message);
-          message.error('Failed to delete category: ' + (error.response?.data?.message || error.message));
+    console.log('handleDeleteCategory called with ID:', id);
+    // Thay AntModal.confirm bằng window.confirm
+    const confirmed = window.confirm('Are you sure you want to deactivate this category?');
+    if (confirmed) {
+      try {
+        const products = await getProducts();
+        const relatedProducts = products.data.filter(p => p.categoryId?.includes(id));
+        const hasActiveProduct = relatedProducts.some(p => p.stock > 0 && p.isActive === true);
+
+        if (hasActiveProduct) {
+          message.error('Cannot delete category. There are active products with stock > 0 associated with this category.');
+          return;
         }
-      },
-      onCancel: () => {
-        console.log('Delete action canceled'); // Debug
-      },
-    });
+
+        await deleteCategory(id);
+        message.success('Category deactivated successfully');
+        fetchInitialData();
+      } catch (error) {
+        message.error('Failed to deactivate category: ' + error.message);
+      }
+    } else {
+      console.log('Delete action canceled');
+    }
   };
 
   const showModal = (category = null) => {
@@ -99,8 +107,27 @@ const CategoryManagement = () => {
   };
 
   const columns = [
-    { title: 'Name', dataIndex: 'name', key: 'name' },
+    {
+      title: () => (
+        <span>
+          Name{' '}
+          {sortName ? (sortName === 'asc' ? <SortAscendingOutlined onClick={() => setSortName('desc')} /> : <SortDescendingOutlined onClick={() => setSortName('asc')} />) : <SortAscendingOutlined onClick={() => setSortName('asc')} />}
+        </span>
+      ),
+      dataIndex: 'name',
+      key: 'name',
+    },
     { title: 'Description', dataIndex: 'description', key: 'description' },
+    {
+      title: 'Active',
+      dataIndex: 'isActive',
+      key: 'isActive',
+      render: (isActive) => (
+        <span style={{ color: isActive ? 'green' : 'red' }}>
+          {isActive ? 'Active' : 'Inactive'}
+        </span>
+      ),
+    },
     {
       title: 'Actions',
       key: 'actions',
@@ -122,6 +149,16 @@ const CategoryManagement = () => {
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{ width: 200, marginRight: 10 }}
         />
+        <Select
+          placeholder="Filter by active status"
+          value={isActiveFilter}
+          onChange={(value) => setIsActiveFilter(value)}
+          allowClear
+          style={{ width: 150, marginRight: 10 }}
+        >
+          <Option value={true}>Active</Option>
+          <Option value={false}>Inactive</Option>
+        </Select>
         <Button type="primary" onClick={() => showModal()}>Add Category</Button>
       </div>
       <Table
@@ -139,9 +176,9 @@ const CategoryManagement = () => {
           showSizeChanger: true,
         }}
       />
-      <Modal
+      <AntModal
         title={editingCategory ? 'Edit Category' : 'Add Category'}
-        visible={isModalVisible}
+        open={isModalVisible} // Thay visible thành open
         onCancel={() => setIsModalVisible(false)}
         footer={null}
       >
@@ -156,7 +193,7 @@ const CategoryManagement = () => {
             <Button type="primary" htmlType="submit">Save</Button>
           </Form.Item>
         </Form>
-      </Modal>
+      </AntModal>
     </div>
   );
 };

@@ -12,7 +12,7 @@ import CategoryManagement from "./components/CategoryManagement.jsx";
 import Register from "./pages/auth/RegisterPage.jsx";
 import ForgotPasswordForm from "./components/auth/ForgotPasswordForm.jsx";
 import ResetPasswordForm from "./components/auth/ResetPasswordForm.jsx";
-
+import ManagingService from "./pages/ManagingService/ManagingService.jsx";
 const publicRoutes = {
   element: <CommonLayout />,
   children: [
@@ -36,6 +36,7 @@ const adminRoutes = {
         { path: "product", element: <ProductManagement /> },
         { path: "brand", element: <BrandManagement /> },
         { path: "category", element: <CategoryManagement /> },
+        { path: "service", element: <ManagingService /> },
       ],
     },
   ],

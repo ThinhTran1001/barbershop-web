@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, message, Modal as AntModal } from 'antd';
-import { getBrands, createBrand, updateBrand, deleteBrand } from '../services/api';
-import { DeleteFilled, InfoCircleFilled } from '@ant-design/icons';
+import { Table, Button, Modal as AntModal, Form, Input, message, Select } from 'antd';
+import { DeleteFilled, InfoCircleFilled, SortAscendingOutlined, SortDescendingOutlined } from '@ant-design/icons';
+import { getBrands, createBrand, updateBrand, deleteBrand, getProducts } from '../services/api';
+
+const { Option } = Select;
 
 const BrandManagement = () => {
   const [brands, setBrands] = useState([]);
@@ -12,34 +14,42 @@ const BrandManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
+  const [isActiveFilter, setIsActiveFilter] = useState(undefined);
+  const [sortName, setSortName] = useState(null);
 
   useEffect(() => {
     fetchInitialData();
-  }, []);
+  }, [sortName]);
 
   const fetchInitialData = async () => {
     try {
       const response = await getBrands();
-      setAllBrands(response.data);
-      setBrands(response.data);
+      let fetchedBrands = response.data;
+      console.log('Fetched brands:', fetchedBrands);
+      if (sortName) {
+        fetchedBrands.sort((a, b) => sortName === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name));
+      }
+      setAllBrands(fetchedBrands);
+      applyFilters(fetchedBrands);
     } catch (error) {
       message.error('Failed to fetch brands: ' + error.message);
     }
   };
 
-  const filterBrands = () => {
-    let filtered = [...allBrands];
+  const applyFilters = (data) => {
+    let filtered = [...data];
+    if (isActiveFilter !== undefined) {
+      filtered = filtered.filter(brand => brand.isActive === isActiveFilter);
+    }
     if (searchTerm) {
-      filtered = filtered.filter(brand =>
-        brand.name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      filtered = filtered.filter(brand => brand.name.toLowerCase().includes(searchTerm.toLowerCase()));
     }
     setBrands(filtered);
   };
 
   useEffect(() => {
-    filterBrands();
-  }, [searchTerm]);
+    applyFilters(allBrands);
+  }, [searchTerm, isActiveFilter, allBrands]);
 
   const handleAddOrUpdateBrand = async (values) => {
     try {
@@ -47,7 +57,6 @@ const BrandManagement = () => {
         await updateBrand(editingBrand._id, values);
         message.success('Brand updated successfully');
       } else {
-        console.log('Creating brand with data:', values);
         await createBrand(values);
         message.success('Brand created successfully');
       }
@@ -56,35 +65,34 @@ const BrandManagement = () => {
       setEditingBrand(null);
       fetchInitialData();
     } catch (error) {
-      console.error('Error in handleAddOrUpdateBrand:', error.response?.data || error.message);
-      message.error('Failed to save brand: ' + (error.response?.data?.message || error.message));
+      message.error('Failed to save brand: ' + error.message);
     }
   };
 
   const handleDeleteBrand = async (id) => {
-    console.log('handleDeleteBrand called with ID:', id); // Debug ngay đầu hàm
-    AntModal.confirm({
-      title: 'Are you sure you want to delete this brand?',
-      content: 'This action cannot be undone.',
-      okText: 'Yes',
-      okType: 'danger',
-      cancelText: 'No',
-      onOk: async () => {
-        try {
-          console.log('Attempting to delete brand with ID:', id); // Debug
-          const response = await deleteBrand(id);
-          console.log('Delete response:', response); // Debug
-          message.success('Brand deleted successfully');
-          fetchInitialData();
-        } catch (error) {
-          console.error('Error deleting brand:', error.response?.data || error.message);
-          message.error('Failed to delete brand: ' + (error.response?.data?.message || error.message));
+    console.log('handleDeleteBrand called with ID:', id);
+    // Thay AntModal.confirm bằng window.confirm
+    const confirmed = window.confirm('Are you sure you want to deactivate this brand?');
+    if (confirmed) {
+      try {
+        const products = await getProducts();
+        const relatedProducts = products.data.filter(p => p.details?.brandId === id);
+        const hasActiveProduct = relatedProducts.some(p => p.stock > 0 && p.isActive === true);
+
+        if (hasActiveProduct) {
+          message.error('Cannot delete brand. There are active products with stock > 0 associated with this brand.');
+          return;
         }
-      },
-      onCancel: () => {
-        console.log('Delete action canceled'); // Debug
-      },
-    });
+
+        await deleteBrand(id);
+        message.success('Brand deactivated successfully');
+        fetchInitialData();
+      } catch (error) {
+        message.error('Failed to deactivate brand: ' + error.message);
+      }
+    } else {
+      console.log('Delete action canceled');
+    }
   };
 
   const showModal = (brand = null) => {
@@ -99,8 +107,27 @@ const BrandManagement = () => {
   };
 
   const columns = [
-    { title: 'Name', dataIndex: 'name', key: 'name' },
+    {
+      title: () => (
+        <span>
+          Name{' '}
+          {sortName ? (sortName === 'asc' ? <SortAscendingOutlined onClick={() => setSortName('desc')} /> : <SortDescendingOutlined onClick={() => setSortName('asc')} />) : <SortAscendingOutlined onClick={() => setSortName('asc')} />}
+        </span>
+      ),
+      dataIndex: 'name',
+      key: 'name',
+    },
     { title: 'Description', dataIndex: 'description', key: 'description' },
+    {
+      title: 'Active',
+      dataIndex: 'isActive',
+      key: 'isActive',
+      render: (isActive) => (
+        <span style={{ color: isActive ? 'green' : 'red' }}>
+          {isActive ? 'Active' : 'Inactive'}
+        </span>
+      ),
+    },
     {
       title: 'Actions',
       key: 'actions',
@@ -122,6 +149,16 @@ const BrandManagement = () => {
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{ width: 200, marginRight: 10 }}
         />
+        <Select
+          placeholder="Filter by active status"
+          value={isActiveFilter}
+          onChange={(value) => setIsActiveFilter(value)}
+          allowClear
+          style={{ width: 150, marginRight: 10 }}
+        >
+          <Option value={true}>Active</Option>
+          <Option value={false}>Inactive</Option>
+        </Select>
         <Button type="primary" onClick={() => showModal()}>Add Brand</Button>
       </div>
       <Table
@@ -139,9 +176,9 @@ const BrandManagement = () => {
           showSizeChanger: true,
         }}
       />
-      <Modal
+      <AntModal
         title={editingBrand ? 'Edit Brand' : 'Add Brand'}
-        visible={isModalVisible}
+        open={isModalVisible} // Thay visible thành open
         onCancel={() => setIsModalVisible(false)}
         footer={null}
       >
@@ -156,7 +193,7 @@ const BrandManagement = () => {
             <Button type="primary" htmlType="submit">Save</Button>
           </Form.Item>
         </Form>
-      </Modal>
+      </AntModal>
     </div>
   );
 };
