@@ -19,22 +19,23 @@ exports.createService = async (req, res) => {
   }
 };
 
-exports.updateService = async (req, res) => {
+const handleDelete = async (id) => {
   try {
-    const { id } = req.params;
-    const updatedService = await Service.findByIdAndUpdate(id, req.body, { new: true });
-    res.json(updatedService);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-};
-
-exports.deleteService = async (req, res) => {
-  try {
-    const { id } = req.params;
-    await Service.findByIdAndDelete(id);
-    res.json({ message: "Service deleted successfully" });
-  } catch (err) {
-    res.status(400).json({ error: err.message });
+    // Lấy dịch vụ hiện tại để xác định trạng thái isActive
+    const currentService = services.find((service) => service._id === id);
+    // Cập nhật trạng thái isActive (đảo ngược: true -> false hoặc false -> true)
+    await updateService(id, { isActive: !currentService.isActive });
+    notification.success({
+      message: "Success",
+      description: `Service ${currentService.isActive ? "deactivated" : "activated"} successfully`,
+      placement: "topRight",
+    });
+    fetchServices();
+  } catch {
+    notification.error({
+      message: "Error",
+      description: "Failed to update service status",
+      placement: "topRight",
+    });
   }
 };
