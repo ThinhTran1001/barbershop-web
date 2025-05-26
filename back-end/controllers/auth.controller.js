@@ -1,8 +1,11 @@
 const bcrypt = require('bcrypt');
-const User = require('../models/user.model');
 const kafka = require('../config/kafka');
 const redis = require('../config/redis');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+
+const User = require('../models/user.model');
+const PasswordReset = require('../models/password-reset.model');
 
 const producer = kafka.producer();
 producer.connect();
@@ -153,4 +156,74 @@ exports.getCurrentUser = (req, res) => {
         }
     });
 };
+
+exports.forgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+        const user = await User.findOne({ email });
+        if (!user) return res.status(404).json({ message: 'Email not found' });
+
+        await PasswordReset.deleteMany({ userId: user._id });
+
+        const token = crypto.randomBytes(32).toString('hex');
+        const expiresAt = new Date(Date.now() + 7 * 60 * 1000); // 15 phút
+
+        await PasswordReset.create({
+            userId: user._id,
+            token,
+            isUsed: false,
+            expiresAt,
+            createdAt: new Date(),
+        });
+
+        const resetLink = `http://localhost:5173/reset-password?token=${token}&id=${user._id}`;
+
+        await producer.send({
+            topic: 'email.reset-password',
+            messages: [
+                {
+                    value: JSON.stringify({
+                        to: email,
+                        subject: 'Reset your password',
+                        html: `
+              <p>Click <a href="${resetLink}">here</a> to reset your password.</p>
+              <p>This link will expire in 7 minutes.</p>
+            `,
+                    }),
+                },
+            ],
+        });
+
+        res.json({ message: 'Reset link sent to email' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+exports.resetPassword = async (req, res) => {
+    try {
+        const { userId, token, newPassword } = req.body;
+
+        const record = await PasswordReset.findOne({ userId, token });
+        if (!record || record.isUsed || record.expiresAt < new Date()) {
+            return res.status(400).json({ message: 'Invalid or expired token' });
+        }
+
+        const hashed = await bcrypt.hash(newPassword, 10);
+        await User.updateOne({ _id: userId }, { $set: { passwordHash: hashed } });
+
+        record.isUsed = true;
+        await record.save();
+
+        res.json({ message: 'Password reset successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+
+
+
 
