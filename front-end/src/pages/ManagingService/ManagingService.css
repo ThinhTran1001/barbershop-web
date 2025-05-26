@@ -1,82 +1,7 @@
+/* Scoped styles for ManaginService component only */
 .managing-service-container {
   padding: 24px;
-}
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-}
-
-.header h2 {
-  margin-bottom: 0;
-}
-
-/* Reset toàn bộ màu chữ sang đen */
-.ant-modal-title,
-.ant-modal-body,
-.ant-form-item-label > label,
-.ant-input,
-.ant-select,
-.ant-select-selection-item,
-.ant-select-selection-placeholder,
-.ant-select-item,
-.ant-select-item-option-content,
-.ant-select-arrow {
-  color: #000000 !important;
-}
-
-/* Chỉnh màu chữ cho notification */
-.ant-notification-notice {
-  background-color: #ffffff !important;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.ant-notification-notice-message {
-  color: #000000 !important;
-  font-weight: 600;
-  font-size: 16px;
-}
-
-.ant-notification-notice-description {
-  color: #000000 !important;
-  font-size: 14px;
-}
-
-.ant-notification-notice-close {
-  color: #000000 !important;
-}
-
-/* Chỉnh màu biểu tượng trong notification */
-.ant-notification-notice-icon {
-  color: inherit;
-}
-
-/* Giữ màu biểu tượng success là xanh lá */
-.ant-notification-notice-success .ant-notification-notice-icon {
-  color: #52c41a !important;
-}
-
-/* Giữ màu biểu tượng error là đỏ */
-.ant-notification-notice-error .ant-notification-notice-icon {
-  color: #ff4d4f !important;
-}
-
-/* Giữ màu biểu tượng info là xanh dương */
-.ant-notification-notice-info .ant-notification-notice-icon {
-  color: #1890ff !important;
-}
-
-/* Giữ màu biểu tượng warning là vàng/cam */
-.ant-notification-notice-warning .ant-notification-notice-icon {
-  color: #faad14 !important;
-}
-
-.managing-service-container {
-  padding: 24px;
-  background: #fff;
+  background: #ffffff;
   border-radius: 8px;
 }
 
@@ -84,49 +9,63 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 24px;
+  color: #000000;
 }
 
-.ant-table {
-  border-collapse: separate;
-  border-spacing: 0;
+.managing-service-container .header h2 {
+  margin-bottom: 0;
+  color: #000000;
 }
 
-.ant-table-thead > tr > th {
-  background-color: #ffffff; /* Nền tiêu đề */
-  color: #000000; /* Chữ tiêu đề */
-}
-
-/* Để tránh ghi đè từ các style khác */
-.ant-table th,
-.ant-table td {
-  background-color: #ffffff !important;
+/* Scoped reset for text colors - only apply within managing-service-container */
+.managing-service-container .ant-modal-title,
+.managing-service-container .ant-modal-body,
+.managing-service-container .ant-form-item-label > label,
+.managing-service-container .ant-input,
+.managing-service-container .ant-select,
+.managing-service-container .ant-select-selection-item,
+.managing-service-container .ant-select-selection-placeholder,
+.managing-service-container .ant-select-item,
+.managing-service-container .ant-select-item-option-content,
+.managing-service-container .ant-select-arrow {
   color: #000000 !important;
 }
 
-/* Tùy chỉnh Modal */
-.ant-modal-content {
+/* Modal styling - scoped */
+.managing-service-container .ant-modal-content {
   border-radius: 12px;
   padding: 24px;
+  background-color: #ffffff !important;
 }
 
-.ant-modal-title {
+.managing-service-container .ant-modal-title {
   font-size: 20px;
   font-weight: 600;
   text-align: center;
   color: #000000 !important;
 }
 
-.ant-modal-body {
+.managing-service-container .ant-modal-body {
   padding-top: 12px;
+  background-color: #ffffff !important;
 }
 
-.ant-form-item {
+/* Form styling - scoped */
+.managing-service-container .ant-form-item {
   margin-bottom: 20px;
 }
 
-/* Chỉnh input nền trắng chữ đen */
-.ant-input {
+.managing-service-container .ant-form-item-label > label {
+  color: #000000 !important;
+}
+
+.managing-service-container .ant-form-item-required::before {
+  color: #ff4d4f !important;
+}
+
+/* Input styling - scoped */
+.managing-service-container .ant-input {
   height: 40px;
   border-radius: 8px;
   background-color: #ffffff !important;
@@ -134,8 +73,36 @@
   border: 1px solid #d9d9d9;
 }
 
-/* Đảm bảo select box có nền trắng chữ đen */
-.ant-select-selector {
+.managing-service-container .ant-input::placeholder {
+  color: #666666 !important;
+  opacity: 1;
+}
+
+/* InputNumber styling - scoped */
+.managing-service-container .ant-input-number {
+  width: 100%;
+  height: 40px;
+  border-radius: 8px;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #d9d9d9;
+}
+
+.managing-service-container .ant-input-number-input {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* TextArea styling - scoped */
+.managing-service-container .ant-input-textarea textarea {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #d9d9d9;
+  border-radius: 8px;
+}
+
+/* Select styling - scoped */
+.managing-service-container .ant-select-selector {
   height: 40px !important;
   border-radius: 8px !important;
   background-color: #ffffff !important;
@@ -143,81 +110,44 @@
   border: 1px solid #d9d9d9 !important;
 }
 
-/* Chữ trong select box khi đã chọn */
-.ant-select-selection-item {
+.managing-service-container .ant-select-selection-item {
   color: #000000 !important;
   line-height: 38px !important;
 }
 
-/* Selection placeholder - đặt màu đen cho placeholder */
-.ant-select-selection-placeholder {
-  color: #000000 !important;
+.managing-service-container .ant-select-selection-placeholder {
+  color: #666666 !important;
   line-height: 38px !important;
 }
 
-/* Arrow trong select box */
-.ant-select-arrow {
+.managing-service-container .ant-select-arrow {
   color: #000000 !important;
 }
 
-/* Dropdown options */
-.ant-select-dropdown {
+/* Select dropdown - Note: These may still affect global dropdowns */
+/* Consider using CSS modules or styled-components for better scoping */
+.ant-select-dropdown.managing-service-dropdown {
   background-color: #ffffff !important;
-}
-
-.ant-select-item-option {
-  background-color: #ffffff !important;
-  color: #000000 !important;
-}
-
-.ant-select-item-option-active,
-.ant-select-item-option-selected {
-  background-color: #ffffff !important; /* Đổi màu nền khi chọn thành trắng */
-  color: #000000 !important;
-}
-
-/* Đảm bảo tất cả các lựa chọn trong dropdown có chữ đen */
-.ant-select-item {
-  color: #000000 !important;
-}
-
-/* Đảm bảo placeholder trong input cũng có màu đen */
-.ant-input::placeholder {
-  color: #000000 !important;
-  opacity: 0.8;
-}
-
-/* Chỉnh nút Lưu và Hủy */
-.ant-btn {
   border-radius: 8px;
-  height: 40px;
 }
 
-/* Nút Hủy - giữ chữ màu trắng */
-.ant-btn-default {
-  background-color: #464646;
-  color: #ffffff !important;
-  border: none;
-}
-
-/* Nút Lưu - giữ chữ màu trắng */
-.ant-btn-primary {
-  background-color: #e1bd5e;
-  color: #ffffff !important;
-  border: none;
-}
-
-/* Form labels */
-.ant-form-item-label > label {
+.ant-select-dropdown.managing-service-dropdown .ant-select-item-option {
+  background-color: #ffffff !important;
   color: #000000 !important;
 }
 
-/* Đánh dấu yêu cầu (*) - giữ màu đỏ */
-.ant-form-item-required::before {
-  color: #ff4d4f !important;
+.ant-select-dropdown.managing-service-dropdown .ant-select-item-option-active,
+.ant-select-dropdown.managing-service-dropdown .ant-select-item-option-selected {
+  background-color: #f5f5f5 !important;
+  color: #000000 !important;
 }
-/* Vùng chọn nhiều tags */
-.ant-select-multiple .ant-select-selector {
+
+.ant-select-dropdown.managing-service-dropdown .ant-select-item {
+  color: #000000 !important;
+}
+
+/* Multiple select (tags) styling - scoped */
+.managing-service-container .ant-select-multiple .ant-select-selector {
   min-height: 40px !important;
   background-color: #ffffff !important;
   border: 1px solid #d9d9d9 !important;
@@ -228,11 +158,10 @@
   gap: 4px;
 }
 
-/* Tag đã chọn - chỉnh lại màu nền + viền + chữ */
-.ant-select-multiple .ant-select-selection-item {
-  background-color: #fff5cc !important; /* vàng nhạt */
+.managing-service-container .ant-select-multiple .ant-select-selection-item {
+  background-color: #f0f0f0 !important;
   color: #000000 !important;
-  border: 1px solid #e1bd5e !important;
+  border: 1px solid #d9d9d9 !important;
   border-radius: 6px !important;
   padding: 2px 8px !important;
   font-size: 14px;
@@ -241,37 +170,158 @@
   align-items: center;
 }
 
-/* Icon 'x' trong tag */
-.ant-select-multiple .ant-select-selection-item-remove {
+.managing-service-container .ant-select-multiple .ant-select-selection-item-remove {
   color: #000000 !important;
   margin-left: 4px;
 }
 
-/* Placeholder */
-.ant-select-multiple .ant-select-selection-placeholder {
-  color: #000000 !important;
-  opacity: 0.8;
+.managing-service-container .ant-select-multiple .ant-select-selection-placeholder {
+  color: #666666 !important;
+  opacity: 1;
   line-height: 38px !important;
 }
 
-/* Dropdown */
-.ant-select-dropdown {
+/* Table styling - scoped */
+.managing-service-container .ant-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  background-color: #ffffff !important;
+}
+
+.managing-service-container .ant-table-thead > tr > th {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+.managing-service-container .ant-table th,
+.managing-service-container .ant-table td {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* Button styling - scoped */
+.managing-service-container .ant-btn {
+  border-radius: 8px;
+  height: 40px;
+}
+
+.managing-service-container .ant-btn-default {
+  background-color: #464646;
+  color: #ffffff !important;
+  border: none;
+}
+
+.managing-service-container .ant-btn-primary {
+  /* background-color: #e1bd5e; */
+  color: #ffffff !important;
+  border: none;
+}
+
+/* InputNumber complete styling - scoped */
+.managing-service-container .ant-input-number {
+  width: 100% !important;
+  height: 40px !important;
+  border-radius: 8px !important;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #d9d9d9 !important;
+}
+
+.managing-service-container .ant-input-number-input {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  height: 38px !important;
+  border: none !important;
+}
+
+.managing-service-container .ant-input-number-input::placeholder {
+  color: #666666 !important;
+  opacity: 1;
+}
+
+/* InputNumber handler (up/down buttons) - scoped */
+.managing-service-container .ant-input-number-handler-wrap {
+  background-color: #ffffff !important;
+  border-left: 1px solid #d9d9d9 !important;
+}
+
+.managing-service-container .ant-input-number-handler {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+.managing-service-container .ant-input-number-handler:hover {
+  background-color: #f5f5f5 !important;
+  color: #000000 !important;
+}
+
+/* InputNumber focused state - scoped */
+.managing-service-container .ant-input-number:focus,
+.managing-service-container .ant-input-number-focused {
+  border-color: #40a9ff !important;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2) !important;
+  background-color: #ffffff !important;
+}
+
+.managing-service-container .ant-input-number:focus .ant-input-number-input,
+.managing-service-container .ant-input-number-focused .ant-input-number-input {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* Override any dark theme for InputNumber - scoped */
+.managing-service-container .ant-input-number-affix-wrapper {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #d9d9d9 !important;
+}
+
+/* Ensure the input wrapper has white background - scoped */
+.managing-service-container .ant-input-number-group-wrapper {
+  background-color: #ffffff !important;
+}
+
+/* Additional override for any remaining dark background - scoped */
+.managing-service-container [class*="ant-input-number"] {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* Global styles that can't be easily scoped - use with caution */
+/* These are for components that render outside the main container (like modals, dropdowns) */
+
+/* Notification styling - these appear at document level */
+.ant-notification-notice.managing-service-notification {
   background-color: #ffffff !important;
   border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-/* Option trong dropdown */
-.ant-select-item-option {
+.ant-notification-notice.managing-service-notification .ant-notification-notice-message {
+  color: #000000 !important;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.ant-notification-notice.managing-service-notification .ant-notification-notice-description {
+  color: #000000 !important;
+  font-size: 14px;
+}
+
+.ant-notification-notice.managing-service-notification .ant-notification-notice-close {
+  color: #000000 !important;
+}
+
+/* Popconfirm styling - these appear at document level */
+.ant-popconfirm.managing-service-popconfirm .ant-popconfirm-title {
+  color: #000000 !important;
+}
+
+/* Popover styling - these appear at document level */
+.ant-popover.managing-service-popover .ant-popover-inner {
   background-color: #ffffff !important;
-  color: #000000 !important;
 }
 
-/* Khi chọn hoặc hover */
-.ant-select-item-option-active,
-.ant-select-item-option-selected {
-  background-color: #f9f5e3 !important;
-  color: #000000 !important;
-}
-.ant-popconfirm-title {
+.ant-popover.managing-service-popover .ant-popover-inner-content {
   color: #000000 !important;
 }

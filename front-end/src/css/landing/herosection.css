@@ -1,0 +1,166 @@
+
+
+.hero-section {
+    position: relative;
+    width: 100vw;  
+    height: 100vh;
+    overflow: hidden;
+    padding: 0;
+    margin: 0;
+    left: 0;      
+    right: 0;   
+    margin-top: 1250px;   
+  }
+  
+
+  .hero-img-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;  
+    height: 100%;
+    z-index: 0;
+    margin-left: calc((100% - 100vw) / 2); 
+  }
+  
+  .hero-img {
+    width: 100%;
+    height: 100%; 
+    object-fit: cover;
+    object-position: center;
+    display: block;
+  }
+  
+  .hero-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5); 
+    z-index: 1;
+  }
+  
+  .hero-content {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: white;
+    padding: 0 20px;
+  }
+  
+
+  .logo-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+  }
+  
+  .men-only {
+    font-size: 1.1rem;
+    letter-spacing: 2px;
+    font-weight: 500;
+    color: #d4a449;
+  }
+  
+  .scissors-icon {
+    width: 30px;
+    height: auto;
+    margin: 0 10px;
+  }
+  
+ 
+  .hero-title {
+    font-size: 7rem;
+    font-weight: 700;
+    color: #d4a449;
+    margin: 0;
+    text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);
+    letter-spacing: 5px;
+    line-height: 1;
+    margin-bottom: 10px;
+  }
+  
+ 
+  .barbershop-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 40px;
+    font-size: 1.1rem;
+    letter-spacing: 3px;
+  }
+  
+  .since {
+    margin-right: 10px;
+    opacity: 0.9;
+  }
+  
+  .barbershop {
+    color: #d4a449;
+    font-weight: 600;
+    margin: 0 10px;
+  }
+  
+  .year {
+    margin-left: 10px;
+    opacity: 0.9;
+  }
+  
+
+  .appointment-button {
+    border: 2px solid white !important;
+    color: white !important;
+    padding: 8px 30px !important;
+    height: auto !important;
+    font-size: 1rem !important;
+    background: transparent !important;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.3s ease !important;
+  }
+  
+  .appointment-button:hover {
+    background-color: #d4a449 !important;
+    border-color: #d4a449 !important;
+    color: white !important;
+  }
+  
+
+  @media (max-width: 768px) {
+    .hero-title {
+      font-size: 4rem;
+    }
+    
+    .barbershop-container {
+      font-size: 0.9rem;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .hero-title {
+      font-size: 3rem;
+    }
+    
+    .men-only {
+      font-size: 0.9rem;
+    }
+    
+    .scissors-icon {
+      width: 20px;
+    }
+    
+    .barbershop-container {
+      letter-spacing: 2px;
+      font-size: 0.8rem;
+    }
+  }

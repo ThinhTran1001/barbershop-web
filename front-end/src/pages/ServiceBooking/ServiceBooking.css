@@ -6,6 +6,46 @@
   min-height: 100vh;
 }
 
+/* Tab Filter Styles */
+.service-tabs {
+  margin-bottom: 30px;
+  display: flex;
+  justify-content: center;
+}
+
+.service-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 15px 8px;
+  background-color: #555;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  height: 60px;
+  text-align: center;
+}
+
+.service-tab:hover {
+  background-color: #666;
+  transform: translateY(-2px);
+}
+
+.service-tab.active {
+  background-color: #d4af37;
+  color: #1a1a1a;
+  transform: translateY(-2px);
+}
+
+.tab-label {
+  font-size: 14px;
+  font-weight: bold;
+  text-align: center;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+/* Services List Styles */
 .services-title {
   color: #d4af37;
   font-weight: bold;
@@ -66,5 +106,32 @@
   100% {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* Responsive Design for Tabs */
+@media (max-width: 768px) {
+  .service-tab {
+    padding: 10px 5px;
+    height: 50px;
+  }
+  
+  .tab-label {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 576px) {
+  .service-tabs {
+    margin-bottom: 20px;
+  }
+  
+  .service-tab {
+    padding: 8px 3px;
+    height: 40px;
+  }
+  
+  .tab-label {
+    font-size: 10px;
   }
 }

@@ -1,26 +1,39 @@
-const express = require("express");
-const app = express();
-require('dotenv').config();
-const cors = require('cors')
-const PORT = process.env.PORT;
+const express = require('express');
+const dotenv = require('dotenv');
+dotenv.config();
+const connectDB = require('./config/db.config');
 const productRoutes = require("./routes/product.route");
 const categoryRoutes = require("./routes/category.route");
 const brandRoutes = require("./routes/brand.route");
-const userRoutes = require("./routes/user.route")
-const barberRoutes = require("./routes/barber.route")
-const connectDB = require('./config/db')
+const authRoutes = require("./routes/auth.route");
+const serviceRoutes = require('./routes/service.route');
+const userRoutes = require('./routes/user.route');
+const barberRoutes = require('./routes/barber.route');
+const cors = require('cors');
+const cookieParser = require("cookie-parser");
 
-app.use(cors())
-app.use(express.json())
+const app = express();
 
+app.use(express.json());
+app.use(cookieParser());
+app.use(cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+}));
 
+connectDB();
+const kafkaConsumer = require('./services/kafka-consumer.service');
+kafkaConsumer().then(() => console.log('Kafka consumer running'));
 
-app.use('/api/admin', productRoutes);
-app.use('/api/admin', categoryRoutes);
-app.use('/api/admin', brandRoutes);
-app.use('/api/admin', userRoutes);
-app.use('/api/admin', barberRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/brands', brandRoutes);
+app.use('/api/services', serviceRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/barbers',barberRoutes)
+app.use('/api/users', userRoutes);
 
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
     connectDB();

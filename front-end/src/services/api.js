@@ -1,26 +1,22 @@
-import axios from 'axios';
+import api from "./axiosInstance";
 
-const api = axios.create({
-  baseURL: 'http://localhost:3000/api',
-});
+export const getProducts = () => api.get(`/products`);
+export const getProductById = (id) => api.get(`/products/${id}`);
+export const createProduct = (data) => api.post(`/products`, data);
+export const updateProduct = (id, data) => api.put(`/products/${id}`, data);
+export const deleteProduct = (id) => api.delete(`/products/${id}`);
 
-export const getProducts = () => api.get(`/admin/products`);
-export const getProductById = (id) => api.get(`/admin/products/${id}`);
-export const createProduct = (data) => api.post(`/admin/products`, data);
-export const updateProduct = (id, data) => api.put(`/admin/products/${id}`, data);
-export const deleteProduct = (id) => api.delete(`/admin/products/${id}`);
+export const getCategories = () => api.get(`/categories`);
+export const getCategoryById = (id) => api.get(`/categories/${id}`);
+export const createCategory = (data) => api.post(`/categories`, data);
+export const updateCategory = (id, data) => api.put(`/categories/${id}`, data);
+export const deleteCategory = (id) => api.delete(`/categories/${id}`);
 
-export const getCategories = () => api.get(`/admin/categories`);
-export const getCategoryById = (id) => api.get(`/admin/categories/${id}`);
-export const createCategory = (data) => api.post(`/admin/categories`, data);
-export const updateCategory = (id, data) => api.put(`/admin/categories/${id}`, data);
-export const deleteCategory = (id) => api.delete(`/admin/categories/${id}`);
-
-export const getBrands = () => api.get(`/admin/brands`);
-export const getBrandById = (id) => api.get(`/admin/brands/${id}`);
-export const createBrand = (data) => api.post(`/admin/brands`, data);
-export const updateBrand = (id, data) => api.put(`/admin/brands/${id}`, data);
-export const deleteBrand = (id) => api.delete(`/admin/brands/${id}`);
+export const getBrands = () => api.get(`/brands`);
+export const getBrandById = (id) => api.get(`/brands/${id}`);
+export const createBrand = (data) => api.post(`/brands`, data);
+export const updateBrand = (id, data) => api.put(`/brands/${id}`, data);
+export const deleteBrand = (id) => api.delete(`/brands/${id}`);
 
 // Thêm phần từ nhánh master
 export const getAllServices = () => api.get(`/services`);
@@ -39,5 +35,15 @@ export const updateBarber = (id, data) => api.put(`/admin/barbers/${id}`, data);
 export const deleteBarber = (id) => api.delete(`/admin/barbers/${id}`);
 
 
+
+export const loginUser = (data) => api.post('/auth/login', data);
+export const register = (data) => api.post('/auth/register', data);
+export const verify = (data) => api.post('/auth/verify-otp', data);
+export const resend = (data) => api.post('/auth/resend-otp', data);
+export const logoutUser = () => api.post('/auth/logout');
+export const refreshToken = () => api.post('/auth/refresh-token');
+export const getMe = () => api.get(`/auth/me`);
+export const forgotPassword = (data) => api.post('/auth/forgot-password', data);
+export const resetPassword = (data) => api.post('/auth/reset-password', data);
 
 export default api;

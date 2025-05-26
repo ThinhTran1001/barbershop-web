@@ -1,14 +1,14 @@
 import React from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import AdminDashboard from './pages/AdminDashboard';
+import {RouterProvider} from 'react-router-dom';
+import router from "./route.jsx";
+import {AuthProvider} from "./context/AuthContext.jsx";
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/admin" element={<AdminDashboard />} />
-      </Routes>
-    </Router>
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
+
   );
 }
 
