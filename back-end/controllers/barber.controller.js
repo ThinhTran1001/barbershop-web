@@ -1,79 +1,77 @@
-const User = require('../models/user.model')
-const cloudinary = require('../config/cloudinary');
-
+const Barber = require('../models/barber.model');
 
 exports.createBarber = async (req, res) => {
   try {
+    const userId = req.user.id;
 
-    const newUser = new User(req.body)
-    const saveUser = await newUser.save()
+    const existingBarber = await Barber.findOne({ userId });
+    if (existingBarber) {
+      return res.status(400).json({ message: 'User đã có hồ sơ barber.' });
+    }
 
-    res.status(201).json(saveUser);
+    const newBarber = new Barber({
+      userId,
+      bio: req.body.bio,
+      experienceYears: req.body.experienceYears,
+      specialties: req.body.specialties,
+      workingSince: req.body.workingSince,
+    });
 
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: 'Server Error' });
+    const savedBarber = await newBarber.save();
+    res.status(201).json(savedBarber);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
 
-exports.getAllBarber = async (req, res) => {
+exports.getAllBarbers = async (req, res) => {
   try {
-    const allUser = await User.find({role : "barber"});
-    res.status(200).json(allUser)
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    const barbers = await Barber.find().populate('userId', 'name email');
+    res.json(barbers);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
-}
+};
 
-exports.getSingleBarber = async (req, res) => {
+exports.getBarberById = async (req, res) => {
   try {
-    const oneUser = await User.findById(req.params.id);
-    if (!oneUser) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
-    res.status(200).json({
-      success: true,
-      data: oneUser,
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    const barber = await Barber.findById(req.params.id).populate('userId', 'name email');
+    if (!barber) return res.status(404).json({ message: 'Không tìm thấy barber' });
+    res.json(barber);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
-}
+};
 
 exports.updateBarber = async (req, res) => {
   try {
-    const user = await User.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
-    res.status(200).json({
-      success: true,
-      message: 'Update successful',
-      data: user,
-    });
-  } catch (error) {
-    if (error.name === 'ValidationError') {
-      return res.status(400).json({ success: false, message: error.message });
-    }
-    res.status(500).json({ success: false, message: error.message });
+    const userId = req.user.id;
+
+    const barber = await Barber.findOne({ userId });
+    if (!barber) return res.status(404).json({ message: 'Không tìm thấy hồ sơ barber' });
+
+    barber.bio = req.body.bio || barber.bio;
+    barber.experienceYears = req.body.experienceYears || barber.experienceYears;
+    barber.specialties = req.body.specialties || barber.specialties;
+    barber.workingSince = req.body.workingSince || barber.workingSince;
+    barber.isAvailable = req.body.isAvailable ?? barber.isAvailable;
+
+    const updated = await barber.save();
+    res.json(updated);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
   }
-}
+};
 
 exports.deleteBarber = async (req, res) => {
   try {
-    const user = await User.findByIdAndDelete(req.params.id);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
-    res.status(200).json({ success: true, message: "User deleted successfully" });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    const userId = req.user.id;
+
+    const deleted = await Barber.findOneAndDelete({ userId });
+    if (!deleted) return res.status(404).json({ message: 'Không tìm thấy hồ sơ barber' });
+
+    res.json({ message: 'Đã xoá hồ sơ barber thành công' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
-}
- 
+};

@@ -24,15 +24,15 @@ export const createService = (data) => api.post(`/services`, data);
 export const updateService = (id, data) => api.put(`/services/${id}`, data);
 export const removeService = (id) => api.delete(`/services/${id}`);
 
-export const getAllUser = () => api.get('/admin/users');
-export const createUser = (data) => api.post('/admin/users', data);
-export const updateUser = (id, data) => api.put(`/admin/users/${id}`, data); 
-export const deleteUser = (id) => api.delete(`/admin/users/${id}`);
+export const getAllUser = () => api.get('/users');
+export const createUser = (data) => api.post('/users', data);
+export const updateUser = (id, data) => api.put(`/users/${id}`, data); 
+export const deleteUser = (id) => api.delete(`/users/${id}`);
 
-export const getAllBarber = () => api.get('/admin/barbers');
-export const createBarber = (data) => api.post('/admin/barbers', data); 
-export const updateBarber = (id, data) => api.put(`/admin/barbers/${id}`, data); 
-export const deleteBarber = (id) => api.delete(`/admin/barbers/${id}`);
+export const getAllBarber = () => api.get('/barbers');
+export const createBarber = (data) => api.post('/barbers', data); 
+export const updateBarber = (id, data) => api.put(`/barbers/${id}`, data); 
+export const deleteBarber = (id) => api.delete(`/barbers/${id}`);
 
 
 

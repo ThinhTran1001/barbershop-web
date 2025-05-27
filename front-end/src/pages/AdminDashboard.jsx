@@ -19,9 +19,6 @@ const AdminDashboard = () => {
         <TabPane tab="Category Management" key="2">
           <CategoryManagement />
         </TabPane>
-        <TabPane tab="Brand Management" key="3">
-          <BrandManagement />
-        </TabPane>
         <TabPane tab="Barber Management" key="4">
           <BarberManagement />
         </TabPane>
