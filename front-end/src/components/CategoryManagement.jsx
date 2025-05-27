@@ -57,6 +57,7 @@ const CategoryManagement = () => {
         await updateCategory(editingCategory._id, values);
         message.success('Category updated successfully');
       } else {
+        console.log('Creating category with data:', values);
         await createCategory(values);
         message.success('Category created successfully');
       }

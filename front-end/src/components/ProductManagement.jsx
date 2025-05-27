@@ -53,6 +53,7 @@ const ProductManagement = () => {
   const fetchCategories = async () => {
     try {
       const response = await getCategories();
+      console.log('Fetched categories:', response.data);
       setCategories(response.data);
     } catch (error) {
       message.error('Failed to fetch categories: ' + error.message);
@@ -62,6 +63,7 @@ const ProductManagement = () => {
   const fetchBrands = async () => {
     try {
       const response = await getBrands();
+      console.log('Fetched brands:', response.data);
       setBrands(response.data);
     } catch (error) {
       message.error('Failed to fetch brands: ' + error.message);
@@ -114,6 +116,7 @@ const ProductManagement = () => {
         await updateProduct(editingProduct._id, payload);
         message.success('Product updated successfully');
       } else {
+        console.log('Creating product with data:', payload);
         await createProduct(payload);
         message.success('Product created successfully');
       }

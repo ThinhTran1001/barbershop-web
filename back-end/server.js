@@ -7,7 +7,9 @@ const categoryRoutes = require("./routes/category.route");
 const brandRoutes = require("./routes/brand.route");
 const authRoutes = require("./routes/auth.route");
 const serviceRoutes = require('./routes/service.route');
-const barberRoutes = require("./routes/barber.routes");
+const userRoutes = require('./routes/user.route');
+const barberRoutes = require('./routes/barber.route');
+
 const cors = require('cors');
 const cookieParser = require("cookie-parser");
 
@@ -31,8 +33,11 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/brands', brandRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/barbers',barberRoutes)
+app.use('/api/users', userRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
+    connectDB();
 });

@@ -9,9 +9,12 @@ import Login from "./pages/auth/LoginPage.jsx";
 import ProductManagement from "./components/ProductManagement.jsx";
 import BrandManagement from "./components/BrandManagement.jsx";
 import CategoryManagement from "./components/CategoryManagement.jsx";
+import BarberManagement from "./components/BarberManagement.jsx";
+import UserManagement from "./components/UserManagement.jsx";
 import Register from "./pages/auth/RegisterPage.jsx";
 import ProductDetail from "./components/product/ProductDetail.jsx";
 import ProductList from "./pages/home/prodductList.jsx";
+import ManagingService from './pages/ManagingService/ManagingService.jsx'
 
 const publicRoutes = {
   element: <CommonLayout />,
@@ -35,7 +38,10 @@ const adminRoutes = {
         { path: "product", element: <ProductManagement /> },
         { path: "brand", element: <BrandManagement /> },
         { path: "category", element: <CategoryManagement /> },
-        
+        { path: "service", element: <ManagingService /> },
+        { path: "barber", element: <BarberManagement /> },
+        { path: "user", element: <UserManagement /> },
+
       ],
     },
   ],

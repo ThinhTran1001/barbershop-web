@@ -21,7 +21,7 @@ export default function Barbers() {
   useEffect(() => {
     const fetchBarbers = async () => {
       try {
-        const response = await fetch("http://localhost:9999/barbers");
+        const response = await fetch("http://localhost:3000/api/barbers");
         if (!response.ok) {
           throw new Error("Network response was not ok");
         }
