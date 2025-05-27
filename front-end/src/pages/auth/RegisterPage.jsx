@@ -15,7 +15,7 @@ export default function RegisterPage() {
   if (user) return <Navigate to="/" replace />;
 
   return (
-    <div className="container mt-5" style={{maxWidth: 500}}>
+    <div className="container mt-5 bg-white p-4 rounded shadow" style={{maxWidth: 500}}>
       {email ? (
         <OtpVerificationForm email={email}/>
       ) : (

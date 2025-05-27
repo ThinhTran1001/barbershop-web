@@ -17,4 +17,13 @@ const sendOtp = async (to, otp) => {
     });
 };
 
-module.exports = { sendOtp };
+const sendEmail = async (to, subject, html) => {
+    await transporter.sendMail({
+        from: `"Barber App" <${process.env.EMAIL_USER}>`,
+        to,
+        subject,
+        html,
+    });
+};
+
+module.exports = { sendOtp, sendEmail };

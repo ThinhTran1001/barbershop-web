@@ -24,6 +24,18 @@ export const createService = (data) => api.post(`/services`, data);
 export const updateService = (id, data) => api.put(`/services/${id}`, data);
 export const removeService = (id) => api.delete(`/services/${id}`);
 
+export const getAllUser = () => api.get('/users');
+export const createUser = (data) => api.post('/users', data);
+export const updateUser = (id, data) => api.put(`/users/${id}`, data); 
+export const deleteUser = (id) => api.delete(`/users/${id}`);
+
+export const getAllBarber = () => api.get('/barbers');
+export const createBarber = (data) => api.post('/barbers', data); 
+export const updateBarber = (id, data) => api.put(`/barbers/${id}`, data); 
+export const deleteBarber = (id) => api.delete(`/barbers/${id}`);
+
+
+
 export const loginUser = (data) => api.post('/auth/login', data);
 export const register = (data) => api.post('/auth/register', data);
 export const verify = (data) => api.post('/auth/verify-otp', data);
@@ -31,5 +43,7 @@ export const resend = (data) => api.post('/auth/resend-otp', data);
 export const logoutUser = () => api.post('/auth/logout');
 export const refreshToken = () => api.post('/auth/refresh-token');
 export const getMe = () => api.get(`/auth/me`);
+export const forgotPassword = (data) => api.post('/auth/forgot-password', data);
+export const resetPassword = (data) => api.post('/auth/reset-password', data);
 
 export default api;

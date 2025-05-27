@@ -11,10 +11,9 @@ import ShopItems from "../../components/landing/products";
 
 export default function Landing() {
   return (
-    <div>
-      <div className="container__section">
-        <HeroSection />
-        <br></br>
+    <>
+      
+      <HeroSection />
         <AboutSection />
 
         <Services />
@@ -26,7 +25,7 @@ export default function Landing() {
         <Barbers />
         <BookingForm />
 
-      </div>
-    </div>
+
+    </>
   );
 }

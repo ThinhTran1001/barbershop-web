@@ -21,7 +21,8 @@ const productSchema = new mongoose.Schema({
   longDescription: { type: String },
   howToUse: { type: String },
   additionalImages: [{ type: String }],
-  origin: { type: String }
+  origin: { type: String },
+  isActive: { type: Boolean, default: true }
 });
 
 const Product = mongoose.model('Product', productSchema);

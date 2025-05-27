@@ -42,7 +42,7 @@ export default function RegisterForm({ onOtpStage }) {
           <Input.Password />
         </Form.Item>
         <Form.Item>
-          <Button type="primary" htmlType="submit" loading={loading} block>
+          <Button className="bg-warning" htmlType="submit" loading={loading} block>
             Đăng ký
           </Button>
         </Form.Item>

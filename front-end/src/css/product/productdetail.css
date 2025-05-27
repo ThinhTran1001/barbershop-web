@@ -1,7 +1,7 @@
 
 .product-detail-container {
     max-width: 1200px;
-    margin: 400px auto 0; /* Tăng margin-top */
+    margin: 80px auto 0; /* Tăng margin-top */
     padding: 20px;
     font-family: 'Montserrat', sans-serif;
   }
@@ -221,7 +221,8 @@
   .add-cart-btn {
     background-color: #1890ff;
     border-color: #1890ff;
-    flex: 2;
+    flex: 1;
+    
   }
   
   .buy-now-btn {

@@ -9,13 +9,29 @@ import Login from "./pages/auth/LoginPage.jsx";
 import ProductManagement from "./components/ProductManagement.jsx";
 import BrandManagement from "./components/BrandManagement.jsx";
 import CategoryManagement from "./components/CategoryManagement.jsx";
+import BarberManagement from "./components/BarberManagement.jsx";
+import UserManagement from "./components/UserManagement.jsx";
 import Register from "./pages/auth/RegisterPage.jsx";
+<<<<<<< HEAD
+=======
+import ProductDetail from "./components/product/ProductDetail.jsx";
+import ProductList from "./pages/home/prodductList.jsx";
+import ManagingService from './pages/ManagingService/ManagingService.jsx'
+import ForgotPasswordForm from "./components/auth/ForgotPasswordForm.jsx";
+import ResetPasswordForm from "./components/auth/ResetPasswordForm.jsx";
+
+>>>>>>> master
 const publicRoutes = {
   element: <CommonLayout />,
   children: [
     { path: "/", element: <Landing /> },
+    { path: "/products/:id", element: <ProductDetail/> },
     { path: "/login", element: <Login /> },
-    {path: "/register", element: <Register/>}
+    {path: "/register", element: <Register/>},
+    {path: "/products", element: <ProductList/>},
+    {path: "/forget", element: <ProductList/>},
+    { path: "/forgot-password", element: <ForgotPasswordForm /> },
+    { path: "/reset-password", element: <ResetPasswordForm /> },
   ],
 };
 
@@ -31,6 +47,9 @@ const adminRoutes = {
         { path: "brand", element: <BrandManagement /> },
         { path: "category", element: <CategoryManagement /> },
         { path: "service", element: <ManagingService /> },
+        { path: "barber", element: <BarberManagement /> },
+        { path: "user", element: <UserManagement /> },
+
       ],
     },
   ],
