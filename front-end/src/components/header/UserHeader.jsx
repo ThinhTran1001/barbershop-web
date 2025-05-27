@@ -1,22 +1,22 @@
 import React from "react";
-import {Layout, Menu, Button, Dropdown} from "antd";
-import {useAuth} from "../../context/AuthContext";
-import {useNavigate} from "react-router-dom";
+import { Layout, Menu, Button, Dropdown } from "antd";
+import { useAuth } from "../../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 import "../../css/landing/common-header.css";
 
-const {Header} = Layout;
+const { Header } = Layout;
 
 const navItems = [
-  {key: "home", label: "TRANG CHỦ"},
-  {key: "about", label: "GIỚI THIỆU"},
-  {key: "services", label: "DỊCH VỤ & BẢNG GIÁ"},
-  {key: "products", label: "SẢN PHẨM"},
-  {key: "news", label: "TIN TỨC"},
-  {key: "contact", label: "LIÊN HỆ"},
+  { key: "home", label: "TRANG CHỦ" },
+  { key: "about", label: "GIỚI THIỆU" },
+  { key: "services", label: "DỊCH VỤ & BẢNG GIÁ" },
+  { key: "products", label: "SẢN PHẨM" },
+  { key: "news", label: "TIN TỨC" },
+  { key: "contact", label: "LIÊN HỆ" },
 ];
 
 export default function UserHeader() {
-  const {user, logout} = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -47,6 +47,9 @@ export default function UserHeader() {
             color: "#ffc107",
           }}
           defaultSelectedKeys={["home"]}
+          onClick={({ key }) => {
+            navigate(`/${key === "home" ? "" : key}`);
+          }}
         />
       </div>
 
@@ -56,15 +59,22 @@ export default function UserHeader() {
             <Button type="default" onClick={() => navigate("/login")}>
               Đăng nhập
             </Button>
-            <Button className="bg-warning" onClick={() => navigate("/register")}>
+            <Button
+              className="bg-warning"
+              onClick={() => navigate("/register")}
+            >
               Đăng ký
             </Button>
           </>
         ) : (
           <Dropdown
-            menu={{items: [{key: "logout", label: "Đăng xuất", onClick: handleLogout}]}}
+            menu={{
+              items: [
+                { key: "logout", label: "Đăng xuất", onClick: handleLogout },
+              ],
+            }}
           >
-            <Button type="text" style={{color: "#ffc107"}}>
+            <Button type="text" style={{ color: "#ffc107" }}>
               {user.name || user.email}
             </Button>
           </Dropdown>
@@ -72,5 +82,4 @@ export default function UserHeader() {
       </div>
     </Header>
   );
-
 }

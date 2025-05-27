@@ -35,7 +35,7 @@ const ProductDetail = () => {
     const fetchProductDetail = async () => {
       try {
      
-        const response = await fetch(`http://localhost:9999/products/${id}`);
+        const response = await fetch(`http://localhost:3000/api/products/${id}`);
         console.log(id);
         
         if (!response.ok) {
@@ -234,7 +234,7 @@ const ProductDetail = () => {
           <div className="product-attributes">
             <div className="attribute-row">
               <span className="attribute-label">Thương hiệu:</span>
-              <span className="attribute-value">{product.details.brand}</span>
+              <span className="attribute-value">{product.details.brandId}</span>
             </div>
             {product.details.volume && (
               <div className="attribute-row">
@@ -248,10 +248,7 @@ const ProductDetail = () => {
                 <span className="attribute-value">{product.details.material}</span>
               </div>
             )}
-            <div className="attribute-row">
-              <span className="attribute-label">Xuất xứ:</span>
-              <span className="attribute-value">{product.specifications.xuatXu}</span>
-            </div>
+            
             <div className="attribute-row stock-status">
               <span className="attribute-label">Tình trạng:</span>
               <span className={`attribute-value ${product.stock > 0 ? "in-stock" : "out-of-stock"}`}>

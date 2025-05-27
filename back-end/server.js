@@ -9,6 +9,7 @@ const authRoutes = require("./routes/auth.route");
 const serviceRoutes = require('./routes/service.route');
 const userRoutes = require('./routes/user.route');
 const barberRoutes = require('./routes/barber.route');
+
 const cors = require('cors');
 const cookieParser = require("cookie-parser");
 
@@ -25,6 +26,8 @@ connectDB();
 const kafkaConsumer = require('./services/kafka-consumer.service');
 kafkaConsumer().then(() => console.log('Kafka consumer running'));
 
+
+app.use("/api/barbers", barberRoutes);  
 app.use('/api/products', productRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/brands', brandRoutes);
