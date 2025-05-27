@@ -1,5 +1,6 @@
 const Service = require("../models/service.model");
 
+// Lấy tất cả dịch vụ
 exports.getAllServices = async (req, res) => {
   try {
     const services = await Service.find();
@@ -9,6 +10,7 @@ exports.getAllServices = async (req, res) => {
   }
 };
 
+// Tạo dịch vụ mới
 exports.createService = async (req, res) => {
   try {
     const newService = new Service(req.body);
@@ -19,23 +21,36 @@ exports.createService = async (req, res) => {
   }
 };
 
-const handleDelete = async (id) => {
+// Cập nhật dịch vụ
+exports.updateService = async (req, res) => {
   try {
-    // Lấy dịch vụ hiện tại để xác định trạng thái isActive
-    const currentService = services.find((service) => service._id === id);
-    // Cập nhật trạng thái isActive (đảo ngược: true -> false hoặc false -> true)
-    await updateService(id, { isActive: !currentService.isActive });
-    notification.success({
-      message: "Success",
-      description: `Service ${currentService.isActive ? "deactivated" : "activated"} successfully`,
-      placement: "topRight",
-    });
-    fetchServices();
-  } catch {
-    notification.error({
-      message: "Error",
-      description: "Failed to update service status",
-      placement: "topRight",
-    });
+    const updatedService = await Service.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true } // Trả về bản ghi đã cập nhật
+    );
+
+    if (!updatedService) {
+      return res.status(404).json({ error: "Service not found" });
+    }
+
+    res.json(updatedService);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
+// Xóa (hoặc vô hiệu hóa) dịch vụ
+exports.deleteService = async (req, res) => {
+  try {
+    const deletedService = await Service.findByIdAndDelete(req.params.id);
+
+    if (!deletedService) {
+      return res.status(404).json({ error: "Service not found" });
+    }
+
+    res.json({ message: "Service deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
