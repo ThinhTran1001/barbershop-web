@@ -10,18 +10,17 @@ import ProductManagement from "./components/ProductManagement.jsx";
 import BrandManagement from "./components/BrandManagement.jsx";
 import CategoryManagement from "./components/CategoryManagement.jsx";
 import Register from "./pages/auth/RegisterPage.jsx";
-import ForgotPasswordForm from "./components/auth/ForgotPasswordForm.jsx";
-import ResetPasswordForm from "./components/auth/ResetPasswordForm.jsx";
-import ManagingService from "./pages/ManagingService/ManagingService.jsx";
+import ProductDetail from "./components/product/ProductDetail.jsx";
+import ProductList from "./pages/home/prodductList.jsx";
+
 const publicRoutes = {
   element: <CommonLayout />,
   children: [
     { path: "/", element: <Landing /> },
+    { path: "/products/:id", element: <ProductDetail/> },
     { path: "/login", element: <Login /> },
-    { path: "/register", element: <Register/>},
-    { path: "/forgot-password", element: <ForgotPasswordForm /> },
-    { path: "/reset-password", element: <ResetPasswordForm /> },
-
+    {path: "/register", element: <Register/>},
+    {path: "/products", element: <ProductList/>}
   ],
 };
 
@@ -36,7 +35,7 @@ const adminRoutes = {
         { path: "product", element: <ProductManagement /> },
         { path: "brand", element: <BrandManagement /> },
         { path: "category", element: <CategoryManagement /> },
-        { path: "service", element: <ManagingService /> },
+        
       ],
     },
   ],
