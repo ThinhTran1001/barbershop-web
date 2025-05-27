@@ -3,11 +3,6 @@ const mongoose = require('mongoose');
 
 exports.createProduct = async (req, res) => {
   try {
-<<<<<<< HEAD
-=======
-    console.log('Request body for createProduct:', req.body);
-  
->>>>>>> f8e55eea97e7b1a0938ecf6294e4355311e29631
     if (req.body.categoryId && typeof req.body.categoryId === 'string') {
       req.body.categoryId = req.body.categoryId.split(',').map(id => mongoose.Types.ObjectId(id.trim()));
     }
@@ -28,12 +23,9 @@ exports.getAllProducts = async (req, res) => {
   try {
     const { name, brandId, categoryId, price } = req.query;
     const query = {};
-<<<<<<< HEAD
     if (isActive !== undefined) {
       query.isActive = isActive === 'true';
     }
-=======
->>>>>>> f8e55eea97e7b1a0938ecf6294e4355311e29631
     if (name) query.name = { $regex: name, $options: 'i' };
     if (brandId) query['details.brandId'] = brandId;
     if (categoryId) query.categoryId = { $in: categoryId.split(',') };
