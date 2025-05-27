@@ -56,6 +56,7 @@ const BrandManagement = () => {
         await updateBrand(editingBrand._id, values);
         message.success('Brand updated successfully');
       } else {
+        console.log('Creating brand with data:', values);
         await createBrand(values);
         message.success('Brand created successfully');
       }
