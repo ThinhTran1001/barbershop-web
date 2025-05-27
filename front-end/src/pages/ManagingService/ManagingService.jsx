@@ -9,15 +9,15 @@ import {
   Input,
   Select,
   notification,
-} from "antd"; 
-import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
+  Tag,
+} from "antd";
+import { EditOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons"; // Thêm EyeOutlined
 import { Tooltip } from "antd";
 
 import {
   getAllServices,
   createService,
   updateService,
-  removeService,
 } from "../../services/api";
 
 import ServiceForm from "../../components/ServiceForm";
@@ -31,9 +31,14 @@ const ManagingService = () => {
   const [editingService, setEditingService] = useState(null);
   const [form] = Form.useForm();
 
+  // State mới cho modal xem chi tiết
+  const [viewingService, setViewingService] = useState(null);
+  const [isViewModalVisible, setIsViewModalVisible] = useState(false);
+
   const [searchText, setSearchText] = useState("");
   const [filterSuggested, setFilterSuggested] = useState([]);
   const [priceFilter, setPriceFilter] = useState(null);
+  const [statusFilter, setStatusFilter] = useState(null);
 
   useEffect(() => {
     fetchServices();
@@ -64,19 +69,40 @@ const ManagingService = () => {
     form.resetFields();
   };
 
-  const handleDelete = async (id) => {
+  // Xử lý mở modal xem chi tiết
+  const showViewModal = (record) => {
+    setViewingService(record);
+    setIsViewModalVisible(true);
+  };
+
+  const handleViewCancel = () => {
+    setIsViewModalVisible(false);
+    setViewingService(null);
+  };
+
+  // Soft delete: chỉ đổi isActive từ true sang false
+  const handleDelete = async (id, currentStatus) => {
+    if (!currentStatus) {
+      notification.info({
+        message: "Info",
+        description: "This service is already inactive.",
+        placement: "topRight",
+      });
+      return;
+    }
+
     try {
-      await removeService(id);
+      await updateService(id, { isActive: false });
       notification.success({
         message: "Success",
-        description: "Service deleted successfully",
+        description: "Service has been deactivated.",
         placement: "topRight",
       });
       fetchServices();
     } catch {
       notification.error({
         message: "Error",
-        description: "Failed to delete service",
+        description: "Failed to deactivate service.",
         placement: "topRight",
       });
     }
@@ -88,14 +114,16 @@ const ManagingService = () => {
 
       const isDuplicate = services.some(
         (service) =>
-          service.name.trim().toLowerCase() === values.name.trim().toLowerCase() &&
+          service.name.trim().toLowerCase() ===
+            values.name.trim().toLowerCase() &&
           (!editingService || service._id !== editingService._id)
       );
 
       if (isDuplicate) {
         notification.error({
           message: "Error",
-          description: "Service name already exists, please choose another name.",
+          description:
+            "Service name already exists, please choose another name.",
           placement: "topRight",
         });
         return;
@@ -132,9 +160,10 @@ const ManagingService = () => {
     .filter((item) =>
       item.name.toLowerCase().includes(searchText.toLowerCase())
     )
-    .filter((item) =>
-      filterSuggested.length === 0 ||
-      (item.suggestedFor || []).some((v) => filterSuggested.includes(v))
+    .filter(
+      (item) =>
+        filterSuggested.length === 0 ||
+        (item.suggestedFor || []).some((v) => filterSuggested.includes(v))
     )
     .filter((item) => {
       if (priceFilter === "low") return item.price < 100000;
@@ -142,58 +171,94 @@ const ManagingService = () => {
         return item.price >= 100000 && item.price <= 300000;
       if (priceFilter === "high") return item.price > 300000;
       return true;
+    })
+    .filter((item) => {
+      if (statusFilter === "active") return item.isActive === true;
+      if (statusFilter === "inactive") return item.isActive === false;
+      return true;
     });
 
-    const columns = [
-      { title: "Service Name", dataIndex: "name", key: "name" },
-      {
-        title: "Price",
-        dataIndex: "price",
-        key: "price",
-        render: (text) => `${text} VND`,
-      },
-      { title: "Description", dataIndex: "description", key: "description" },
-      { title: "Steps", dataIndex: "steps", key: "steps" },
-      {
-        title: "Duration (minutes)",
-        dataIndex: "durationMinutes",
-        key: "durationMinutes",
-      },
-      {
-        title: "Suggested For",
-        dataIndex: "suggestedFor",
-        key: "suggestedFor",
-        render: (arr) => arr?.join(", "),
-      },
-      {
-        title: "Actions",
-        key: "action",
-        render: (_, record) => (
-          <Space>
-            <Tooltip title="Edit">
+  const columns = [
+    {
+      title: "Service Name",
+      dataIndex: "name",
+      key: "name",
+      sorter: (a, b) => a.name.localeCompare(b.name),
+    },
+    {
+      title: "Price",
+      dataIndex: "price",
+      key: "price",
+      sorter: (a, b) => a.price - b.price,
+      render: (text) => `${text} VND`,
+    },
+    { title: "Description", dataIndex: "description", key: "description" },
+    { title: "Steps", dataIndex: "steps", key: "steps" },
+    {
+      title: "Duration (minutes)",
+      dataIndex: "durationMinutes",
+      key: "durationMinutes",
+    },
+    {
+      title: "Suggested For",
+      dataIndex: "suggestedFor",
+      key: "suggestedFor",
+      render: (arr) => arr?.join(", "),
+    },
+    {
+      title: "Status",
+      dataIndex: "isActive",
+      key: "status",
+      render: (isActive) => (
+        <Tag color={isActive ? "green" : "red"}>
+          {isActive ? "Active" : "Inactive"}
+        </Tag>
+      ),
+      sorter: (a, b) => a.isActive - b.isActive,
+    },
+    {
+      title: "Actions",
+      key: "action",
+      render: (_, record) => (
+        <Space>
+          <Tooltip title="View">
+            <Button
+              type="text"
+              icon={<EyeOutlined />}
+              onClick={() => showViewModal(record)}
+            />
+          </Tooltip>
+          <Tooltip title="Edit">
+            <Button
+              type="text"
+              icon={<EditOutlined />}
+              onClick={() => showModal(record)}
+            />
+          </Tooltip>
+          <Tooltip title="Delete (Deactivate)">
+            <Popconfirm
+              title="Are you sure you want to deactivate this service?"
+              onConfirm={() => handleDelete(record._id, record.isActive)}
+              okText="Delete"
+              cancelText="Cancel"
+              disabled={!record.isActive}
+            >
               <Button
                 type="text"
-                icon={<EditOutlined />}
-                onClick={() => showModal(record)}
+                danger
+                icon={<DeleteOutlined />}
+                disabled={!record.isActive}
               />
-            </Tooltip>
-            <Tooltip title="Delete">
-              <Popconfirm
-                title="Are you sure you want to delete this service?"
-                onConfirm={() => handleDelete(record._id)}
-                okText="Delete"
-                cancelText="Cancel"
-              >
-                <Button type="text" danger icon={<DeleteOutlined />} />
-              </Popconfirm>
-            </Tooltip>
-          </Space>
-        ),
-      },
-    ];
-    
+            </Popconfirm>
+          </Tooltip>
+        </Space>
+      ),
+    },
+  ];
 
-  const allSuggestedFor = [...new Set(services.flatMap((s) => s.suggestedFor || []))];
+  const allSuggestedFor = [
+    ...new Set(services.flatMap((s) => s.suggestedFor || [])),
+  ];
 
   return (
     <div className="managing-service-container">
@@ -239,6 +304,16 @@ const ManagingService = () => {
             <Option value="medium">100,000 – 300,000 VND</Option>
             <Option value="high">Over 300,000 VND</Option>
           </Select>
+          <Select
+            placeholder="Filter by status"
+            value={statusFilter}
+            onChange={setStatusFilter}
+            style={{ width: 150 }}
+            allowClear
+          >
+            <Option value="active">Active</Option>
+            <Option value="inactive">Inactive</Option>
+          </Select>
         </div>
 
         <Button type="primary" onClick={() => showModal()}>
@@ -253,6 +328,7 @@ const ManagingService = () => {
         pagination={{ pageSize: 5 }}
       />
 
+      {/* Modal chỉnh sửa / thêm */}
       <Modal
         title={editingService ? "Edit Service" : "Add Service"}
         open={isModalVisible}
@@ -264,6 +340,26 @@ const ManagingService = () => {
         <Form form={form} layout="vertical">
           <ServiceForm form={form} editing={editingService} />
         </Form>
+      </Modal>
+
+      {/* Modal xem chi tiết */}
+      <Modal
+        title="View Service Details"
+        open={isViewModalVisible}
+        onCancel={handleViewCancel}
+        footer={null} // Không có nút OK, Cancel
+      >
+        {viewingService && (
+          <div>
+            <p><strong>Service Name:</strong> {viewingService.name}</p>
+            <p><strong>Price:</strong> {viewingService.price} VND</p>
+            <p><strong>Description:</strong> {viewingService.description}</p>
+            <p><strong>Steps:</strong> {viewingService.steps}</p>
+            <p><strong>Duration (minutes):</strong> {viewingService.durationMinutes}</p>
+            <p><strong>Suggested For:</strong> {(viewingService.suggestedFor || []).join(", ")}</p>
+            <p><strong>Status:</strong> {viewingService.isActive ? "Active" : "Inactive"}</p>
+          </div>
+        )}
       </Modal>
     </div>
   );
