@@ -21,8 +21,9 @@ exports.createProduct = async (req, res) => {
 
 exports.getAllProducts = async (req, res) => {
   try {
-    const { name, brandId, categoryId, price } = req.query;
+    const { name, brandId, categoryId, price, isActive } = req.query;
     const query = {};
+    
     if (isActive !== undefined) {
       query.isActive = isActive === 'true';
     }
@@ -37,6 +38,7 @@ exports.getAllProducts = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 
 exports.getProductById = async (req, res) => {
