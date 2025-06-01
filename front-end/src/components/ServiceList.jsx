@@ -13,7 +13,7 @@ const ServiceList = ({ services, tabs, activeTab, handleTabClick }) => {
 
   return (
     <div className="services-list">
-      <Title level={2} className="services-title">DỊCH VỤ & BẢNG GIÁ</Title>
+      <Title level={2} className="services-title" style={{color: "white"}}>DỊCH VỤ & BẢNG GIÁ</Title>
       {/* Tabs moved here, below the title */}
       <div className="service-tabs row mb-4">
         {tabs.map((tab) => (
