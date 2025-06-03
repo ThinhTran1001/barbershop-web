@@ -5,6 +5,7 @@ import ProductManagement from '../../components/ProductManagement.jsx';
 import CategoryManagement from '../../components/CategoryManagement.jsx';
 import BrandManagement from '../../components/BrandManagement.jsx';
 import ManagingService from '../pages/ManagingService/ManagingService.jsx';
+import ManageFeedbackProduct from '../ManageFeedbackProduct/ManageFeedbackProduct.jsx';
 
 const { TabPane } = Tabs;
 
@@ -13,12 +14,16 @@ const tabKeyToPath = {
   '1': 'product',
   '2': 'category',
   '3': 'brand',
+  '4': 'service',
+  '7': 'feedback-product',
 };
 
 const pathToTabKey = {
   'product': '1',
   'category': '2',
   'brand': '3',
+  'service': '4',
+  'feedback-product': '7',
 };
 
 const AdminDashboard = () => {
@@ -52,6 +57,9 @@ const AdminDashboard = () => {
         <TabPane tab="Service Management" key="4">
           <ManagingService />
         </TabPane>
+        <TabPane tab= "Feedback Product Management" key="7">
+          <ManageFeedbackProduct/>
+          </TabPane>
       </Tabs>
     </div>
   );

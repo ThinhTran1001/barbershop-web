@@ -16,14 +16,21 @@ const AdminHeader = () => {
   };
 
   const selectedKey = location.pathname.includes("brand")
-    ? "brand"
-     : location.pathname.includes("category")
-        ? "category"
-        : location.pathname.includes("service")
-        ? "service"
-        : location.pathname.includes("product") ? "product"
-        : location.pathname.includes("barber") ? "barber"
-        : "user"
+  ? "brand"
+  : location.pathname.includes("category")
+  ? "category"
+  : location.pathname.includes("service")
+  ? "service"
+  : location.pathname.includes("product")
+  ? "product"
+  : location.pathname.includes("barber")
+  ? "barber"
+  : location.pathname.includes("user")
+  ? "user"
+  : location.pathname.includes("feedback-product")
+  ? "feedback-product"
+  : "";
+
   return (
     <Header
       className="d-flex align-items-center justify-content-between px-4"
@@ -66,6 +73,9 @@ const AdminHeader = () => {
         </Menu.Item>
         <Menu.Item key="user" onClick={() => navigate("/admin/user")}>
           User
+        </Menu.Item>
+        <Menu.Item key="feedback product" onClick={() => navigate("/admin/feedback-product")}>
+          FeedBack Product
         </Menu.Item>
       </Menu>
 
