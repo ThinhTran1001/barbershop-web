@@ -83,14 +83,11 @@ const UserManagement = () => {
   const handleAddOrUpdateUser = async (values) => {
     try {
       const userData = editingUser
-        ? { status: values.status, isVerified: values.isVerified }
+        ? { ...values}
         : {
             ...values,
             role: 'barber',
-            phone: values.phone || null,
-            avatarUrl: values.avatarUrl || null,
-            status: values.status,
-            isVerified: values.isVerified || true,
+
           };
 
       console.log('Payload sent:', userData);
@@ -122,7 +119,7 @@ const UserManagement = () => {
       setEditingUser(user);
       form.setFieldsValue({
         ...user,
-        passwordHash: '***********************************************',
+        // passwordHash: '***********************************************',
       });
     } else {
       setEditingUser(null);
@@ -304,13 +301,27 @@ const UserManagement = () => {
             <Input disabled={!!editingUser} />
           </Form.Item>
           <Form.Item
-            name="phone"
-            label="Phone Number"
-            rules={[{ pattern: /^[0-9]{10}$/, message: 'Phone number must be 10 digits!' }]}
-          >
-            <Input disabled={!!editingUser} />
-          </Form.Item>
-          <Form.Item
+  name="phone"
+  label="Phone Number"
+  rules={[{ pattern: /^[0-9]{10}$/, message: 'Phone number must be 10 digits!' }]}
+>
+  <Input
+    disabled={!!editingUser}
+    maxLength={10}
+    onKeyPress={(e) => {
+      if (!/[0-9]/.test(e.key)) {
+        e.preventDefault(); 
+      }
+    }}
+    onPaste={(e) => {
+      const paste = (e.clipboardData || window.clipboardData).getData('text');
+      if (!/^\d+$/.test(paste)) {
+        e.preventDefault(); 
+      }
+    }}
+  />
+</Form.Item>
+           <Form.Item
             name="passwordHash"
             label="Password"
             rules={[{ required: !editingUser, message: 'Please enter the password!' }]}

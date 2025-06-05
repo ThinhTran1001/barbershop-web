@@ -15,6 +15,7 @@ import Register from "./pages/auth/RegisterPage.jsx";
 import ProductDetail from "./components/product/ProductDetail.jsx";
 import ProductList from "./pages/home/prodductList.jsx";
 import ManagingService from './pages/ManagingService/ManagingService.jsx'
+import VoucherManagement from "./components/VoucherManagemet.jsx";
 
 const publicRoutes = {
   element: <CommonLayout />,
@@ -41,6 +42,7 @@ const adminRoutes = {
         { path: "service", element: <ManagingService /> },
         { path: "barber", element: <BarberManagement /> },
         { path: "user", element: <UserManagement /> },
+        { path: "voucher", element: <VoucherManagement /> },
 
       ],
     },

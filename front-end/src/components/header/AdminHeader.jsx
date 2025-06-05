@@ -23,7 +23,8 @@ const AdminHeader = () => {
         ? "service"
         : location.pathname.includes("product") ? "product"
         : location.pathname.includes("barber") ? "barber"
-        : "user"
+        : location.pathname.includes("user") ? "user"
+        : "voucher"
   return (
     <Header
       className="d-flex align-items-center justify-content-between px-4"
@@ -66,6 +67,9 @@ const AdminHeader = () => {
         </Menu.Item>
         <Menu.Item key="user" onClick={() => navigate("/admin/user")}>
           User
+        </Menu.Item>
+        <Menu.Item key="voucher" onClick={() => navigate("/admin/voucher")}>
+          Voucher
         </Menu.Item>
       </Menu>
 

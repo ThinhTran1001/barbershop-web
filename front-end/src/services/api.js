@@ -34,6 +34,11 @@ export const createBarber = (data) => api.post('/barbers', data);
 export const updateBarber = (id, data) => api.put(`/barbers/${id}`, data); 
 export const deleteBarber = (id) => api.delete(`/barbers/${id}`);
 
+export const getAllVoucher = () => api.get('/vouchers');
+export const createVoucher = (data) => api.post('/vouchers', data); 
+export const updateVoucher = (id, data) => api.put(`/vouchers/${id}`, data); 
+export const deleteVoucher = (id) => api.delete(`/vouchers/${id}`);
+
 
 
 export const loginUser = (data) => api.post('/auth/login', data);
