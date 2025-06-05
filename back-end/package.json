@@ -25,7 +25,8 @@
     "mongoose": "^8.15.0",
     "morgan": "^1.10.0",
     "multer": "^2.0.0",
-    "nodemailer": "^7.0.3"
+    "nodemailer": "^7.0.3",
+    "router": "^2.2.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"

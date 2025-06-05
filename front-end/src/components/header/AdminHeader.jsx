@@ -29,7 +29,7 @@ const AdminHeader = () => {
   ? "user"
   : location.pathname.includes("feedback-product")
   ? "feedback-product"
-  : "";
+  : "product"; 
 
   return (
     <Header

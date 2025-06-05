@@ -48,7 +48,7 @@ const adminRoutes = {
         { path: "service", element: <ManagingService /> },
         { path: "barber", element: <BarberManagement /> },
         { path: "user", element: <UserManagement /> },
-        {path: "feedback-product", element:  <ManageFeedbackProduct/>}
+        {path: "feedback-product", element:  <ManageFeedbackProduct/>},
       ],
     },
   ],
