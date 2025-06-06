@@ -1,0 +1,215 @@
+const FeedbackBarber = require('../models/feedbackBarber.model');
+
+// GET all feedbacks (admin)
+exports.getAllFeedbacks = async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      status,
+      startDate,
+      endDate
+    } = req.query;
+
+    const query = {};
+    if (status === 'approved') query.isApproved = true;
+    if (status === 'pending') query.isApproved = false;
+    if (startDate && endDate) {
+      query.createdAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate)
+      };
+    }
+    if (search) {
+      query.$or = [
+        { comment: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    const feedbacks = await FeedbackBarber.find(query)
+      .populate('barberId', 'name email')
+      .populate('customerId', 'name email')
+      .populate('bookingId')
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
+
+    const total = await FeedbackBarber.countDocuments(query);
+
+    const transformedFeedbacks = feedbacks.map(fb => ({
+      ...fb._doc,
+      reviewer: fb.customerId?.name || fb.customerId?.email || 'Unknown',
+      product: fb.bookingId?._id || 'Service'
+    }));
+
+    res.json({ data: transformedFeedbacks, total });
+  } catch (error) {
+    console.error('Error in getAllFeedbacks:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// GET feedback by ID
+exports.getBarberFeedbackById = async (req, res) => {
+  try {
+    const feedback = await FeedbackBarber.findById(req.params.id)
+      .populate('barberId', 'name email')
+      .populate('customerId', 'name email')
+      .populate('bookingId');
+    if (!feedback) {
+      return res.status(404).json({ message: 'Feedback not found' });
+    }
+    const transformedFeedback = {
+      ...feedback._doc,
+      reviewer: feedback.customerId?.name || feedback.customerId?.email || 'Unknown',
+      product: feedback.bookingId?._id || 'Service'
+    };
+    res.json({ data: transformedFeedback });
+  } catch (error) {
+    console.error('Error in getBarberFeedbackById:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// POST create new feedback
+exports.createBarberFeedback = async (req, res) => {
+  try {
+    const { bookingId, barberId, customerId, rating, comment, images } = req.body;
+
+    if (!bookingId || !barberId || !customerId || !rating || !comment) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+    if (rating < 1 || rating > 5) {
+      return res.status(400).json({ message: 'Rating must be between 1 and 5' });
+    }
+
+    const feedback = new FeedbackBarber({
+      bookingId,
+      barberId,
+      customerId,
+      rating,
+      comment,
+      images: images || [],
+      isApproved: false,
+    });
+
+    await feedback.save();
+
+    const populatedFeedback = await FeedbackBarber.findById(feedback._id)
+      .populate('barberId', 'name email')
+      .populate('customerId', 'name email')
+      .populate('bookingId');
+    
+    const transformedFeedback = {
+      ...populatedFeedback._doc,
+      reviewer: populatedFeedback.customerId?.name || populatedFeedback.customerId?.email || 'Unknown',
+      product: populatedFeedback.bookingId?._id || 'Service'
+    };
+
+    res.status(201).json({ message: 'Feedback created', data: transformedFeedback });
+  } catch (error) {
+    console.error('Error in createBarberFeedback:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// PATCH approve/disapprove feedback — **sửa phần nhận isApproved**
+exports.updateApprovalStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    let { isApproved } = req.body;
+
+    // Ép kiểu isApproved về boolean nếu nhận dạng chuỗi 'true'/'false'
+    if (typeof isApproved !== 'boolean') {
+      if (isApproved === 'true') isApproved = true;
+      else if (isApproved === 'false') isApproved = false;
+      else return res.status(400).json({ message: 'isApproved must be a boolean' });
+    }
+
+    const feedback = await FeedbackBarber.findById(id);
+    if (!feedback) {
+      return res.status(404).json({ message: 'Feedback not found' });
+    }
+
+    feedback.isApproved = isApproved;
+    await feedback.save();
+
+    const populatedFeedback = await FeedbackBarber.findById(id)
+      .populate('barberId', 'name email')
+      .populate('customerId', 'name email')
+      .populate('bookingId');
+
+    const transformedFeedback = {
+      ...populatedFeedback._doc,
+      reviewer: populatedFeedback.customerId?.name || populatedFeedback.customerId?.email || 'Unknown',
+      product: populatedFeedback.bookingId?._id || 'Service'
+    };
+
+    res.json({ message: 'Approval status updated', data: transformedFeedback });
+  } catch (error) {
+    console.error('Error in updateApprovalStatus:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// GET approved feedbacks only
+exports.getApprovedFeedbacks = async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      startDate,
+      endDate
+    } = req.query;
+
+    const query = { isApproved: true };
+    if (startDate && endDate) {
+      query.createdAt = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate)
+      };
+    }
+    if (search) {
+      query.$or = [
+        { comment: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    const feedbacks = await FeedbackBarber.find(query)
+      .populate('barberId', 'name email')
+      .populate('customerId', 'name email')
+      .populate('bookingId')
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
+
+    const total = await FeedbackBarber.countDocuments(query);
+
+    const transformedFeedbacks = feedbacks.map(fb => ({
+      ...fb._doc,
+      reviewer: fb.customerId?.name || fb.customerId?.email || 'Unknown',
+      product: fb.bookingId?._id || 'Service'
+    }));
+
+    res.json({ data: transformedFeedbacks, total });
+  } catch (error) {
+    console.error('Error in getApprovedFeedbacks:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// DELETE feedback
+exports.deleteBarberFeedback = async (req, res) => {
+  try {
+    const feedback = await FeedbackBarber.findByIdAndDelete(req.params.id);
+    if (!feedback) {
+      return res.status(404).json({ message: 'Feedback not found' });
+    }
+    res.json({ message: 'Feedback deleted' });
+  } catch (error) {
+    console.error('Error in deleteBarberFeedback:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
