@@ -10,6 +10,7 @@ const serviceRoutes = require('./routes/service.route');
 const userRoutes = require('./routes/user.route');
 const barberRoutes = require('./routes/barber.route');
 const feedbackProductRoutes = require('./routes/feedbackProduct.route');
+const feedbackBarberRoutes = require('./routes/feedbackBarber.route');
 const cors = require('cors');
 const cookieParser = require("cookie-parser");
 
@@ -27,7 +28,7 @@ const kafkaConsumer = require('./services/kafka-consumer.service');
 kafkaConsumer().then(() => console.log('Kafka consumer running'));
 
 
-app.use("/api/barbers", barberRoutes);  
+
 app.use('/api/products', productRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/brands', brandRoutes);
@@ -36,6 +37,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/barbers',barberRoutes)
 app.use('/api/users', userRoutes);
 app.use('/api/product-reviews', feedbackProductRoutes);
+app.use('/api/feedback-barber', feedbackBarberRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

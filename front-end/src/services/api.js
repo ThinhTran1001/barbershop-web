@@ -53,4 +53,12 @@ export const createFeedback = (data) => api.post('/product-reviews', data);
 export const approveFeedback = (id) => api.patch(`/product-reviews/approve/${id}`);
 export const deleteFeedback = (id) => api.delete(`/product-reviews/${id}`);
 
+// Feedback APIs (Barber)
+export const getBarberFeedbacks = (params) => api.get('/feedback-barber', { params });
+export const getBarberFeedbackById = (id) => api.get(`/feedback-barber/${id}`);
+export const createBarberFeedback = (data) => api.post('/feedback-barber', data);
+export const updateBarberFeedbackApproval = (id, isApproved) =>
+  api.patch(`/feedback-barber/${id}/approve`, { isApproved });
+export const deleteBarberFeedback = (id) => api.delete(`/feedback-barber/${id}`);
+
 export default api;

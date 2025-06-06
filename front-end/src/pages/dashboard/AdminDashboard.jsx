@@ -21,6 +21,7 @@ const tabKeyToPath = {
   '5': 'barber',
   '6': 'user',
   '7': 'feedback-product',
+  '8': 'feedback-barber',
 };
 
 const pathToTabKey = {
@@ -31,6 +32,7 @@ const pathToTabKey = {
   'barber': '5',
   'user': '6',
   'feedback-product': '7',
+  'feedback-barber': '8',
 };
 
 const AdminDashboard = () => {
@@ -72,6 +74,9 @@ const AdminDashboard = () => {
           </TabPane>
         <TabPane tab= "Feedback Product Management" key="7">
           <ManageFeedbackProduct/>
+          </TabPane>
+        <TabPane tab="Feedback Barber Management" key="8">
+          <ManageFeedbackBarber/>
           </TabPane>
       </Tabs>
     </div>
