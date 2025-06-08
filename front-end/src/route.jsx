@@ -20,6 +20,7 @@ import ResetPasswordForm from "./components/auth/ResetPasswordForm.jsx";
 import ServiceBooking from "./pages/ServiceBooking/ServiceBooking.jsx";
 import ManageFeedbackProduct from "./pages/ManageFeedbackProduct/ManageFeedbackProduct.jsx";
 import ManageFeedbackBarber from "./pages/ManageFeedbackBarber/ManageFeedbackBarber.jsx";
+import ManageDiscountProduct from "./pages/ManageDiscountProduct/ManageDiscountProduct.jsx";
 const publicRoutes = {
   element: <CommonLayout />,
   children: [
@@ -51,6 +52,7 @@ const adminRoutes = {
         { path: "user", element: <UserManagement /> },
         {path: "feedback-product", element:  <ManageFeedbackProduct/>},
         {path: "feedback-barber", element: <ManageFeedbackBarber/>}, 
+        {path: "discount-product", element: <ManageDiscountProduct/>},
       ],
     },
   ],

@@ -11,6 +11,7 @@ const userRoutes = require('./routes/user.route');
 const barberRoutes = require('./routes/barber.route');
 const feedbackProductRoutes = require('./routes/feedbackProduct.route');
 const feedbackBarberRoutes = require('./routes/feedbackBarber.route');
+const discountRoutes = require('./routes/discount.route');
 const cors = require('cors');
 const cookieParser = require("cookie-parser");
 
@@ -38,7 +39,7 @@ app.use('/api/barbers',barberRoutes)
 app.use('/api/users', userRoutes);
 app.use('/api/product-reviews', feedbackProductRoutes);
 app.use('/api/feedback-barber', feedbackBarberRoutes);
-
+app.use('/api/discounts', discountRoutes);
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);

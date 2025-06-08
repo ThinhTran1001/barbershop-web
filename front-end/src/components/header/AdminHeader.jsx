@@ -15,7 +15,13 @@ const AdminHeader = () => {
     navigate("/login");
   };
 
-  const selectedKey = location.pathname.includes("brand")
+  const selectedKey = location.pathname.includes("feedback-product")
+  ? "feedback product"
+  : location.pathname.includes("feedback-barber")
+  ? "feedback barber"
+  : location.pathname.includes("discount-product")
+  ? "discount-product"
+  : location.pathname.includes("brand")
   ? "brand"
   : location.pathname.includes("category")
   ? "category"
@@ -27,11 +33,9 @@ const AdminHeader = () => {
   ? "barber"
   : location.pathname.includes("user")
   ? "user"
-  : location.pathname.includes("feedback-product")
-  ? "feedback-product"
-  : location.pathname.includes("feedback-barber")
-  ? "feedback-barber"
-  : "product";
+  : "product"; // Default to 'product' if no match found
+
+
 
   return (
     <Header
@@ -82,6 +86,9 @@ const AdminHeader = () => {
         <Menu.Item key="feedback barber" onClick={() => navigate("/admin/feedback-barber")}>
           FeedBack Barber
           </Menu.Item>
+        <Menu.Item key="discount-product" onClick={() => navigate("/admin/discount-product")}>
+          Discount Product
+        </Menu.Item>
       </Menu>
 
       {/* User info + logout */}

@@ -9,6 +9,7 @@ import BarberManagement from '../../components/BarberManagement.jsx';
 import UserManagement from '../../components/UserManagement.jsx';
 import ManageFeedbackProduct from '../ManageFeedbackProduct/ManageFeedbackProduct.jsx';
 import ManageFeedbackBarber from '../ManageFeedbackBarber/ManageFeedbackBarber.jsx';
+import ManageDiscountProduct from '../ManageDiscountProduct/ManageDiscountProduct.jsx';
 
 const { TabPane } = Tabs;
 
@@ -22,6 +23,7 @@ const tabKeyToPath = {
   '6': 'user',
   '7': 'feedback-product',
   '8': 'feedback-barber',
+  '9': 'discount-product', 
 };
 
 const pathToTabKey = {
@@ -33,6 +35,7 @@ const pathToTabKey = {
   'user': '6',
   'feedback-product': '7',
   'feedback-barber': '8',
+  'discount-product': '9', 
 };
 
 const AdminDashboard = () => {
@@ -77,6 +80,9 @@ const AdminDashboard = () => {
           </TabPane>
         <TabPane tab="Feedback Barber Management" key="8">
           <ManageFeedbackBarber/>
+          </TabPane>
+        <TabPane tab="Discount Product Management" key="9">
+          <ManageDiscountProduct/>
           </TabPane>
       </Tabs>
     </div>

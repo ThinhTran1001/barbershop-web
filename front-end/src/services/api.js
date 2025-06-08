@@ -61,4 +61,15 @@ export const updateBarberFeedbackApproval = (id, isApproved) =>
   api.patch(`/feedback-barber/${id}/approve`, { isApproved });
 export const deleteBarberFeedback = (id) => api.delete(`/feedback-barber/${id}`);
 
+export const getDiscounts = (params) => api.get('/discounts', { params }); 
+export const getDiscountById = (id) => api.get(`/discounts/${id}`);
+export const createDiscount = (data) => api.post('/discounts', data);
+export const updateDiscount = (id, data) => api.put(`/discounts/${id}`, data);
+export const deleteDiscount = (id) => api.delete(`/discounts/${id}`);
+export const getProductDiscounts = (productId) => api.get(`/discounts/product/${productId}`);
+export const toggleDiscountStatus = (id) => api.patch(`/discounts/${id}/toggle-status`);
+export const getDiscountStats = () => api.get('/discounts/stats');
+export const cleanupExpiredDiscounts = () => api.post('/discounts/cleanup-expired');
+
+
 export default api;
