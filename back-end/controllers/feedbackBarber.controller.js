@@ -3,14 +3,8 @@ const FeedbackBarber = require('../models/feedbackBarber.model');
 // GET all feedbacks (admin)
 exports.getAllFeedbacks = async (req, res) => {
   try {
-    const {
-      page = 1,
-      limit = 10,
-      search,
-      status,
-      startDate,
-      endDate
-    } = req.query;
+    const { page = 1, limit = 10, search, status, startDate, endDate } = req.query;
+    console.log('Request query:', req.query); // Log query params
 
     const query = {};
     if (status === 'approved') query.isApproved = true;
@@ -18,15 +12,14 @@ exports.getAllFeedbacks = async (req, res) => {
     if (startDate && endDate) {
       query.createdAt = {
         $gte: new Date(startDate),
-        $lte: new Date(endDate)
+        $lte: new Date(endDate),
       };
     }
     if (search) {
-      query.$or = [
-        { comment: { $regex: search, $options: 'i' } },
-      ];
+      query.comment = { $regex: search, $options: 'i' };
     }
 
+    console.log('Query:', query); // Log constructed query
     const feedbacks = await FeedbackBarber.find(query)
       .populate('barberId', 'name email')
       .populate('customerId', 'name email')
@@ -36,20 +29,20 @@ exports.getAllFeedbacks = async (req, res) => {
       .limit(Number(limit));
 
     const total = await FeedbackBarber.countDocuments(query);
+    console.log('Feedbacks found:', feedbacks.length, 'Total:', total); // Log results
 
     const transformedFeedbacks = feedbacks.map(fb => ({
-      ...fb._doc,
+      ...fb.toObject(),
       reviewer: fb.customerId?.name || fb.customerId?.email || 'Unknown',
-      product: fb.bookingId?._id || 'Service'
+      product: fb.bookingId?._id || 'Service',
     }));
 
     res.json({ data: transformedFeedbacks, total });
   } catch (error) {
-    console.error('Error in getAllFeedbacks:', error);
-    res.status(500).json({ message: error.message });
+    console.error('Error in getAllFeedbacks:', error.stack); // Log full error stack
+    res.status(500).json({ message: error.message || 'Internal Server Error' });
   }
 };
-
 // GET feedback by ID
 exports.getBarberFeedbackById = async (req, res) => {
   try {
@@ -60,11 +53,13 @@ exports.getBarberFeedbackById = async (req, res) => {
     if (!feedback) {
       return res.status(404).json({ message: 'Feedback not found' });
     }
+
     const transformedFeedback = {
-      ...feedback._doc,
+      ...feedback.toObject(),
       reviewer: feedback.customerId?.name || feedback.customerId?.email || 'Unknown',
-      product: feedback.bookingId?._id || 'Service'
+      product: feedback.bookingId?._id || 'Service',
     };
+
     res.json({ data: transformedFeedback });
   } catch (error) {
     console.error('Error in getBarberFeedbackById:', error);
@@ -91,7 +86,7 @@ exports.createBarberFeedback = async (req, res) => {
       rating,
       comment,
       images: images || [],
-      isApproved: false,
+      // Không cần set isApproved vì mặc định là true
     });
 
     await feedback.save();
@@ -100,11 +95,11 @@ exports.createBarberFeedback = async (req, res) => {
       .populate('barberId', 'name email')
       .populate('customerId', 'name email')
       .populate('bookingId');
-    
+
     const transformedFeedback = {
-      ...populatedFeedback._doc,
+      ...populatedFeedback.toObject(),
       reviewer: populatedFeedback.customerId?.name || populatedFeedback.customerId?.email || 'Unknown',
-      product: populatedFeedback.bookingId?._id || 'Service'
+      product: populatedFeedback.bookingId?._id || 'Service',
     };
 
     res.status(201).json({ message: 'Feedback created', data: transformedFeedback });
@@ -114,17 +109,19 @@ exports.createBarberFeedback = async (req, res) => {
   }
 };
 
-// PATCH approve/disapprove feedback — **sửa phần nhận isApproved**
+// PATCH approve/disapprove feedback
 exports.updateApprovalStatus = async (req, res) => {
   try {
     const { id } = req.params;
     let { isApproved } = req.body;
 
-    // Ép kiểu isApproved về boolean nếu nhận dạng chuỗi 'true'/'false'
+    // Convert string to boolean
+    if (typeof isApproved === 'string') {
+      isApproved = isApproved === 'true';
+    }
+
     if (typeof isApproved !== 'boolean') {
-      if (isApproved === 'true') isApproved = true;
-      else if (isApproved === 'false') isApproved = false;
-      else return res.status(400).json({ message: 'isApproved must be a boolean' });
+      return res.status(400).json({ message: 'isApproved must be a boolean' });
     }
 
     const feedback = await FeedbackBarber.findById(id);
@@ -141,9 +138,9 @@ exports.updateApprovalStatus = async (req, res) => {
       .populate('bookingId');
 
     const transformedFeedback = {
-      ...populatedFeedback._doc,
+      ...populatedFeedback.toObject(),
       reviewer: populatedFeedback.customerId?.name || populatedFeedback.customerId?.email || 'Unknown',
-      product: populatedFeedback.bookingId?._id || 'Service'
+      product: populatedFeedback.bookingId?._id || 'Service',
     };
 
     res.json({ message: 'Approval status updated', data: transformedFeedback });
@@ -156,25 +153,17 @@ exports.updateApprovalStatus = async (req, res) => {
 // GET approved feedbacks only
 exports.getApprovedFeedbacks = async (req, res) => {
   try {
-    const {
-      page = 1,
-      limit = 10,
-      search,
-      startDate,
-      endDate
-    } = req.query;
+    const { page = 1, limit = 10, search, startDate, endDate } = req.query;
 
     const query = { isApproved: true };
     if (startDate && endDate) {
       query.createdAt = {
         $gte: new Date(startDate),
-        $lte: new Date(endDate)
+        $lte: new Date(endDate),
       };
     }
     if (search) {
-      query.$or = [
-        { comment: { $regex: search, $options: 'i' } },
-      ];
+      query.comment = { $regex: search, $options: 'i' };
     }
 
     const feedbacks = await FeedbackBarber.find(query)
@@ -188,9 +177,9 @@ exports.getApprovedFeedbacks = async (req, res) => {
     const total = await FeedbackBarber.countDocuments(query);
 
     const transformedFeedbacks = feedbacks.map(fb => ({
-      ...fb._doc,
+      ...fb.toObject(),
       reviewer: fb.customerId?.name || fb.customerId?.email || 'Unknown',
-      product: fb.bookingId?._id || 'Service'
+      product: fb.bookingId?._id || 'Service',
     }));
 
     res.json({ data: transformedFeedbacks, total });

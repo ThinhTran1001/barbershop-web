@@ -61,6 +61,7 @@ export const updateBarberFeedbackApproval = (id, isApproved) =>
   api.patch(`/feedback-barber/${id}/approve`, { isApproved });
 export const deleteBarberFeedback = (id) => api.delete(`/feedback-barber/${id}`);
 
+
 export const getDiscounts = (params) => api.get('/discounts', { params }); 
 export const getDiscountById = (id) => api.get(`/discounts/${id}`);
 export const createDiscount = (data) => api.post('/discounts', data);

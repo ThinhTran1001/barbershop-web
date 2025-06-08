@@ -9,7 +9,7 @@ const feedbackBarberSchema = new mongoose.Schema({
   barberId: {
     type: mongoose.Schema.Types.ObjectId,
     required: true,
-    ref: 'User',
+    ref: 'Barber',
   },
   customerId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -25,14 +25,21 @@ const feedbackBarberSchema = new mongoose.Schema({
   comment: {
     type: String,
     required: true,
+    trim: true,
   },
   images: {
     type: [String],
     default: [],
+    validate: {
+      validator: function (arr) {
+        return arr.every(url => typeof url === 'string');
+      },
+      message: 'All images must be URLs in string format.',
+    },
   },
   isApproved: {
     type: Boolean,
-    default: false,
+    default: true,
   },
   createdAt: {
     type: Date,

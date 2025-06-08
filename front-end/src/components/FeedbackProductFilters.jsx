@@ -1,56 +1,40 @@
 import React from 'react';
-import { Row, Col, Input, Select, DatePicker, Button, Space } from 'antd';
-import { SearchOutlined, ReloadOutlined } from '@ant-design/icons';
+import { Row, Col, Select, DatePicker, Button } from 'antd';
+import { ReloadOutlined } from '@ant-design/icons';
 
-const { Search } = Input;
-const { Option } = Select;
 const { RangePicker } = DatePicker;
 
-const FeedbackProductFilters = ({
-  searchValue,
-  setSearchValue,
-  statusFilter,
-  setStatusFilter,
-  setDateRange,
-  fetchFeedbacks,
-  loading
-}) => {
+const FeedbackBarberFilters = ({ statusFilter, setStatusFilter, setDateRange, handleRefresh }) => {
   return (
-    <Row justify="space-between" align="middle" className="header-row">
-      <Col>
-        <Space size="middle">
-          <Search
-            placeholder="Search..."
-            allowClear
-            className="search-input"
-            value={searchValue}
-            onChange={(e) => setSearchValue(e.target.value)}
-            prefix={<SearchOutlined />}
-          />
-          <Select
-            value={statusFilter}
-            onChange={setStatusFilter}
-            className="filter-select"
-          >
-            <Option value="all">All</Option>
-            <Option value="approved">Approved</Option>
-            <Option value="pending">Pending</Option>
-          </Select>
-          <RangePicker
-            onChange={(dates) => setDateRange(dates || [])}
-            format="DD/MM/YYYY"
-          />
-          <Button
-            icon={<ReloadOutlined />}
-            onClick={fetchFeedbacks}
-            loading={loading}
-          >
-            Refresh
-          </Button>
-        </Space>
+    <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
+      <Col xs={24} sm={8}>
+        <Select
+          style={{ width: '100%' }}
+          value={statusFilter}
+          onChange={value => setStatusFilter(value)}
+          options={[
+            { label: 'All', value: 'all' },
+            { label: 'Approved', value: 'approved' },
+            { label: 'Pending', value: 'pending' }
+          ]}
+        />
+      </Col>
+      <Col xs={24} sm={12}>
+        <RangePicker
+          style={{ width: '100%' }}
+          format="DD/MM/YYYY"
+          onChange={setDateRange}
+          allowClear
+          placeholder={['From', 'To']}
+        />
+      </Col>
+      <Col xs={24} sm={4}>
+        <Button icon={<ReloadOutlined />} onClick={handleRefresh} block>
+          Refresh
+        </Button>
       </Col>
     </Row>
   );
 };
 
-export default FeedbackProductFilters;
+export default FeedbackBarberFilters;
