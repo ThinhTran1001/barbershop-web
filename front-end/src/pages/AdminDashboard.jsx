@@ -2,7 +2,7 @@ import React from 'react';
 import { Tabs } from 'antd';
 import ProductManagement from '../components/ProductManagement';
 import CategoryManagement from '../components/CategoryManagement';
-// import BrandManagement from '../components/BrandManagement';
+import BrandManagement from '../components/BrandManagement';
 import BarberManagement from '../components/BarberManagement';
 import UserManagement from '../components/UserManagement';
 

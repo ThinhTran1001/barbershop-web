@@ -7,16 +7,17 @@ import RoleBasedLayout from "./pages/layout/RoleBasedLayout.jsx";
 import Landing from "./pages/home/Landing.jsx";
 import Login from "./pages/auth/LoginPage.jsx";
 import ProductManagement from "./components/ProductManagement.jsx";
-// import BrandManagement from "./components/BrandManagement.jsx";
+import BrandManagement from "./components/BrandManagement.jsx";
 import CategoryManagement from "./components/CategoryManagement.jsx";
-// import BarberManagement from "./components/BarberManagement.jsx";
+import BarberManagement from "./components/BarberManagement.jsx";
 import UserManagement from "./components/UserManagement.jsx";
 import Register from "./pages/auth/RegisterPage.jsx";
 import ProductDetail from "./components/product/ProductDetail.jsx";
 import ProductList from "./pages/home/prodductList.jsx";
-// import ManagingService from './pages/ManagingService/ManagingService.jsx'
+import ManagingService from './pages/ManagingService/ManagingService.jsx'
 import ForgotPasswordForm from "./components/auth/ForgotPasswordForm.jsx";
 import ResetPasswordForm from "./components/auth/ResetPasswordForm.jsx";
+import VoucherManagement from "./components/VoucherManagemet.jsx";
 
 const publicRoutes = {
   element: <CommonLayout />,
@@ -41,11 +42,12 @@ const adminRoutes = {
       children: [
         { index: true, element: <ProductManagement /> },
         { path: "product", element: <ProductManagement /> },
-        // { path: "brand", element: <BrandManagement /> },
+        { path: "brand", element: <BrandManagement /> },
         { path: "category", element: <CategoryManagement /> },
-        // { path: "service", element: <ManagingService /> },
-        // { path: "barber", element: <BarberManagement /> },
+        { path: "service", element: <ManagingService /> },
+        { path: "barber", element: <BarberManagement /> },
         { path: "user", element: <UserManagement /> },
+        { path: "voucher", element: <VoucherManagement /> },
 
       ],
     },
