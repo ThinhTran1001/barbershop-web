@@ -3,8 +3,8 @@ import { Card, message } from 'antd';
 import FeedbackProductStats from '../../components/FeedbackProductStats';
 import FeedbackProductFilters from '../../components/FeedbackProductFilters';
 import FeedbackProductTable from '../../components/FeedbackProductTable';
-import  FeedbackProductModal from '../../components/FeedbackProductModal';
-import { getAllFeedbacks } from '../../services/api'; // Chỉ import getAllFeedbacks
+import FeedbackProductModal from '../../components/FeedbackProductModal';
+import { getAllFeedbacks, approveFeedback, deleteFeedback, unapprovalFeedback } from '../../services/api';
 import dayjs from 'dayjs';
 import './ManageFeedbackProduct.css';
 
@@ -30,16 +30,26 @@ const ManageFeedbackProduct = () => {
     setLoading(true);
     try {
       const res = await getAllFeedbacks();
-      setFeedbacks(res.data);
+      
+      // Handle different response structures
+      const feedbackData = res.data?.data || res.data || res || [];
+      
+      setFeedbacks(Array.isArray(feedbackData) ? feedbackData : []);
     } catch (err) {
       console.error('Error fetching feedbacks:', err);
       message.error('Failed to load feedback data');
+      setFeedbacks([]);
     } finally {
       setLoading(false);
     }
   };
 
   const applyFilters = () => {
+    if (!Array.isArray(feedbacks)) {
+      setFilteredFeedbacks([]);
+      return;
+    }
+
     let filtered = [...feedbacks];
 
     if (searchValue) {
@@ -67,21 +77,35 @@ const ManageFeedbackProduct = () => {
     setFilteredFeedbacks(filtered);
   };
 
-  const approveFeedback = async (id) => {
+  const handleApproveFeedback = async (id) => {
     try {
       await approveFeedback(id);
       message.success('Feedback approved successfully');
       fetchFeedbacks();
-    } catch {
+    } catch (err) {
+      console.error('Error approving feedback:', err);
       message.error('Có lỗi xảy ra khi duyệt feedback');
     }
   };
 
-  const deleteFeedback = async (id) => {
+  const handleUnapprovalFeedback = async (id) => {
+    try {
+      await unapprovalFeedback(id);
+      message.success('Feedback đã được hủy duyệt');
+      fetchFeedbacks();
+    } catch (err) {
+      console.error('Error unapproving feedback:', err);
+      message.error('Có lỗi xảy ra khi hủy duyệt feedback');
+    }
+  };
+
+  const handleDeleteFeedback = async (id) => {
     try {
       await deleteFeedback(id);
       message.success('Feedback đã được xóa thành công');
-    } catch {
+      fetchFeedbacks();
+    } catch (err) {
+      console.error('Error deleting feedback:', err);
       message.error('Có lỗi xảy ra khi xóa feedback');
     }
   };
@@ -94,7 +118,7 @@ const ManageFeedbackProduct = () => {
   const stats = {
     total: feedbacks.length,
     approved: feedbacks.filter(f => f.isApproved).length,
-    pending: feedbacks.length - feedbacks.filter(f => f.isApproved).length
+    pending: feedbacks.filter(f => !f.isApproved).length
   };
 
   return (
@@ -115,8 +139,9 @@ const ManageFeedbackProduct = () => {
           filteredFeedbacks={filteredFeedbacks}
           loading={loading}
           handleViewFeedback={handleViewFeedback}
-          approveFeedback={approveFeedback}
-          deleteFeedback={deleteFeedback}
+          approveFeedback={handleApproveFeedback}
+          unapprovalFeedback={handleUnapprovalFeedback}
+          deleteFeedback={handleDeleteFeedback}
         />
       </Card>
       <FeedbackProductModal

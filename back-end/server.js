@@ -9,7 +9,7 @@ const authRoutes = require("./routes/auth.route");
 const serviceRoutes = require('./routes/service.route');
 const userRoutes = require('./routes/user.route');
 const barberRoutes = require('./routes/barber.route');
-const feedbackProductRoutes = require('./routes/feedbackProduct.route');
+const reviewRoutes = require('./routes/productreview.route');
 const feedbackBarberRoutes = require('./routes/feedbackBarber.route');
 const discountRoutes = require('./routes/discount.route');
 const cors = require('cors');
@@ -37,7 +37,7 @@ app.use('/api/services', serviceRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/barbers',barberRoutes)
 app.use('/api/users', userRoutes);
-app.use('/api/product-reviews', feedbackProductRoutes);
+app.use('/api/product-reviews', reviewRoutes);
 app.use('/api/feedback-barber', feedbackBarberRoutes);
 app.use('/api/discounts', discountRoutes);
 const PORT = process.env.PORT || 3000;

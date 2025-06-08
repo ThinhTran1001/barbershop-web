@@ -4,10 +4,18 @@ import {
   UserOutlined, ShoppingOutlined, EyeOutlined, DeleteOutlined,
   CheckOutlined, CloseOutlined
 } from '@ant-design/icons';
+import PropTypes from 'prop-types';
 
 const { Text } = Typography;
 
-const FeedbackProductTable = ({ filteredFeedbacks, loading, handleViewFeedback, approveFeedback, deleteFeedback }) => {
+const FeedbackProductTable = ({ 
+  filteredFeedbacks, 
+  loading, 
+  handleViewFeedback, 
+  approveFeedback, 
+  unapprovalFeedback, 
+  deleteFeedback 
+}) => {
   const columns = [
     {
       title: 'Reviewer',
@@ -110,32 +118,46 @@ const FeedbackProductTable = ({ filteredFeedbacks, loading, handleViewFeedback, 
       title: 'Actions',
       key: 'action',
       render: (_, record) => (
-        <Space size="small">
+        <Space size="small" wrap={false}>
           <Tooltip title="View details">
             <Button
               type="text"
               icon={<EyeOutlined />}
-              onClick={() => handleViewFeedback(record)}
+              onClick={() => handleViewFeedback?.(record)}
               size="small"
             />
           </Tooltip>
-          {!record.isApproved && (
-            <Tooltip title="Approve">
+          
+          {record.isApproved ? (
+            <Tooltip title="Hủy duyệt">
+              <Button
+                type="text"
+                icon={<CloseOutlined />}
+                onClick={() => unapprovalFeedback?.(record._id)}
+                size="small"
+                style={{ color: '#ff4d4f' }}
+              />
+            </Tooltip>
+          ) : (
+            <Tooltip title="Duyệt">
               <Button
                 type="text"
                 icon={<CheckOutlined />}
-                onClick={() => approveFeedback(record._id)}
+                onClick={() => approveFeedback?.(record._id)}
                 size="small"
+                style={{ color: '#52c41a' }}
               />
             </Tooltip>
           )}
+          
           <Popconfirm
-            title="Are you sure to delete this feedback?"
-            onConfirm={() => deleteFeedback(record._id)}
-            okText="Yes"
-            cancelText="No"
+            title="Bạn có chắc muốn xóa feedback này?"
+            onConfirm={() => deleteFeedback?.(record._id)}
+            okText="Có"
+            cancelText="Không"
+            placement="topRight"
           >
-            <Tooltip title="Delete">
+            <Tooltip title="Xóa">
               <Button
                 type="text"
                 icon={<DeleteOutlined />}
@@ -146,7 +168,7 @@ const FeedbackProductTable = ({ filteredFeedbacks, loading, handleViewFeedback, 
           </Popconfirm>
         </Space>
       ),
-      width: 120,
+      width: 160,
       fixed: 'right',
     },
   ];
@@ -181,6 +203,15 @@ const FeedbackProductTable = ({ filteredFeedbacks, loading, handleViewFeedback, 
       )}
     </>
   );
+};
+
+FeedbackProductTable.propTypes = {
+  filteredFeedbacks: PropTypes.array.isRequired,
+  loading: PropTypes.bool.isRequired,
+  handleViewFeedback: PropTypes.func,
+  approveFeedback: PropTypes.func,
+  unapprovalFeedback: PropTypes.func,
+  deleteFeedback: PropTypes.func,
 };
 
 export default FeedbackProductTable;

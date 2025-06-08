@@ -46,11 +46,11 @@ export const getMe = () => api.get(`/auth/me`);
 export const forgotPassword = (data) => api.post('/auth/forgot-password', data);
 export const resetPassword = (data) => api.post('/auth/reset-password', data);
 
-// Feedback APIs (Product)
 export const getFeedbacksByProduct = (productId) => api.get(`/product-reviews/product/${productId}`);
 export const getAllFeedbacks = (params) => api.get('/product-reviews', { params });
 export const createFeedback = (data) => api.post('/product-reviews', data);
-export const approveFeedback = (id) => api.patch(`/product-reviews/approve/${id}`);
+export const approveFeedback = (id) => api.patch(`/product-reviews/${id}/approve`);
+export const unapprovalFeedback = (id) => api.patch(`/product-reviews/${id}/unapprove`);
 export const deleteFeedback = (id) => api.delete(`/product-reviews/${id}`);
 
 // Feedback APIs (Barber)
