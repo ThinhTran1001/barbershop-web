@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Breadcrumb } from "antd";
+import { Breadcrumb, Input, Select } from "antd";
 import "../../css/landing/products.css";
 
 import product1 from "../../assets/images/product1.jpg";
@@ -9,6 +9,9 @@ import product2 from "../../assets/images/product2.jpg";
 import product3 from "../../assets/images/product3.jpg";
 import product4 from "../../assets/images/product4.jpg";
 import { getProducts } from "../../services/api";
+
+const { Search } = Input;
+const { Option } = Select;
 
 const imageMap = {
   "/assets/images/product1.jpg": product1,
@@ -19,6 +22,9 @@ const imageMap = {
 
 export default function ProductList() {
   const [products, setProducts] = useState([]);
+  const [filteredProducts, setFilteredProducts] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [priceFilter, setPriceFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -30,6 +36,7 @@ export default function ProductList() {
       try {
         const response = await getProducts();
         setProducts(response.data);
+        setFilteredProducts(response.data);
         setLoading(false);
       } catch (error) {
         setError("Không thể tải dữ liệu sản phẩm. Vui lòng thử lại sau.");
@@ -50,10 +57,44 @@ export default function ProductList() {
     navigate(`/products/${productId}`);
   };
 
+  const handleSearch = (value) => {
+    setSearchTerm(value);
+    applyFilters(value, priceFilter);
+    setCurrentPage(1);
+  };
+
+  const handlePriceFilter = (value) => {
+    setPriceFilter(value);
+    applyFilters(searchTerm, value);
+    setCurrentPage(1);
+  };
+
+  const applyFilters = (searchValue, priceValue) => {
+    let filtered = [...products];
+
+    if (searchValue) {
+      filtered = filtered.filter((p) =>
+        p.name.toLowerCase().includes(searchValue.toLowerCase())
+      );
+    }
+
+    if (priceValue !== "all") {
+      filtered = filtered.filter((p) => {
+        const price = Number(p.price);
+        if (priceValue === "<500") return price < 500000;
+        if (priceValue === "500-1000") return price >= 500000 && price <= 1000000;
+        if (priceValue === ">1000") return price > 1000000;
+        return true;
+      });
+    }
+
+    setFilteredProducts(filtered);
+  };
+
   const indexOfLastProduct = currentPage * productsPerPage;
   const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
-  const currentProducts = products.slice(indexOfFirstProduct, indexOfLastProduct);
-  const totalPages = Math.ceil(products.length / productsPerPage);
+  const currentProducts = filteredProducts.slice(indexOfFirstProduct, indexOfLastProduct);
+  const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
 
   const renderPagination = () => (
     <div className="product-pagination">
@@ -69,7 +110,7 @@ export default function ProductList() {
     </div>
   );
 
-  if (loading) {
+  if (loading || error) {
     return (
       <section className="shop-section">
         <div className="shop-container">
@@ -77,21 +118,8 @@ export default function ProductList() {
             <h2 className="shop-title">TẤT CẢ SẢN PHẨM</h2>
             <div className="shop-divider"></div>
           </div>
-          <div className="loading">Đang tải dữ liệu...</div>
-        </div>
-      </section>
-    );
-  }
-
-  if (error) {
-    return (
-      <section className="shop-section">
-        <div className="shop-container">
-          <div className="shop-header">
-            <h2 className="shop-title">TẤT CẢ SẢN PHẨM</h2>
-            <div className="shop-divider"></div>
-          </div>
-          <div className="error">{error}</div>
+          {loading && <div className="loading">Đang tải dữ liệu...</div>}
+          {error && <div className="error">{error}</div>}
         </div>
       </section>
     );
@@ -114,7 +142,23 @@ export default function ProductList() {
           <div className="shop-divider"></div>
         </div>
 
-        {/* Product grid */}
+        {/* Search and Filter */}
+        <div className="d-flex justify-content-between flex-wrap mb-4 gap-2">
+          <Search
+            placeholder="Tìm kiếm sản phẩm..."
+            onSearch={handleSearch}
+            allowClear
+            style={{ width: 300 }}
+          />
+          <Select defaultValue="all" style={{ width: 200 }} onChange={handlePriceFilter}>
+            <Option value="all">Tất cả mức giá</Option>
+            <Option value="<500">Dưới 500.000đ</Option>
+            <Option value="500-1000">500.000đ - 1.000.000đ</Option>
+            <Option value=">1000">Trên 1.000.000đ</Option>
+          </Select>
+        </div>
+
+        {/* Product Grid */}
         <div className="shop-grid-full">
           {currentProducts.map((product) => (
             <div key={product._id} className="shop-item">
@@ -145,7 +189,6 @@ export default function ProductList() {
           ))}
         </div>
 
-        
         {totalPages > 1 && renderPagination()}
       </div>
     </section>

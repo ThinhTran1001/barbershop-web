@@ -15,7 +15,9 @@ import Register from "./pages/auth/RegisterPage.jsx";
 import ProductDetail from "./components/product/ProductDetail.jsx";
 import ProductList from "./pages/home/prodductList.jsx";
 import ManagingService from './pages/ManagingService/ManagingService.jsx'
-
+import ForgotPasswordForm from "./components/auth/ForgotPasswordForm.jsx";
+import ResetPasswordForm from "./components/auth/ResetPasswordForm.jsx";
+import ServiceBooking from "./pages/ServiceBooking/ServiceBooking.jsx";
 const publicRoutes = {
   element: <CommonLayout />,
   children: [
@@ -23,7 +25,11 @@ const publicRoutes = {
     { path: "/products/:id", element: <ProductDetail/> },
     { path: "/login", element: <Login /> },
     {path: "/register", element: <Register/>},
-    {path: "/products", element: <ProductList/>}
+    {path: "/products", element: <ProductList/>},
+    {path: "/forget", element: <ProductList/>},
+    {path: "/services", element: <ServiceBooking/>},
+    { path: "/forgot-password", element: <ForgotPasswordForm /> },
+    { path: "/reset-password", element: <ResetPasswordForm /> },
   ],
 };
 
