@@ -34,8 +34,6 @@ export const createBarber = (data) => api.post('/barbers', data);
 export const updateBarber = (id, data) => api.put(`/barbers/${id}`, data); 
 export const deleteBarber = (id) => api.delete(`/barbers/${id}`);
 
-
-
 export const loginUser = (data) => api.post('/auth/login', data);
 export const register = (data) => api.post('/auth/register', data);
 export const verify = (data) => api.post('/auth/verify-otp', data);
@@ -45,5 +43,10 @@ export const refreshToken = () => api.post('/auth/refresh-token');
 export const getMe = () => api.get(`/auth/me`);
 export const forgotPassword = (data) => api.post('/auth/forgot-password', data);
 export const resetPassword = (data) => api.post('/auth/reset-password', data);
+
+export const sendChat = async (message) => {
+  const { data } = await api.post('/chatbot', { message });
+  return data.reply;
+};
 
 export default api;
