@@ -12,7 +12,7 @@ async function analyzeIntent(message) {
   const prompt = `
 Bạn là một trợ lý AI thông minh. Phân tích câu hỏi sau và trả về JSON chứa:
 - intent: Ý định của người dùng (ví dụ: "get_product_list", "get_brand_list", "get_category_list", "book_appointment", "general").
-- entities: Các thực thể trong câu hỏi (ví dụ: { "brand": "TestBrand", "category": "Duy" }, có thể rỗng nếu không có).
+- entities: Các thực thể trong câu hỏi (ví dụ: { "brand": "TestBrand", "category": "Duy", "priceMin": 0, "priceMax": 100, "minRating": 4, "maxRating": 5 }, có thể rỗng nếu không có).
 Câu hỏi: "${message}"
 
 Ví dụ đầu ra:
@@ -20,9 +20,14 @@ Ví dụ đầu ra:
   "intent": "get_product_list",
   "entities": {
     "brand": "TestBrand",
-    "category": "Duy"
+    "category": "Duy",
+    "priceMin": 0,
+    "priceMax": 100,
+    "minRating": 4,
+    "maxRating": 5
   }
 }
+Lưu ý: Khi trích xuất priceMin và priceMax, chỉ lấy giá trị số (bỏ qua đơn vị như $ hoặc VNĐ), ví dụ: "dưới 100 VNĐ" → priceMax: 100.
 `;
   try {
     const raw = await gemini.generate({ prompt });
@@ -69,7 +74,18 @@ async function callFunction(fnName, entities) {
           return { error: `Không tìm thấy danh mục "${entities.category}" tại BerGer Barbershop.` };
         }
       }
+      if (entities.priceMin !== undefined || entities.priceMax !== undefined) {
+        query.price = {};
+        if (entities.priceMin !== undefined) query.price.$gte = Number(entities.priceMin);
+        if (entities.priceMax !== undefined) query.price.$lte = Number(entities.priceMax);
+      }
+      if (entities.minRating !== undefined || entities.maxRating !== undefined) {
+        query.rating = {};
+        if (entities.minRating !== undefined) query.rating.$gte = Number(entities.minRating);
+        if (entities.maxRating !== undefined) query.rating.$lte = Number(entities.maxRating);
+      }
 
+      console.log('Query:', query);
       const prods = await Product.find(query)
         .limit(5)
         .populate('details.brandId', 'name')
@@ -125,7 +141,7 @@ function generateNaturalResponse(fnName, data, userMessage) {
       const { products, total } = data;
       let reply = 'Danh sách sản phẩm tại BerGer Barbershop:\n';
       products.forEach(p => {
-        reply += `- ${p.name} (Thương hiệu: ${p.brand}) - Giá: ${p.price} VNĐ, Đánh giá: ${p.rating}/5\n`;
+        reply += `- ${p.name} (Thương hiệu: ${p.brand}) - Giá: $${p.price}, Đánh giá: ${p.rating}/5\n`;
         if (p.categories.length > 0) {
           reply += `  Danh mục: ${p.categories.join(', ')}\n`;
         }
@@ -154,7 +170,6 @@ exports.handleChatbot = async (req, res) => {
   const userMessage = req.body.message || '';
 
   const knowledge = `
-Bạn là trợ lý AI thông minh của BerGer Barbershop.
 BerGer Barbershop – Điểm hẹn phong cách dành riêng cho phái mạnh tại Vinh, Nghệ An.
 Ra đời từ năm 2016, chúng tôi tự hào mang đến trải nghiệm “Men Only” chuyên nghiệp với đội ngũ barber tay nghề cao,
 phối hợp kỹ thuật cắt – tạo kiểu hiện đại và phong cách cổ điển.
@@ -174,6 +189,12 @@ Email: bergerbarbershop@gmail.com
       if (typeof reply !== 'string') reply = String(reply);
       return res.json({ reply: reply.trim() });
     }
+
+    // Chuyển đổi giá trị số
+    if (entities.priceMin !== undefined) entities.priceMin = Number(entities.priceMin);
+    if (entities.priceMax !== undefined) entities.priceMax = Number(entities.priceMax);
+    if (entities.minRating !== undefined) entities.minRating = Number(entities.minRating);
+    if (entities.maxRating !== undefined) entities.maxRating = Number(entities.maxRating);
 
     const data = await callFunction(intent, entities);
 
