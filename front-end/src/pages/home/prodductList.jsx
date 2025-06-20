@@ -27,7 +27,7 @@ export default function ProductList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const productsPerPage = 12;
+  const productsPerPage = 4;
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -37,6 +37,7 @@ export default function ProductList() {
         setProducts(response.data);
         setFilteredProducts(response.data);
         setLoading(false);
+      // eslint-disable-next-line no-unused-vars
       } catch (error) {
         setError("Không thể tải dữ liệu sản phẩm. Vui lòng thử lại sau.");
         setLoading(false);
