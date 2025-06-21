@@ -10,16 +10,14 @@ import {
   Select,
   notification,
   Tag,
+  Tooltip,
 } from "antd";
-import { EditOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons"; // Thêm EyeOutlined
-import { Tooltip } from "antd";
-
+import { EditOutlined, DeleteOutlined, EyeOutlined } from "@ant-design/icons";
 import {
   getAllServices,
   createService,
   updateService,
 } from "../../services/api";
-
 import ServiceForm from "../../components/ServiceForm";
 import "./ManagingService.css";
 
@@ -30,15 +28,14 @@ const ManagingService = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingService, setEditingService] = useState(null);
   const [form] = Form.useForm();
-
-  // State mới cho modal xem chi tiết
   const [viewingService, setViewingService] = useState(null);
   const [isViewModalVisible, setIsViewModalVisible] = useState(false);
-
   const [searchText, setSearchText] = useState("");
   const [filterSuggested, setFilterSuggested] = useState([]);
   const [priceFilter, setPriceFilter] = useState(null);
   const [statusFilter, setStatusFilter] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
 
   useEffect(() => {
     fetchServices();
@@ -69,7 +66,6 @@ const ManagingService = () => {
     form.resetFields();
   };
 
-  // Xử lý mở modal xem chi tiết
   const showViewModal = (record) => {
     setViewingService(record);
     setIsViewModalVisible(true);
@@ -80,7 +76,6 @@ const ManagingService = () => {
     setViewingService(null);
   };
 
-  // Soft delete: chỉ đổi isActive từ true sang false
   const handleDelete = async (id, currentStatus) => {
     if (!currentStatus) {
       notification.info({
@@ -233,6 +228,7 @@ const ManagingService = () => {
               type="text"
               icon={<EditOutlined />}
               onClick={() => showModal(record)}
+              disabled={!record.isActive}
             />
           </Tooltip>
           <Tooltip title="Delete (Deactivate)">
@@ -325,10 +321,20 @@ const ManagingService = () => {
         rowKey="_id"
         dataSource={filteredServices}
         columns={columns}
-        pagination={{ pageSize: 5 }}
+        pagination={{
+          current: currentPage,
+          pageSize: pageSize,
+          total: filteredServices.length,
+          showSizeChanger: true,
+          showQuickJumper: true,
+          pageSizeOptions: ['5', '10', '20', '50', '100'],
+          onChange: (page, size) => {
+            setCurrentPage(page);
+            setPageSize(size);
+          },
+        }}
       />
 
-      {/* Modal chỉnh sửa / thêm */}
       <Modal
         title={editingService ? "Edit Service" : "Add Service"}
         open={isModalVisible}
@@ -342,12 +348,11 @@ const ManagingService = () => {
         </Form>
       </Modal>
 
-      {/* Modal xem chi tiết */}
       <Modal
         title="View Service Details"
         open={isViewModalVisible}
         onCancel={handleViewCancel}
-        footer={null} // Không có nút OK, Cancel
+        footer={null}
       >
         {viewingService && (
           <div>
