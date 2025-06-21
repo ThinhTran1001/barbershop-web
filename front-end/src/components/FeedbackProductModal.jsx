@@ -20,51 +20,55 @@ const FeedbackProductModal = ({ visible, onCancel, feedback }) => {
       width={600}
     >
       <div>
-        <Row gutter={16}>
+        <Row gutter={16} className="feedback-modal-row">
           <Col span={12}>
             <Text strong>Reviewer:</Text>
-            <div>{feedback.userId?.name || 'Anonymous'}</div>
+            <div className="feedback-modal-data">{feedback.userId?.name || 'Anonymous'}</div>
           </Col>
           <Col span={12}>
             <Text strong>Product:</Text>
-            <div>{feedback.productId?.name || 'N/A'}</div>
+            <div className="feedback-modal-data">{feedback.productId?.name || 'N/A'}</div>
           </Col>
         </Row>
 
-        <div className="modal-section">
+        <div className="feedback-modal-section">
           <Text strong>Rating:</Text>
-          <div>
+          <div className="feedback-modal-rating">
             <Rate disabled value={feedback.rating} />
-            <Text strong>{feedback.rating}/5</Text>
+            <Text strong className="feedback-modal-rating-text">{feedback.rating}/5</Text>
           </div>
         </div>
 
-        <div className="modal-section">
+        <div className="feedback-modal-section">
           <Text strong>Comment:</Text>
-          <div>{feedback.comment || 'No comment'}</div>
+          <div className="feedback-modal-comment-container">
+            {feedback.comment || 'No comment'}
+          </div>
         </div>
 
         {feedback.images?.length > 0 && (
-          <div className="modal-section">
+          <div className="feedback-modal-section">
             <Text strong>Images:</Text>
-            <Image.PreviewGroup>
-              {feedback.images.map((url, idx) => (
-                <Image
-                  key={idx}
-                  width={100}
-                  height={100}
-                  src={url}
-                  style={{ marginRight: 8 }}
-                />
-              ))}
-            </Image.PreviewGroup>
+            <div className="feedback-modal-images-container">
+              <Image.PreviewGroup>
+                {feedback.images.map((url, idx) => (
+                  <Image
+                    key={idx}
+                    width={100}
+                    height={100}
+                    src={url}
+                    className="feedback-modal-image"
+                  />
+                ))}
+              </Image.PreviewGroup>
+            </div>
           </div>
         )}
 
-        <Row gutter={16} style={{ marginTop: 16 }}>
+        <Row gutter={16} className="feedback-modal-row">
           <Col span={12}>
             <Text strong>Status:</Text>
-            <div>
+            <div className="feedback-modal-status-container">
               {feedback.isApproved ? (
                 <Tag color="success" icon={<CheckOutlined />}>Approved</Tag>
               ) : (
@@ -74,7 +78,9 @@ const FeedbackProductModal = ({ visible, onCancel, feedback }) => {
           </Col>
           <Col span={12}>
             <Text strong>Created At:</Text>
-            <div>{new Date(feedback.createdAt).toLocaleString()}</div>
+            <div className="feedback-modal-date-container">
+              {new Date(feedback.createdAt).toLocaleString()}
+            </div>
           </Col>
         </Row>
       </div>

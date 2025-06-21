@@ -15,6 +15,9 @@ const ManageFeedbackProduct = () => {
   const [searchValue, setSearchValue] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateRange, setDateRange] = useState([]);
+  const [ratingFilter, setRatingFilter] = useState(null);
+  const [productFilter, setProductFilter] = useState(null);
+  const [products, setProducts] = useState([]);
   const [viewModalVisible, setViewModalVisible] = useState(false);
   const [selectedFeedback, setSelectedFeedback] = useState(null);
 
@@ -24,7 +27,7 @@ const ManageFeedbackProduct = () => {
 
   useEffect(() => {
     applyFilters();
-  }, [feedbacks, searchValue, statusFilter, dateRange]); 
+  }, [feedbacks, searchValue, statusFilter, dateRange, ratingFilter, productFilter]); 
 
   const fetchFeedbacks = async () => {
     setLoading(true);
@@ -35,10 +38,29 @@ const ManageFeedbackProduct = () => {
       const feedbackData = res.data?.data || res.data || res || [];
       
       setFeedbacks(Array.isArray(feedbackData) ? feedbackData : []);
+      
+      // Extract unique products from feedbacks for product filter
+      if (Array.isArray(feedbackData) && feedbackData.length > 0) {
+        const uniqueProducts = [];
+        const productIds = new Set();
+        
+        feedbackData.forEach(feedback => {
+          if (feedback.productId && feedback.productId._id && !productIds.has(feedback.productId._id)) {
+            productIds.add(feedback.productId._id);
+            uniqueProducts.push({
+              _id: feedback.productId._id,
+              name: feedback.productId.name || 'Unknown Product'
+            });
+          }
+        });
+        
+        setProducts(uniqueProducts);
+      }
     } catch (err) {
       console.error('Error fetching feedbacks:', err);
       message.error('Failed to load feedback data');
       setFeedbacks([]);
+      setProducts([]);
     } finally {
       setLoading(false);
     }
@@ -52,21 +74,35 @@ const ManageFeedbackProduct = () => {
 
     let filtered = [...feedbacks];
 
+    // Search functionality - search by comment, user name, product name
     if (searchValue) {
+      const searchLower = searchValue.toLowerCase();
       filtered = filtered.filter(item =>
-        item.comment?.toLowerCase().includes(searchValue.toLowerCase()) ||
-        item.userId?.name?.toLowerCase().includes(searchValue.toLowerCase()) ||
-        item.productId?.name?.toLowerCase().includes(searchValue.toLowerCase())
+        item.comment?.toLowerCase().includes(searchLower) ||
+        item.userId?.name?.toLowerCase().includes(searchLower) ||
+        item.productId?.name?.toLowerCase().includes(searchLower)
       );
     }
 
+    // Status filter
     if (statusFilter !== 'all') {
       filtered = filtered.filter(item =>
         statusFilter === 'approved' ? item.isApproved : !item.isApproved
       );
     }
 
-    if (dateRange.length === 2) {
+    // Rating filter - filter by star rating
+    if (ratingFilter !== null) {
+      filtered = filtered.filter(item => item.rating === ratingFilter);
+    }
+
+    // Product filter - filter by product
+    if (productFilter) {
+      filtered = filtered.filter(item => item.productId?._id === productFilter);
+    }
+
+    // Date range filter
+    if (dateRange && dateRange.length === 2) {
       const [start, end] = dateRange;
       filtered = filtered.filter(item => {
         const created = dayjs(item.createdAt);
@@ -84,29 +120,29 @@ const ManageFeedbackProduct = () => {
       fetchFeedbacks();
     } catch (err) {
       console.error('Error approving feedback:', err);
-      message.error('Có lỗi xảy ra khi duyệt feedback');
+      message.error('An error occurred while approving feedback');
     }
   };
 
   const handleUnapprovalFeedback = async (id) => {
     try {
       await unapprovalFeedback(id);
-      message.success('Feedback đã được hủy duyệt');
+      message.success('Feedback has been unapproved');
       fetchFeedbacks();
     } catch (err) {
       console.error('Error unapproving feedback:', err);
-      message.error('Có lỗi xảy ra khi hủy duyệt feedback');
+      message.error('An error occurred while unapproving feedback');
     }
   };
 
   const handleDeleteFeedback = async (id) => {
     try {
       await deleteFeedback(id);
-      message.success('Feedback đã được xóa thành công');
+      message.success('Feedback has been deleted successfully');
       fetchFeedbacks();
     } catch (err) {
       console.error('Error deleting feedback:', err);
-      message.error('Có lỗi xảy ra khi xóa feedback');
+      message.error('An error occurred while deleting feedback');
     }
   };
 
@@ -122,7 +158,7 @@ const ManageFeedbackProduct = () => {
   };
 
   return (
-    <div className="manage-feedback-container">
+    <div className="feedback-manage-container">
       <FeedbackProductStats stats={stats} />
       <Card>
         <FeedbackProductFilters
@@ -132,8 +168,11 @@ const ManageFeedbackProduct = () => {
           setStatusFilter={setStatusFilter}
           dateRange={dateRange}
           setDateRange={setDateRange}
-          fetchFeedbacks={fetchFeedbacks}
-          loading={loading}
+          ratingFilter={ratingFilter}
+          setRatingFilter={setRatingFilter}
+          productFilter={productFilter}
+          setProductFilter={setProductFilter}
+          products={products}
         />
         <FeedbackProductTable
           filteredFeedbacks={filteredFeedbacks}

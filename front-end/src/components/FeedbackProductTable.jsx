@@ -37,7 +37,7 @@ const FeedbackProductTable = ({
         <Space>
           <ShoppingOutlined />
           <Tooltip title={text}>
-            <Text ellipsis className="product-name">
+            <Text ellipsis className="feedback-table-product-name">
               {text || 'Unknown Product'}
             </Text>
           </Tooltip>
@@ -64,7 +64,7 @@ const FeedbackProductTable = ({
       key: 'comment',
       render: (text) => (
         <Tooltip title={text}>
-          <Text ellipsis>{text || 'No comment'}</Text>
+          <Text ellipsis className="feedback-table-comment">{text || 'No comment'}</Text>
         </Tooltip>
       ),
       width: 250,
@@ -81,6 +81,7 @@ const FeedbackProductTable = ({
               height={50}
               src={images[0]}
               alt="feedback"
+              className="feedback-table-image"
             />
           </Badge>
         ) : (
@@ -129,35 +130,35 @@ const FeedbackProductTable = ({
           </Tooltip>
           
           {record.isApproved ? (
-            <Tooltip title="Hủy duyệt">
+            <Tooltip title="Unapprove">
               <Button
                 type="text"
                 icon={<CloseOutlined />}
                 onClick={() => unapprovalFeedback?.(record._id)}
                 size="small"
-                style={{ color: '#ff4d4f' }}
+                className="feedback-table-unapprove-btn"
               />
             </Tooltip>
           ) : (
-            <Tooltip title="Duyệt">
+            <Tooltip title="Approve">
               <Button
                 type="text"
                 icon={<CheckOutlined />}
                 onClick={() => approveFeedback?.(record._id)}
                 size="small"
-                style={{ color: '#52c41a' }}
+                className="feedback-table-approve-btn"
               />
             </Tooltip>
           )}
           
           <Popconfirm
-            title="Bạn có chắc muốn xóa feedback này?"
+            title="Are you sure you want to delete this feedback?"
             onConfirm={() => deleteFeedback?.(record._id)}
-            okText="Có"
-            cancelText="Không"
+            okText="Yes"
+            cancelText="No"
             placement="topRight"
           >
-            <Tooltip title="Xóa">
+            <Tooltip title="Delete">
               <Button
                 type="text"
                 icon={<DeleteOutlined />}
@@ -176,9 +177,9 @@ const FeedbackProductTable = ({
   return (
     <>
       {loading ? (
-        <div className="loading-container">
+        <div className="feedback-table-loading-container">
           <Spin size="large" />
-          <div className="loading-text">Loading data...</div>
+          <div className="feedback-table-loading-text">Loading data...</div>
         </div>
       ) : filteredFeedbacks.length === 0 ? (
         <Empty

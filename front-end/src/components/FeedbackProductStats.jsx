@@ -4,11 +4,11 @@ import { StarOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
 
 const FeedbackProductStats = ({ stats }) => {
   return (
-    <Row gutter={16} className="stats-row">
+    <Row gutter={16} className="feedback-stats-row">
       <Col xs={24} sm={12} lg={8}>
         <Card>
           <Statistic
-            title="Total Feedbacks"
+            title="Total Feedback"
             value={stats.total}
             prefix={<StarOutlined />}
             valueStyle={{ color: '#1890ff' }}
