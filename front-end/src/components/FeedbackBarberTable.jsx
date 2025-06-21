@@ -14,48 +14,47 @@ const FeedbackBarberTable = ({
   toggleApproval,
   handleDelete
 }) => {
-  console.log('FeedbackBarberTable received feedbacks:', feedbacks); // Log dữ liệu đầu vào
-
   const columns = [
     {
       title: 'Customer',
       dataIndex: 'reviewer',
       key: 'reviewer',
-      render: (reviewer, record) => {
-        console.log('Rendering customer for record:', record); // Log từng record
-        return (
-          <Space>
-            <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#1890ff' }}>
-              {(reviewer || record.customerId?.name || record.customerId?._id || 'U').charAt(0).toUpperCase()}
-            </Avatar>
-            <span style={{ fontWeight: 500 }}>
-              {reviewer || record.customerId?.name || record.customerId?._id || 'Unknown'}
-            </span>
-          </Space>
-        );
-      },
-      width: 150,
-    },
-    {
-      title: 'Booking ID',
-      dataIndex: 'bookingId',
-      key: 'bookingId',
-      render: (booking) => (
+      render: (reviewer, record) => (
         <Space>
-          <FileTextOutlined style={{ color: '#666' }} />
-          <span>{booking?._id || booking || 'N/A'}</span>
+          <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#1890ff' }}>
+            {(reviewer || record.customerId?.name || 'U').charAt(0).toUpperCase()}
+          </Avatar>
+          <span style={{ fontWeight: 500 }}>
+            {reviewer || record.customerId?.name || record.customerId?._id || 'Unknown'}
+          </span>
         </Space>
       ),
-      width: 140,
+      width: 150,
     },
     {
       title: 'Barber',
       dataIndex: 'barberId',
       key: 'barberId',
       render: (barber) => (
-        <span>{barber?.name || barber?._id || 'Unknown'}</span>
+        <Space>
+          <span style={{ fontWeight: 500 }}>
+            {barber?.name || 'Unknown Barber'}
+          </span>
+        </Space>
       ),
-      width: 150,
+      width: 160,
+    },
+    {
+      title: 'Booking',
+      dataIndex: 'bookingId',
+      key: 'bookingId',
+      render: (booking) => (
+        <Space>
+          <FileTextOutlined style={{ color: '#666' }} />
+          <span>{booking?.name || booking?.title || 'Unknown Booking'}</span>
+        </Space>
+      ),
+      width: 120,
     },
     {
       title: 'Rating',
@@ -64,7 +63,7 @@ const FeedbackBarberTable = ({
       render: (rating) => (
         <Space>
           <Rate disabled value={rating || 0} />
-          <span style={{ fontWeight: 'bold', marginLeft: 8 }}>{rating || 'N/A'}</span>
+          <span style={{ fontWeight: 'bold', marginLeft: 8 }}>{rating || 0}</span>
         </Space>
       ),
       width: 180,
@@ -77,14 +76,16 @@ const FeedbackBarberTable = ({
       render: (text) => (
         <Tooltip title={text || 'No comment'}>
           <div style={{
-            maxWidth: 300, overflow: 'hidden',
-            textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+            maxWidth: 250, 
+            overflow: 'hidden',
+            textOverflow: 'ellipsis', 
+            whiteSpace: 'nowrap'
           }}>
             {text || 'No comment'}
           </div>
         </Tooltip>
       ),
-      width: 300,
+      width: 250,
     },
     {
       title: 'Images',
@@ -95,18 +96,27 @@ const FeedbackBarberTable = ({
           {images?.length ? (
             <>
               <Image
-                width={60}
-                height={60}
+                width={50}
+                height={50}
                 src={images[0]}
-                style={{ borderRadius: 8, objectFit: 'cover' }}
+                style={{ borderRadius: 6, objectFit: 'cover' }}
                 preview={{ src: images[0] }}
               />
               {images.length > 1 && (
                 <div style={{
-                  position: 'absolute', top: -8, right: -8, backgroundColor: '#ff4d4f',
-                  color: 'white', borderRadius: '50%', width: 20, height: 20,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 12, fontWeight: 'bold'
+                  position: 'absolute', 
+                  top: -6, 
+                  right: -6, 
+                  backgroundColor: '#ff4d4f',
+                  color: 'white', 
+                  borderRadius: '50%', 
+                  width: 18, 
+                  height: 18,
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  fontSize: 11, 
+                  fontWeight: 'bold'
                 }}>
                   {images.length}
                 </div>
@@ -114,26 +124,36 @@ const FeedbackBarberTable = ({
             </>
           ) : (
             <div style={{
-              width: 60, height: 60, backgroundColor: '#f5f5f5', borderRadius: 8,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999'
+              width: 50, 
+              height: 50, 
+              backgroundColor: '#f5f5f5', 
+              borderRadius: 6,
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              color: '#999',
+              fontSize: 12
             }}>
               No Image
             </div>
           )}
         </div>
       ),
-      width: 100,
+      width: 80,
     },
     {
       title: 'Status',
       dataIndex: 'isApproved',
       key: 'isApproved',
       render: (isApproved) => (
-        <Tag color={isApproved ? 'success' : 'warning'} icon={isApproved ? <CheckOutlined /> : <CloseOutlined />}>
+        <Tag 
+          color={isApproved ? 'success' : 'warning'} 
+          icon={isApproved ? <CheckOutlined /> : <CloseOutlined />}
+        >
           {isApproved ? 'Approved' : 'Pending'}
         </Tag>
       ),
-      width: 120,
+      width: 110,
       filters: [
         { text: 'Approved', value: true },
         { text: 'Pending', value: false },
@@ -141,20 +161,24 @@ const FeedbackBarberTable = ({
       onFilter: (value, record) => record.isApproved === value,
     },
     {
-      title: 'Created At',
+      title: 'Date',
       dataIndex: 'createdAt',
       key: 'createdAt',
       render: (date) => date ? new Date(date).toLocaleDateString('en-GB') : 'N/A',
-      width: 140,
+      width: 100,
       sorter: (a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0),
     },
     {
       title: 'Actions',
       key: 'actions',
       render: (_, record) => (
-        <Space>
+        <Space size="small">
           <Tooltip title="View Details">
-            <Button type="text" icon={<EyeOutlined />} onClick={() => handleViewDetail(record)} />
+            <Button 
+              type="text" 
+              icon={<EyeOutlined />} 
+              onClick={() => handleViewDetail(record)} 
+            />
           </Tooltip>
           <Tooltip title={record.isApproved ? 'Unapprove' : 'Approve'}>
             <Button
@@ -165,11 +189,16 @@ const FeedbackBarberTable = ({
             />
           </Tooltip>
           <Tooltip title="Delete">
-            <Button type="text" icon={<DeleteOutlined />} danger onClick={() => handleDelete(record)} />
+            <Button 
+              type="text" 
+              icon={<DeleteOutlined />} 
+              danger 
+              onClick={() => handleDelete(record)} 
+            />
           </Tooltip>
         </Space>
       ),
-      width: 140,
+      width: 120,
       fixed: 'right'
     }
   ];
@@ -189,7 +218,8 @@ const FeedbackBarberTable = ({
         showTotal: (total) => `Total ${total} records`
       }}
       onChange={handleTableChange}
-      scroll={{ x: 1300 }}
+      scroll={{ x: 1200 }}
+      size="middle"
     />
   );
 };
