@@ -7,7 +7,7 @@ import Barbers from "../../components/landing/Barber";
 import BookingForm from "../../components/landing/Booking";
 import '../../css/landing/container.css'
 import ShopItems from "../../components/landing/products";
-
+import ChatWidget from "../../components/chatbot/ChatWidget";
 
 export default function Landing() {
   return (
@@ -24,7 +24,7 @@ export default function Landing() {
 
         <Barbers />
         <BookingForm />
-
+        <ChatWidget />
 
     </>
   );

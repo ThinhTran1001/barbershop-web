@@ -6,13 +6,44 @@ import { ChevronsDown } from 'lucide-react';
 import { sendChat } from '../../services/api';
 import './ChatWidget.css';
 
+const ProductCard = ({ product }) => (
+  <div className="card product-card">
+    <h3>{product.name}</h3>
+    <p>Thương hiệu: {product.brand}</p>
+    <p>Giá: ${product.price}</p>
+    <p>Đánh giá: {product.rating}/5</p>
+    <p>Danh mục: {product.categories.join(', ')}</p>
+  </div>
+);
+
+const ServiceCard = ({ service }) => (
+  <div className="card service-card">
+    <h3>{service.name}</h3>
+    <p>Giá: ${service.price}</p>
+    <p>Thời gian: {service.duration} phút</p>
+    {service.description && <p>Mô tả: {service.description}</p>}
+    {service.suggestedFor && <p>Phù hợp cho: {service.suggestedFor}</p>}
+  </div>
+);
+
+const BarberCard = ({ barber }) => (
+  <div className="card barber-card">
+    <h3>{barber.name}</h3>
+    <p>Kinh nghiệm: {barber.experienceYears} năm</p>
+    <p>Đánh giá: {barber.averageRating}/5</p>
+    <p>Số lần đặt: {barber.totalBookings}</p>
+    {barber.bio && <p>Tiểu sử: {barber.bio}</p>}
+    {barber.specialties && <p>Chuyên môn: {barber.specialties}</p>}
+  </div>
+);
+
 export default function ChatWidget() {
-  const [open, setOpen]         = useState(false);
-  const [msgs, setMsgs]         = useState([]);
-  const [input, setInput]       = useState('');
-  const [loading, setLoading]   = useState(false);
-  const contentRef              = useRef();
-  const inputRef                = useRef(null);
+  const [open, setOpen] = useState(false);
+  const [msgs, setMsgs] = useState([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const contentRef = useRef();
+  const inputRef = useRef(null);
   const [showScroll, setShowScroll] = useState(false);
 
   // Khi open = true, focus vào ô input
@@ -22,7 +53,7 @@ export default function ChatWidget() {
     }
   }, [open]);
 
-  // Sau mỗi lần msgs thay đổi (user hoặc bot), focus input
+  // Sau mỗi lần msgs thay đổi, focus input
   useEffect(() => {
     if (open && inputRef.current) {
       inputRef.current.focus();
@@ -49,10 +80,13 @@ export default function ChatWidget() {
     setInput('');
     setLoading(true);
     try {
-      const reply = await sendChat(input);
-      setMsgs(m => [...m, { sender: 'bot', text: reply }]);
-    } catch {
-      setMsgs(m => [...m, { sender: 'bot', text: '⚠️ Lỗi kết nối' }]);
+      console.log('Sending message:', input);
+      const { reply, data } = await sendChat(input);
+      console.log('Received response:', { reply, data });
+      setMsgs(m => [...m, { sender: 'bot', text: reply || 'Không có phản hồi', data }]);
+    } catch (err) {
+      console.error('Send error:', err);
+      setMsgs(m => [...m, { sender: 'bot', text: '⚠️ Lỗi kết nối, vui lòng thử lại', data: null }]);
     } finally {
       setLoading(false);
     }
@@ -98,7 +132,16 @@ export default function ChatWidget() {
             key={i}
             className={`chat-bubble ${m.sender === 'user' ? 'user-bubble' : 'bot-bubble'}`}
           >
-            {m.text}
+            {m.text && <div>{m.text}</div>}
+            {m.data?.products && m.data.products.map((p, idx) => (
+              <ProductCard key={idx} product={p} />
+            ))}
+            {m.data?.services && m.data.services.map((s, idx) => (
+              <ServiceCard key={idx} service={s} />
+            ))}
+            {m.data?.barbers && m.data.barbers.map((b, idx) => (
+              <BarberCard key={idx} barber={b} />
+            ))}
           </div>
         ))}
       </div>

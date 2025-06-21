@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal as AntModal, Form, Input, InputNumber, Select, message } from 'antd';
 import { DeleteFilled, EyeOutlined, InfoCircleFilled, SortAscendingOutlined, SortDescendingOutlined } from '@ant-design/icons';
 import { getProducts, createProduct, updateProduct, deleteProduct, getCategories, getBrands } from '../services/api';
-import ChatWidget from './chatbot/ChatWidget';
 
 const { Option } = Select;
 
@@ -436,7 +435,6 @@ const ProductManagement = () => {
           </div>
         )}
       </AntModal>
-      <ChatWidget/>
     </div>
   );
 };

@@ -45,8 +45,16 @@ export const forgotPassword = (data) => api.post('/auth/forgot-password', data);
 export const resetPassword = (data) => api.post('/auth/reset-password', data);
 
 export const sendChat = async (message) => {
-  const { data } = await api.post('/chatbot', { message });
-  return data.reply;
+  try {
+    const response = await api.post(`/chatbot`, { message }, {
+      headers: { 'Content-Type': 'application/json' },
+    });
+    console.log('API response data:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('API error details:', error.response ? error.response.data : error.message);
+    throw error;
+  }
 };
 
 export default api;
