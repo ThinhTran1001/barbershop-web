@@ -76,14 +76,18 @@ export default function ChatWidget() {
 
   const handleSend = async () => {
     if (!input.trim()) return;
-    setMsgs(m => [...m, { sender: 'user', text: input }]);
+    const userMsg = { sender: 'user', text: input };
+    setMsgs(m => [...m, userMsg]);
+    console.log('User message added:', userMsg);
     setInput('');
     setLoading(true);
     try {
-      console.log('Sending message:', input);
-      const { reply, data } = await sendChat(input);
-      console.log('Received response:', { reply, data });
-      setMsgs(m => [...m, { sender: 'bot', text: reply || 'Không có phản hồi', data }]);
+      console.log('Sending to API:', input);
+      const response = await sendChat(input);
+      console.log('API response:', response);
+      const { reply = 'Không có phản hồi', data = null } = response;
+      setMsgs(m => [...m, { sender: 'bot', text: reply, data }]);
+      console.log('Bot message added:', { text: reply, data });
     } catch (err) {
       console.error('Send error:', err);
       setMsgs(m => [...m, { sender: 'bot', text: '⚠️ Lỗi kết nối, vui lòng thử lại', data: null }]);
@@ -132,7 +136,7 @@ export default function ChatWidget() {
             key={i}
             className={`chat-bubble ${m.sender === 'user' ? 'user-bubble' : 'bot-bubble'}`}
           >
-            {m.text && <div>{m.text}</div>}
+            {m.text && <div className="message-text">{m.text}</div>}
             {m.data?.products && m.data.products.map((p, idx) => (
               <ProductCard key={idx} product={p} />
             ))}

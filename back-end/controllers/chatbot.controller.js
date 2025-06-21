@@ -12,10 +12,15 @@ const cache = new NodeCache({ stdTTL: 3600 });
 
 async function analyzeIntent(message) {
   const prompt = `
-Bạn là một trợ lý AI thông minh. Phân tích câu hỏi sau và trả về JSON chứa:
+Bạn là một trợ lý AI thông minh, chuyên cung cấp thông tin trang trọng, lịch sự và thân thiện cho khách hàng tại BerGer Barbershop. Phân tích câu hỏi sau và trả về JSON chứa:
 - intent: Ý định của người dùng (ví dụ: "get_product_list", "get_brand_list", "get_category_list", "get_service_list", "get_barber_list", "book_appointment", "general").
 - entities: Các thực thể trong câu hỏi (ví dụ: { "brand": "TestBrand", "category": "Duy", "priceMin": 0, "priceMax": 100, "minRating": 4, "maxRating": 5, "service": "cắt tóc", "servicePriceMin": 0, "servicePriceMax": 50, "suggestedFor": "da dầu", "barber": "John", "experienceYears": 5, "barberRatingMin": 4, "barberRatingMax": 5 }, có thể rỗng nếu không có).
 Câu hỏi: "${message}"
+
+Lưu ý quan trọng:
+- Không sử dụng dấu * để đánh dấu danh sách. Thay vào đó, sử dụng dấu ✦ (dấu sao) kèm xuống dòng (\n✦ ) để định dạng danh sách rõ ràng, chỉ đặt ✦ trước phần tử chính (ví dụ: tên sản phẩm, tên dịch vụ), các thuộc tính con (như giá, thương hiệu) không cần ✦ mà chỉ thụt đầu dòng.
+- Trả lời bằng giọng điệu trang trọng, lịch sự, thân thiện, dễ hiểu và trực quan.
+- Khi tạo danh sách, luôn xuống dòng sau mỗi mục và bắt đầu bằng ✦ cho phần tử chính.
 
 Ví dụ đầu ra:
 {
@@ -213,58 +218,69 @@ function generateNaturalResponse(fnName, data, userMessage) {
   switch (fnName) {
     case 'get_product_list': {
       const { products, total } = data.data;
-      let reply = 'Danh sách sản phẩm tại BerGer Barbershop:\n';
+      let reply = 'Kính chào bạn! Dưới đây là danh sách sản phẩm tại BerGer Barbershop:\n';
       products.forEach(p => {
-        reply += `- ${p.name} (Thương hiệu: ${p.brand}) - Giá: $${p.price}, Đánh giá: ${p.rating}/5\n`;
+        reply += '✦ ' + p.name + '\n';
+        reply += '  Thương hiệu: ' + p.brand + '\n';
+        reply += '  Giá: $' + p.price + '\n';
+        reply += '  Đánh giá: ' + p.rating + '/5\n';
         if (p.categories.length > 0) {
-          reply += `  Danh mục: ${p.categories.join(', ')}\n`;
+          reply += '  Danh mục: ' + p.categories.join(', ') + '\n';
         }
+        reply += '\n';
       });
       if (total > products.length) {
-        reply += `\nCòn ${total - products.length} sản phẩm khác. Nhắn "xem thêm" để tiếp tục!\n`;
+        reply += 'Hiện còn ' + (total - products.length) + ' sản phẩm khác. Vui lòng nhắn "xem thêm" để tiếp tục!\n';
       }
-      reply += 'Bạn có muốn đặt lịch trải nghiệm không?';
+      reply += 'Rất hân hạnh được hỗ trợ! Bạn có muốn đặt lịch trải nghiệm không?';
       return reply;
     }
     case 'get_brand_list': {
-      return `Các thương hiệu tại BerGer Barbershop: ${data.data.join(', ')}. Bạn muốn xem sản phẩm của thương hiệu nào?`;
+      return 'Kính chào bạn! Dưới đây là danh sách các thương hiệu tại BerGer Barbershop:\n✦ ' + data.data.join('\n✦ ') + '\nVui lòng cho biết bạn muốn xem sản phẩm của thương hiệu nào nhé!';
     }
     case 'get_category_list': {
-      return `Các danh mục tại BerGer Barbershop: ${data.data.join(', ')}. Bạn muốn xem sản phẩm trong danh mục nào?`;
+      return 'Kính chào bạn! Dưới đây là danh sách các danh mục tại BerGer Barbershop:\n✦ ' + data.data.join('\n✦ ') + '\nVui lòng cho biết bạn muốn xem sản phẩm trong danh mục nào nhé!';
     }
     case 'get_service_list': {
       const { services, total } = data.data;
-      let reply = 'Danh sách dịch vụ tại BerGer Barbershop:\n';
+      let reply = 'Kính chào bạn! Dưới đây là danh sách dịch vụ tại BerGer Barbershop:\n';
       services.forEach(s => {
-        reply += `- ${s.name} - Giá: $${s.price}, Thời gian: ${s.duration} phút\n`;
-        if (s.description) reply += `  Mô tả: ${s.description}\n`;
-        if (s.suggestedFor) reply += `  Phù hợp cho: ${s.suggestedFor}\n`;
+        reply += '✦ ' + s.name + '\n';
+        reply += '  Giá: $' + s.price + '\n';
+        reply += '  Thời gian: ' + s.duration + ' phút\n';
+        if (s.description) reply += '  Mô tả: ' + s.description + '\n';
+        if (s.suggestedFor) reply += '  Phù hợp cho: ' + s.suggestedFor + '\n';
+        reply += '\n';
       });
       if (total > services.length) {
-        reply += `\nCòn ${total - services.length} dịch vụ khác. Nhắn "xem thêm" để tiếp tục!\n`;
+        reply += 'Hiện còn ' + (total - services.length) + ' dịch vụ khác. Vui lòng nhắn "xem thêm" để tiếp tục!\n';
       }
-      reply += 'Bạn có muốn đặt lịch không?';
+      reply += 'Rất hân hạnh được hỗ trợ! Bạn có muốn đặt lịch không?';
       return reply;
     }
     case 'get_barber_list': {
       const { barbers, total } = data.data;
-      let reply = 'Danh sách thợ tại BerGer Barbershop:\n';
+      let reply = 'Kính chào bạn! Dưới đây là danh sách thợ tại BerGer Barbershop:\n';
       barbers.forEach(b => {
-        reply += `- ${b.name} - Kinh nghiệm: ${b.experienceYears} năm, Đánh giá: ${b.averageRating}/5, Số lần đặt: ${b.totalBookings}\n`;
-        if (b.bio) reply += `  Tiểu sử: ${b.bio}\n`;
-        if (b.specialties) reply += `  Chuyên môn: ${b.specialties}\n`;
+        reply += '✦ ' + b.name + '\n';
+        reply += '  Kinh nghiệm: ' + b.experienceYears + ' năm\n';
+        reply += '  Đánh giá: ' + b.averageRating + '/5\n';
+        reply += '  Số lần đặt: ' + b.totalBookings + '\n';
+        if (b.bio) reply += '  Tiểu sử: ' + b.bio + '\n';
+        if (b.specialties) reply += '  Chuyên môn: ' + b.specialties + '\n';
+        reply += '\n';
       });
       if (total > barbers.length) {
-        reply += `\nCòn ${total - barbers.length} thợ khác. Nhắn "xem thêm" để tiếp tục!\n`;
+        reply += 'Hiện còn ' + (total - barbers.length) + ' thợ khác. Vui lòng nhắn "xem thêm" để tiếp tục!\n';
       }
-      reply += 'Bạn có muốn đặt lịch với thợ nào không?';
+      reply += 'Rất hân hạnh được hỗ trợ! Bạn có muốn đặt lịch với thợ nào không?';
       return reply;
     }
     case 'book_appointment': {
-      return `Đặt lịch thành công tại BerGer Barbershop cho dịch vụ "${data.data.service}" vào ${data.data.date} lúc ${data.data.time}. Chúng tôi sẽ liên hệ xác nhận!`;
+      return 'Kính chào bạn! Đặt lịch thành công cho dịch vụ "' + data.data.service + '" vào ngày ' + data.data.date + ' lúc ' + data.data.time + '. Chúng tôi sẽ liên hệ để xác nhận. Rất hân hạnh được phục vụ!';
     }
     default:
-      return 'Rất tiếc, tôi không hiểu yêu cầu của bạn. Vui lòng thử lại!';
+      return 'Kính chào bạn! Rất tiếc, tôi chưa hiểu rõ yêu cầu của bạn. Vui lòng thử lại hoặc cung cấp thêm thông tin nhé!';
   }
 }
 
@@ -291,10 +307,12 @@ Email: bergerbarbershop@gmail.com
 
     if (intent === 'general') {
       console.log('Processing general intent');
-      const prompt = `${knowledge}\nUser: ${userMessage}\nAssistant:`;
+      const prompt = `${knowledge}\nUser: ${userMessage}\nAssistant: Kính chào bạn! `;
       let reply = await gemini.generate({ prompt });
       if (typeof reply !== 'string') reply = String(reply);
-      console.log('General reply:', reply);
+      // Loại bỏ * và định dạng lại nếu có
+      reply = reply.replace(/\*/g, '✦').replace(/✦\s+/g, '\n✦ ');
+      console.log('General reply after formatting:', reply);
       return res.json({ reply: reply.trim(), data: null });
     }
 

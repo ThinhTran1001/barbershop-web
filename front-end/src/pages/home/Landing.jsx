@@ -21,7 +21,6 @@ export default function Landing() {
         <ShopItems />
         <BusinessHours />
 
-
         <Barbers />
         <BookingForm />
         <ChatWidget />
