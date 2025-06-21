@@ -1,25 +1,26 @@
 const FeedbackBarber = require('../models/feedbackBarber.model');
+const mongoose = require('mongoose');
 
-// GET all feedbacks (admin)
 exports.getAllFeedbacks = async (req, res) => {
   try {
     const { page = 1, limit = 10, search, status, startDate, endDate } = req.query;
-    console.log('Request query:', req.query); // Log query params
 
     const query = {};
+    
     if (status === 'approved') query.isApproved = true;
     if (status === 'pending') query.isApproved = false;
+    
     if (startDate && endDate) {
       query.createdAt = {
         $gte: new Date(startDate),
         $lte: new Date(endDate),
       };
     }
+    
     if (search) {
       query.comment = { $regex: search, $options: 'i' };
     }
 
-    console.log('Query:', query); // Log constructed query
     const feedbacks = await FeedbackBarber.find(query)
       .populate('barberId', 'name email')
       .populate('customerId', 'name email')
@@ -29,7 +30,8 @@ exports.getAllFeedbacks = async (req, res) => {
       .limit(Number(limit));
 
     const total = await FeedbackBarber.countDocuments(query);
-    console.log('Feedbacks found:', feedbacks.length, 'Total:', total); // Log results
+
+    console.log('Fetched feedbacks:', feedbacks);
 
     const transformedFeedbacks = feedbacks.map(fb => ({
       ...fb.toObject(),
@@ -37,21 +39,33 @@ exports.getAllFeedbacks = async (req, res) => {
       product: fb.bookingId?._id || 'Service',
     }));
 
-    res.json({ data: transformedFeedbacks, total });
+    res.json({ 
+      data: transformedFeedbacks, 
+      total,
+      page: Number(page),
+      limit: Number(limit)
+    });
   } catch (error) {
-    console.error('Error in getAllFeedbacks:', error.stack); // Log full error stack
-    res.status(500).json({ message: error.message || 'Internal Server Error' });
+    console.error('Error in getAllFeedbacks:', error);
+    res.status(500).json({ message: 'Không thể lấy danh sách phản hồi' });
   }
 };
-// GET feedback by ID
+
 exports.getBarberFeedbackById = async (req, res) => {
   try {
-    const feedback = await FeedbackBarber.findById(req.params.id)
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'ID phản hồi không hợp lệ' });
+    }
+
+    const feedback = await FeedbackBarber.findById(id)
       .populate('barberId', 'name email')
-      .populate('customerId', 'name email')
+      .populate('customerId', 'name email')  
       .populate('bookingId');
+
     if (!feedback) {
-      return res.status(404).json({ message: 'Feedback not found' });
+      return res.status(404).json({ message: 'Không tìm thấy phản hồi' });
     }
 
     const transformedFeedback = {
@@ -63,20 +77,26 @@ exports.getBarberFeedbackById = async (req, res) => {
     res.json({ data: transformedFeedback });
   } catch (error) {
     console.error('Error in getBarberFeedbackById:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Không thể lấy chi tiết phản hồi' });
   }
 };
 
-// POST create new feedback
 exports.createBarberFeedback = async (req, res) => {
   try {
     const { bookingId, barberId, customerId, rating, comment, images } = req.body;
 
     if (!bookingId || !barberId || !customerId || !rating || !comment) {
-      return res.status(400).json({ message: 'Missing required fields' });
+      return res.status(400).json({ message: 'Thiếu các trường bắt buộc' });
     }
+
+    if (!mongoose.Types.ObjectId.isValid(bookingId) ||
+        !mongoose.Types.ObjectId.isValid(barberId) ||
+        !mongoose.Types.ObjectId.isValid(customerId)) {
+      return res.status(400).json({ message: 'Định dạng ID không hợp lệ' });
+    }
+
     if (rating < 1 || rating > 5) {
-      return res.status(400).json({ message: 'Rating must be between 1 and 5' });
+      return res.status(400).json({ message: 'Điểm đánh giá phải từ 1 đến 5' });
     }
 
     const feedback = new FeedbackBarber({
@@ -86,7 +106,7 @@ exports.createBarberFeedback = async (req, res) => {
       rating,
       comment,
       images: images || [],
-      // Không cần set isApproved vì mặc định là true
+      isApproved: true
     });
 
     await feedback.save();
@@ -102,66 +122,91 @@ exports.createBarberFeedback = async (req, res) => {
       product: populatedFeedback.bookingId?._id || 'Service',
     };
 
-    res.status(201).json({ message: 'Feedback created', data: transformedFeedback });
+    res.status(201).json({ 
+      message: 'Phản hồi đã được tạo thành công', 
+      data: transformedFeedback 
+    });
   } catch (error) {
     console.error('Error in createBarberFeedback:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Không thể tạo phản hồi' });
   }
 };
 
-// PATCH approve/disapprove feedback
 exports.updateApprovalStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    let { isApproved } = req.body;
+    const { isApproved } = req.body;
 
-    // Convert string to boolean
-    if (typeof isApproved === 'string') {
-      isApproved = isApproved === 'true';
+    console.log('UpdateApprovalStatus called with:', { id, isApproved });
+
+    if (!id) {
+      return res.status(400).json({ message: 'ID phản hồi là bắt buộc' });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Định dạng ID phản hồi không hợp lệ' });
     }
 
     if (typeof isApproved !== 'boolean') {
-      return res.status(400).json({ message: 'isApproved must be a boolean' });
+      return res.status(400).json({ message: 'isApproved phải là boolean' });
     }
 
-    const feedback = await FeedbackBarber.findById(id);
-    if (!feedback) {
-      return res.status(404).json({ message: 'Feedback not found' });
+    const existingFeedback = await FeedbackBarber.findById(id);
+    if (!existingFeedback) {
+      console.log('Feedback not found for ID:', id);
+      return res.status(404).json({ message: 'Không tìm thấy phản hồi' });
     }
 
-    feedback.isApproved = isApproved;
-    await feedback.save();
+    console.log('Existing feedback:', existingFeedback);
 
-    const populatedFeedback = await FeedbackBarber.findById(id)
+    const feedback = await FeedbackBarber.findByIdAndUpdate(
+      id,
+      { isApproved },
+      { new: true, runValidators: true }
+    )
       .populate('barberId', 'name email')
       .populate('customerId', 'name email')
       .populate('bookingId');
 
+    if (!feedback) {
+      console.log('Feedback not found after update for ID:', id);
+      return res.status(404).json({ message: 'Không tìm thấy phản hồi sau khi cập nhật' });
+    }
+
+    console.log('Updated feedback:', feedback);
+
     const transformedFeedback = {
-      ...populatedFeedback.toObject(),
-      reviewer: populatedFeedback.customerId?.name || populatedFeedback.customerId?.email || 'Unknown',
-      product: populatedFeedback.bookingId?._id || 'Service',
+      ...feedback.toObject(),
+      reviewer: feedback.customerId?.name || feedback.customerId?.email || 'Unknown',
+      product: feedback.bookingId?._id || 'Service',
     };
 
-    res.json({ message: 'Approval status updated', data: transformedFeedback });
+    res.json({ 
+      message: `Phản hồi đã được ${isApproved ? 'duyệt' : 'bỏ duyệt'} thành công`, 
+      data: transformedFeedback 
+    });
   } catch (error) {
     console.error('Error in updateApprovalStatus:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ 
+      message: 'Không thể cập nhật trạng thái duyệt',
+      error: error.message 
+    });
   }
 };
 
-// GET approved feedbacks only
 exports.getApprovedFeedbacks = async (req, res) => {
   try {
     const { page = 1, limit = 10, search, startDate, endDate } = req.query;
 
     const query = { isApproved: true };
+    
     if (startDate && endDate) {
       query.createdAt = {
         $gte: new Date(startDate),
         $lte: new Date(endDate),
       };
     }
+    
     if (search) {
       query.comment = { $regex: search, $options: 'i' };
     }
@@ -182,23 +227,53 @@ exports.getApprovedFeedbacks = async (req, res) => {
       product: fb.bookingId?._id || 'Service',
     }));
 
-    res.json({ data: transformedFeedbacks, total });
+    res.json({ 
+      data: transformedFeedbacks, 
+      total,
+      page: Number(page),
+      limit: Number(limit)
+    });
   } catch (error) {
     console.error('Error in getApprovedFeedbacks:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Không thể lấy danh sách phản hồi đã duyệt' });
   }
 };
 
-// DELETE feedback
 exports.deleteBarberFeedback = async (req, res) => {
   try {
-    const feedback = await FeedbackBarber.findByIdAndDelete(req.params.id);
-    if (!feedback) {
-      return res.status(404).json({ message: 'Feedback not found' });
+    const { id } = req.params;
+
+    console.log('DeleteBarberFeedback called with ID:', id);
+
+    if (!id) {
+      return res.status(400).json({ message: 'ID phản hồi là bắt buộc' });
     }
-    res.json({ message: 'Feedback deleted' });
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Định dạng ID phản hồi không hợp lệ' });
+    }
+
+    const existingFeedback = await FeedbackBarber.findById(id);
+    if (!existingFeedback) {
+      console.log('Feedback not found for ID:', id);
+      return res.status(404).json({ message: 'Không tìm thấy phản hồi' });
+    }
+
+    console.log('Found feedback to delete:', existingFeedback);
+
+    await FeedbackBarber.findByIdAndDelete(id);
+
+    console.log('Successfully deleted feedback with ID:', id);
+
+    res.json({ 
+      message: 'Phản hồi đã được xóa thành công',
+      deletedId: id
+    });
   } catch (error) {
     console.error('Error in deleteBarberFeedback:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ 
+      message: 'Không thể xóa phản hồi',
+      error: error.message 
+    });
   }
 };

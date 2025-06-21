@@ -5,8 +5,11 @@ const feedbackBarberController = require('../controllers/feedbackBarber.controll
 router.get('/', feedbackBarberController.getAllFeedbacks);
 router.get('/approved', feedbackBarberController.getApprovedFeedbacks);
 router.get('/:id', feedbackBarberController.getBarberFeedbackById);
+
 router.post('/', feedbackBarberController.createBarberFeedback);
+
 router.patch('/:id/approve', feedbackBarberController.updateApprovalStatus);
+
 router.delete('/:id', feedbackBarberController.deleteBarberFeedback);
 
 module.exports = router;

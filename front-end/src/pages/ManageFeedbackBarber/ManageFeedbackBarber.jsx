@@ -20,7 +20,6 @@ const ManageFeedbackBarber = () => {
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
   const [selectedFeedback, setSelectedFeedback] = useState(null);
 
-  // Statistics based on current data
   const stats = {
     total: feedbacks.length,
     approved: feedbacks.filter(fb => fb.isApproved).length,
@@ -30,48 +29,29 @@ const ManageFeedbackBarber = () => {
   const fetchFeedbacks = async (params = {}) => {
     setLoading(true);
     try {
+      const page = params.page || 1;
+      const limit = params.limit || pagination.pageSize;
+
       const queryParams = {
-        page: pagination.current,
-        limit: pagination.pageSize,
-        status: statusFilter !== 'All' ? (statusFilter === 'Approved') : undefined,
-        startDate: dateRange?.[0]?.format('YYYY-MM-DD'),
-        endDate: dateRange?.[1]?.format('YYYY-MM-DD'),
-        ...params
+        page,
+        limit,
+        ...(statusFilter !== 'All' && { status: statusFilter.toLowerCase() }),
+        ...(dateRange && {
+          startDate: dateRange[0]?.format('YYYY-MM-DD'),
+          endDate: dateRange[1]?.format('YYYY-MM-DD')
+        })
       };
 
-      Object.keys(queryParams).forEach(key => queryParams[key] === undefined && delete queryParams[key]);
-
       const response = await getBarberFeedbacks(queryParams);
-      let feedbackData = [];
-      let totalCount = 0;
+      const rawData = response.data;
+      const data = Array.isArray(rawData?.data) ? rawData.data : Array.isArray(rawData) ? rawData : [];
+      const total = rawData?.total || data.length;
 
-      if (response.data) {
-        if (Array.isArray(response.data)) {
-          feedbackData = response.data;
-          totalCount = response.data.length;
-        } else if (response.data.data && Array.isArray(response.data.data)) {
-          feedbackData = response.data.data;
-          totalCount = response.data.total || response.data.data.length;
-        } else if (response.data.feedbacks && Array.isArray(response.data.feedbacks)) {
-          feedbackData = response.data.feedbacks;
-          totalCount = response.data.total || response.data.feedbacks.length;
-        }
-      } else if (Array.isArray(response)) {
-        feedbackData = response;
-        totalCount = response.length;
-      }
-
-      setFeedbacks(feedbackData);
-      setPagination(prev => ({ ...prev, total: totalCount }));
+      setFeedbacks(data);
+      setPagination(prev => ({ ...prev, current: page, pageSize: limit, total }));
     } catch (error) {
       console.error('Error fetching feedbacks:', error);
-      if (error.response) {
-        message.error(`Server error: ${error.response.data?.message || 'Internal Server Error'}`);
-      } else if (error.request) {
-        message.error('Cannot connect to the server');
-      } else {
-        message.error('An error occurred while loading data');
-      }
+      message.error(error.response?.data?.message || 'Không thể tải phản hồi');
       setFeedbacks([]);
       setPagination(prev => ({ ...prev, total: 0 }));
     } finally {
@@ -84,81 +64,84 @@ const ManageFeedbackBarber = () => {
   }, []);
 
   useEffect(() => {
-    setPagination(prev => ({ ...prev, current: 1 }));
-    fetchFeedbacks({ page: 1 });
+    fetchFeedbacks({ page: 1, limit: pagination.pageSize });
   }, [statusFilter, dateRange]);
 
   const handleRefresh = () => {
     fetchFeedbacks({ page: pagination.current, limit: pagination.pageSize });
-    message.success('Data refreshed');
+    message.success('Dữ liệu đã được làm mới');
   };
 
-  const toggleApproval = (record) => {
-    Modal.confirm({
-      title: `${record.isApproved ? 'Unapprove' : 'Approve'} this feedback?`,
-      content: `Are you sure you want to ${record.isApproved ? 'unapprove' : 'approve'} this customer feedback?`,
-      okText: 'Confirm',
-      cancelText: 'Cancel',
-      onOk: async () => {
-        try {
-          await updateBarberFeedbackApproval(record._id, !record.isApproved);
-          message.success(`${record.isApproved ? 'Unapproved' : 'Approved'} feedback successfully`);
-          fetchFeedbacks({ page: pagination.current, limit: pagination.pageSize });
-        // eslint-disable-next-line no-unused-vars
-        } catch (error) {
-          message.error('Error updating status');
-        }
+  const toggleApproval = async (record) => {
+    if (!record) return message.error('Dữ liệu phản hồi không hợp lệ');
+
+    const feedbackId = record._id || record.id;
+    if (!feedbackId) return message.error('ID phản hồi không hợp lệ');
+
+    const newStatus = !record.isApproved;
+    const action = newStatus ? 'duyệt' : 'bỏ duyệt';
+
+    try {
+      const response = await updateBarberFeedbackApproval(feedbackId, newStatus);
+      if (response.status >= 200 && response.status < 300) {
+        message.success(`Phản hồi đã được ${action} thành công`);
+        await fetchFeedbacks({ page: pagination.current, limit: pagination.pageSize });
+      } else {
+        throw new Error(`Unexpected status code: ${response.status}`);
       }
-    });
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || `Không thể ${action} phản hồi: ${error.message}`;
+      message.error(errorMessage);
+    }
   };
 
-  const handleDelete = (record) => {
-    Modal.confirm({
-      title: 'Delete feedback',
-      content: 'Are you sure you want to delete this feedback?',
-      okText: 'Delete',
-      okType: 'danger',
-      cancelText: 'Cancel',
-      onOk: async () => {
-        try {
-          await deleteBarberFeedback(record._id);
-          message.success('Feedback deleted successfully');
-          fetchFeedbacks({ page: pagination.current, limit: pagination.pageSize });
-        // eslint-disable-next-line no-unused-vars
-        } catch (error) {
-          message.error('Error deleting feedback');
-        }
+  const handleDelete = async (record) => {
+    if (!record) return message.error('Dữ liệu phản hồi không hợp lệ');
+
+    const feedbackId = record._id || record.id;
+    if (!feedbackId) return message.error('ID phản hồi không hợp lệ');
+
+    try {
+      const response = await deleteBarberFeedback(feedbackId);
+      if (response.status >= 200 && response.status < 300) {
+        message.success('Phản hồi đã được xóa thành công');
+        await fetchFeedbacks({ page: pagination.current, limit: pagination.pageSize });
+      } else {
+        throw new Error(`Unexpected status code: ${response.status}`);
       }
-    });
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || `Không thể xóa phản hồi: ${error.message}`;
+      message.error(errorMessage);
+    }
   };
 
   const handleViewDetail = async (record) => {
+    if (!record) return message.error('Dữ liệu phản hồi không hợp lệ');
+
+    const feedbackId = record._id || record.id;
+    if (!feedbackId) return message.error('ID phản hồi không hợp lệ');
+
     try {
-      const response = await getBarberFeedbackById(record._id);
-      let detail = response.data;
-      if (response.data.data) {
-        detail = response.data.data;
-      }
+      const response = await getBarberFeedbackById(feedbackId);
+      const detail = response.data?.data || response.data;
       setSelectedFeedback(detail);
-    // eslint-disable-next-line no-unused-vars
     } catch (error) {
-      message.error('Unable to load feedback details');
+      const errorMessage = error.response?.data?.message || 'Không thể tải chi tiết phản hồi';
+      message.error(errorMessage);
     }
   };
 
   const handleTableChange = (paginationConfig) => {
-    setPagination(prev => ({
-      ...prev,
-      current: paginationConfig.current,
-      pageSize: paginationConfig.pageSize
-    }));
-    fetchFeedbacks({ page: paginationConfig.current, limit: paginationConfig.pageSize });
+    const { current, pageSize } = paginationConfig;
+    setPagination(prev => ({ ...prev, current, pageSize }));
+    fetchFeedbacks({ page: current, limit: pageSize });
   };
 
   return (
     <div className="manage-feedback-container">
       <div className="manage-feedback-inner">
         <FeedbackBarberStats stats={stats} />
+
         <FeedbackBarberFilters
           statusFilter={statusFilter}
           setStatusFilter={setStatusFilter}
@@ -166,6 +149,7 @@ const ManageFeedbackBarber = () => {
           setDateRange={setDateRange}
           handleRefresh={handleRefresh}
         />
+
         <Card>
           <FeedbackBarberTable
             feedbacks={feedbacks}
@@ -177,8 +161,9 @@ const ManageFeedbackBarber = () => {
             handleDelete={handleDelete}
           />
         </Card>
+
         <FeedbackBarberModal
-          visible={!!selectedFeedback}
+          open={!!selectedFeedback}
           onCancel={() => setSelectedFeedback(null)}
           feedback={selectedFeedback}
         />

@@ -14,25 +14,32 @@ const FeedbackBarberTable = ({
   toggleApproval,
   handleDelete
 }) => {
+  console.log('FeedbackBarberTable received feedbacks:', feedbacks); // Log dữ liệu đầu vào
+
   const columns = [
     {
       title: 'Customer',
-      dataIndex: 'customerId',
-      render: (customer) => (
-        <Space>
-          <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#1890ff' }}>
-            {(customer?._id || customer || 'U').toString().charAt(0).toUpperCase()}
-          </Avatar>
-          <span style={{ fontWeight: 500 }}>
-            {customer?._id || customer || 'Unknown'}
-          </span>
-        </Space>
-      ),
+      dataIndex: 'reviewer',
+      key: 'reviewer',
+      render: (reviewer, record) => {
+        console.log('Rendering customer for record:', record); // Log từng record
+        return (
+          <Space>
+            <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#1890ff' }}>
+              {(reviewer || record.customerId?.name || record.customerId?._id || 'U').charAt(0).toUpperCase()}
+            </Avatar>
+            <span style={{ fontWeight: 500 }}>
+              {reviewer || record.customerId?.name || record.customerId?._id || 'Unknown'}
+            </span>
+          </Space>
+        );
+      },
       width: 150,
     },
     {
       title: 'Booking ID',
       dataIndex: 'bookingId',
+      key: 'bookingId',
       render: (booking) => (
         <Space>
           <FileTextOutlined style={{ color: '#666' }} />
@@ -44,33 +51,36 @@ const FeedbackBarberTable = ({
     {
       title: 'Barber',
       dataIndex: 'barberId',
+      key: 'barberId',
       render: (barber) => (
-        <span>{barber?.name || barber?._id || barber || 'Unknown'}</span>
+        <span>{barber?.name || barber?._id || 'Unknown'}</span>
       ),
       width: 150,
     },
     {
       title: 'Rating',
       dataIndex: 'rating',
+      key: 'rating',
       render: (rating) => (
         <Space>
-          <Rate disabled defaultValue={rating} />
-          <span style={{ fontWeight: 'bold', marginLeft: 8 }}>{rating}</span>
+          <Rate disabled value={rating || 0} />
+          <span style={{ fontWeight: 'bold', marginLeft: 8 }}>{rating || 'N/A'}</span>
         </Space>
       ),
       width: 180,
-      sorter: (a, b) => a.rating - b.rating
+      sorter: (a, b) => (a.rating || 0) - (b.rating || 0),
     },
     {
       title: 'Comment',
       dataIndex: 'comment',
+      key: 'comment',
       render: (text) => (
-        <Tooltip title={text}>
+        <Tooltip title={text || 'No comment'}>
           <div style={{
             maxWidth: 300, overflow: 'hidden',
             textOverflow: 'ellipsis', whiteSpace: 'nowrap'
           }}>
-            {text}
+            {text || 'No comment'}
           </div>
         </Tooltip>
       ),
@@ -79,6 +89,7 @@ const FeedbackBarberTable = ({
     {
       title: 'Images',
       dataIndex: 'images',
+      key: 'images',
       render: (images) => (
         <div style={{ position: 'relative', display: 'inline-block' }}>
           {images?.length ? (
@@ -116,6 +127,7 @@ const FeedbackBarberTable = ({
     {
       title: 'Status',
       dataIndex: 'isApproved',
+      key: 'isApproved',
       render: (isApproved) => (
         <Tag color={isApproved ? 'success' : 'warning'} icon={isApproved ? <CheckOutlined /> : <CloseOutlined />}>
           {isApproved ? 'Approved' : 'Pending'}
@@ -131,12 +143,14 @@ const FeedbackBarberTable = ({
     {
       title: 'Created At',
       dataIndex: 'createdAt',
-      render: (date) => new Date(date).toLocaleDateString('en-GB'),
+      key: 'createdAt',
+      render: (date) => date ? new Date(date).toLocaleDateString('en-GB') : 'N/A',
       width: 140,
-      sorter: (a, b) => new Date(a.createdAt) - new Date(b.createdAt),
+      sorter: (a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0),
     },
     {
       title: 'Actions',
+      key: 'actions',
       render: (_, record) => (
         <Space>
           <Tooltip title="View Details">
@@ -164,7 +178,7 @@ const FeedbackBarberTable = ({
     <Table
       rowKey="_id"
       columns={columns}
-      dataSource={feedbacks}
+      dataSource={feedbacks || []}
       loading={loading}
       pagination={{
         current: pagination.current,
@@ -175,6 +189,7 @@ const FeedbackBarberTable = ({
         showTotal: (total) => `Total ${total} records`
       }}
       onChange={handleTableChange}
+      scroll={{ x: 1300 }}
     />
   );
 };
