@@ -10,6 +10,7 @@ const serviceRoutes = require('./routes/service.route');
 const userRoutes = require('./routes/user.route');
 const barberRoutes = require('./routes/barber.route');
 const chatbotAI = require('./routes/chatbot.route');
+const updaloadRoutes = require('./routes/upload.route');
 
 const cors = require('cors');
 const cookieParser = require("cookie-parser");
@@ -37,6 +38,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/barbers',barberRoutes)
 app.use('/api/users', userRoutes);
 app.use('/api/chatbot', chatbotAI);
+app.use('/api/upload', updaloadRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

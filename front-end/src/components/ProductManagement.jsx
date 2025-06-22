@@ -1,7 +1,35 @@
+// src/components/ProductManagement.jsx
+
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal as AntModal, Form, Input, InputNumber, Select, message } from 'antd';
-import { DeleteFilled, EyeOutlined, InfoCircleFilled, SortAscendingOutlined, SortDescendingOutlined } from '@ant-design/icons';
-import { getProducts, createProduct, updateProduct, deleteProduct, getCategories, getBrands } from '../services/api';
+import {
+  Table,
+  Button,
+  Modal as AntModal,
+  Form,
+  Input,
+  InputNumber,
+  Select,
+  message,
+  Upload,
+  Spin
+} from 'antd';
+import {
+  DeleteFilled,
+  EyeOutlined,
+  InfoCircleFilled,
+  SortAscendingOutlined,
+  SortDescendingOutlined,
+  UploadOutlined
+} from '@ant-design/icons';
+import {
+  getProducts,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+  getCategories,
+  getBrands,
+  uploadImage
+} from '../services/api';
 
 const { Option } = Select;
 
@@ -25,6 +53,7 @@ const ProductManagement = () => {
   const [isActiveFilter, setIsActiveFilter] = useState(undefined);
   const [sortName, setSortName] = useState(null);
   const [sortStock, setSortStock] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     fetchInitialData();
@@ -37,10 +66,16 @@ const ProductManagement = () => {
       const response = await getProducts();
       let fetchedProducts = response.data;
       if (sortName) {
-        fetchedProducts.sort((a, b) => sortName === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name));
+        fetchedProducts.sort((a, b) =>
+          sortName === 'asc'
+            ? a.name.localeCompare(b.name)
+            : b.name.localeCompare(a.name)
+        );
       }
       if (sortStock) {
-        fetchedProducts.sort((a, b) => sortStock === 'asc' ? a.stock - b.stock : b.stock - a.stock);
+        fetchedProducts.sort((a, b) =>
+          sortStock === 'asc' ? a.stock - b.stock : b.stock - a.stock
+        );
       }
       setAllProducts(fetchedProducts);
       applyFilters(fetchedProducts);
@@ -52,7 +87,6 @@ const ProductManagement = () => {
   const fetchCategories = async () => {
     try {
       const response = await getCategories();
-      console.log('Fetched categories:', response.data);
       setCategories(response.data);
     } catch (error) {
       message.error('Failed to fetch categories: ' + error.message);
@@ -62,7 +96,6 @@ const ProductManagement = () => {
   const fetchBrands = async () => {
     try {
       const response = await getBrands();
-      console.log('Fetched brands:', response.data);
       setBrands(response.data);
     } catch (error) {
       message.error('Failed to fetch brands: ' + error.message);
@@ -75,13 +108,19 @@ const ProductManagement = () => {
       filtered = filtered.filter(product => product.isActive === isActiveFilter);
     }
     if (searchTerm) {
-      filtered = filtered.filter(product => product.name.toLowerCase().includes(searchTerm.toLowerCase()));
+      filtered = filtered.filter(product =>
+        product.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
     }
     if (selectedBrand) {
-      filtered = filtered.filter(product => product.details?.brandId === selectedBrand);
+      filtered = filtered.filter(product =>
+        product.details?.brandId === selectedBrand
+      );
     }
     if (selectedCategory) {
-      filtered = filtered.filter(product => product.categoryId?.includes(selectedCategory));
+      filtered = filtered.filter(product =>
+        product.categoryId?.includes(selectedCategory)
+      );
     }
     if (minPrice !== null || maxPrice !== null) {
       filtered = filtered.filter(product => {
@@ -108,14 +147,15 @@ const ProductManagement = () => {
           volume: values.details?.volume || '',
           ingredients: values.details?.ingredients || '',
           usage: values.details?.usage || '',
-          benefits: values.details?.benefits ? values.details.benefits.split(',').map(item => item.trim()) : []
+          benefits: values.details?.benefits
+            ? values.details.benefits.split(',').map(item => item.trim())
+            : []
         }
       };
       if (editingProduct) {
         await updateProduct(editingProduct._id, payload);
         message.success('Product updated successfully');
       } else {
-        console.log('Creating product with data:', payload);
         await createProduct(payload);
         message.success('Product created successfully');
       }
@@ -130,16 +170,13 @@ const ProductManagement = () => {
 
   const handleDeleteProduct = async (id) => {
     const confirmed = window.confirm('Are you sure you want to deactivate this product?');
-    if (confirmed) {
-      try {
-        await deleteProduct(id);
-        message.success('Product deactivated successfully');
-        fetchInitialData();
-      } catch (error) {
-        message.error('Failed to deactivate product: ' + error.message);
-      }
-    } else {
-      console.log('Delete action canceled');
+    if (!confirmed) return;
+    try {
+      await deleteProduct(id);
+      message.success('Product deactivated successfully');
+      fetchInitialData();
+    } catch (error) {
+      message.error('Failed to deactivate product: ' + error.message);
     }
   };
 
@@ -171,6 +208,23 @@ const ProductManagement = () => {
     setIsViewModalVisible(true);
   };
 
+  // Upload handler for Ant Upload
+  const handleImageUpload = async ({ file, onSuccess, onError }) => {
+    setUploadingImage(true);
+    try {
+      const res = await uploadImage(file);
+      form.setFieldsValue({ image: res.data.url });
+      onSuccess(null, file);
+      message.success('Upload ảnh thành công');
+    } catch (err) {
+      console.error(err);
+      onError(err);
+      message.error('Upload ảnh thất bại');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const columns = [
     {
       title: 'ID',
@@ -181,7 +235,15 @@ const ProductManagement = () => {
       title: () => (
         <span>
           Name{' '}
-          {sortName ? (sortName === 'asc' ? <SortAscendingOutlined onClick={() => setSortName('desc')} /> : <SortDescendingOutlined onClick={() => setSortName('asc')} />) : <SortAscendingOutlined onClick={() => setSortName('asc')} />}
+          {sortName ? (
+            sortName === 'asc' ? (
+              <SortAscendingOutlined onClick={() => setSortName('desc')} />
+            ) : (
+              <SortDescendingOutlined onClick={() => setSortName('asc')} />
+            )
+          ) : (
+            <SortAscendingOutlined onClick={() => setSortName('asc')} />
+          )}
         </span>
       ),
       dataIndex: 'name',
@@ -191,12 +253,12 @@ const ProductManagement = () => {
       title: 'Price',
       dataIndex: 'price',
       key: 'price',
-      render: (price) => `$${price.toFixed(2)}`,
+      render: price => `$${price.toFixed(2)}`,
     },
     {
       title: 'Brand',
       key: 'brand',
-      render: (record) => {
+      render: record => {
         const brand = brands.find(b => b._id === record.details?.brandId);
         return brand ? brand.name : 'N/A';
       },
@@ -204,7 +266,7 @@ const ProductManagement = () => {
     {
       title: 'Category',
       key: 'category',
-      render: (record) => {
+      render: record => {
         const categoryNames = record.categoryId
           .map(catId => categories.find(c => c._id === catId)?.name)
           .filter(name => name)
@@ -216,7 +278,15 @@ const ProductManagement = () => {
       title: () => (
         <span>
           Stock{' '}
-          {sortStock ? (sortStock === 'asc' ? <SortAscendingOutlined onClick={() => setSortStock('desc')} /> : <SortDescendingOutlined onClick={() => setSortStock('asc')} />) : <SortAscendingOutlined onClick={() => setSortStock('asc')} />}
+          {sortStock ? (
+            sortStock === 'asc' ? (
+              <SortAscendingOutlined onClick={() => setSortStock('desc')} />
+            ) : (
+              <SortDescendingOutlined onClick={() => setSortStock('asc')} />
+            )
+          ) : (
+            <SortAscendingOutlined onClick={() => setSortStock('asc')} />
+          )}
         </span>
       ),
       dataIndex: 'stock',
@@ -231,7 +301,7 @@ const ProductManagement = () => {
       title: 'Active',
       dataIndex: 'isActive',
       key: 'isActive',
-      render: (isActive) => (
+      render: isActive => (
         <span style={{ color: isActive ? 'green' : 'red' }}>
           {isActive ? 'Active' : 'Inactive'}
         </span>
@@ -242,9 +312,15 @@ const ProductManagement = () => {
       key: 'actions',
       render: (text, record) => (
         <>
-          <Button className="me-2" onClick={() => showViewModal(record)}><EyeOutlined /></Button>
-          <Button onClick={() => showModal(record)} className="me-2"><InfoCircleFilled /></Button>
-          <Button onClick={() => handleDeleteProduct(record._id)} danger><DeleteFilled /></Button>
+          <Button className="me-2" onClick={() => showViewModal(record)}>
+            <EyeOutlined />
+          </Button>
+          <Button className="me-2" onClick={() => showModal(record)}>
+            <InfoCircleFilled />
+          </Button>
+          <Button danger onClick={() => handleDeleteProduct(record._id)}>
+            <DeleteFilled />
+          </Button>
         </>
       ),
     },
@@ -256,7 +332,7 @@ const ProductManagement = () => {
         <Input
           placeholder="Search by name"
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={e => setSearchTerm(e.target.value)}
           style={{ width: 200, marginRight: 10 }}
         />
         <Select
@@ -267,7 +343,9 @@ const ProductManagement = () => {
           style={{ width: 200, marginRight: 10 }}
         >
           {brands.map(brand => (
-            <Option key={brand._id} value={brand._id}>{brand.name}</Option>
+            <Option key={brand._id} value={brand._id}>
+              {brand.name}
+            </Option>
           ))}
         </Select>
         <Select
@@ -278,7 +356,9 @@ const ProductManagement = () => {
           style={{ width: 200, marginRight: 10 }}
         >
           {categories.map(category => (
-            <Option key={category._id} value={category._id}>{category.name}</Option>
+            <Option key={category._id} value={category._id}>
+              {category.name}
+            </Option>
           ))}
         </Select>
         <InputNumber
@@ -298,15 +378,18 @@ const ProductManagement = () => {
         <Select
           placeholder="Filter by active status"
           value={isActiveFilter}
-          onChange={(value) => setIsActiveFilter(value)}
+          onChange={setIsActiveFilter}
           allowClear
           style={{ width: 150, marginRight: 10 }}
         >
           <Option value={true}>Active</Option>
           <Option value={false}>Inactive</Option>
         </Select>
-        <Button type="primary" onClick={() => showModal()}>Add Product</Button>
+        <Button type="primary" onClick={() => showModal()}>
+          Add Product
+        </Button>
       </div>
+
       <Table
         dataSource={products}
         columns={columns}
@@ -322,94 +405,158 @@ const ProductManagement = () => {
           showSizeChanger: true,
         }}
       />
+
       <AntModal
         title={editingProduct ? 'Edit Product' : 'Add Product'}
-        open={isModalVisible} 
+        open={isModalVisible}
         onCancel={() => setIsModalVisible(false)}
         footer={null}
       >
         <Form form={form} onFinish={handleAddOrUpdateProduct} layout="vertical">
-          <Form.Item name="name" label="Name" rules={[{ required: true, message: 'Please input the product name!' }]}>
+          <Form.Item
+            name="name"
+            label="Name"
+            rules={[{ required: true, message: 'Please input the product name!' }]}
+          >
             <Input />
           </Form.Item>
-          <Form.Item name="price" label="Price" rules={[{ required: true, message: 'Please input the price!' }]}>
-            <InputNumber min={0} />
+
+          <Form.Item
+            name="price"
+            label="Price"
+            rules={[{ required: true, message: 'Please input the price!' }]}
+          >
+            <InputNumber min={0} style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item name="image" label="Image URL">
-            <Input />
+
+          <Form.Item label="Ảnh sản phẩm">
+            <Upload
+              name="file"
+              accept="image/*"
+              customRequest={handleImageUpload}
+              showUploadList={false}
+            >
+              <Button icon={<UploadOutlined />} disabled={uploadingImage}>
+                {uploadingImage ? <Spin /> : 'Chọn & Upload ảnh'}
+              </Button>
+            </Upload>
+            {form.getFieldValue('image') && (
+              <div style={{ marginTop: 10 }}>
+                <img
+                  src={form.getFieldValue('image')}
+                  alt="preview"
+                  style={{ width: 120, borderRadius: 4 }}
+                />
+              </div>
+            )}
+            <Form.Item name="image" noStyle>
+              <Input type="hidden" />
+            </Form.Item>
           </Form.Item>
+
           <Form.Item name="description" label="Description">
             <Input.TextArea />
           </Form.Item>
-          <Form.Item name={['details', 'brandId']} label="Brand" rules={[{ required: true, message: 'Please input the brand!' }]}>
+
+          <Form.Item
+            name={['details', 'brandId']}
+            label="Brand"
+            rules={[{ required: true, message: 'Please select a brand!' }]}
+          >
             <Select placeholder="Select a brand" allowClear>
               {brands.map(brand => (
-                <Option key={brand._id} value={brand._id}>{brand.name}</Option>
+                <Option key={brand._id} value={brand._id}>
+                  {brand.name}
+                </Option>
               ))}
             </Select>
           </Form.Item>
+
           <Form.Item name={['details', 'volume']} label="Volume">
             <Input />
           </Form.Item>
+
           <Form.Item name={['details', 'ingredients']} label="Ingredients">
             <Input />
           </Form.Item>
+
           <Form.Item name={['details', 'usage']} label="Usage">
             <Input />
           </Form.Item>
+
           <Form.Item name={['details', 'benefits']} label="Benefits (comma-separated)">
             <Input />
           </Form.Item>
-          <Form.Item name="stock" label="Stock" rules={[{ required: true, message: 'Please input the stock!' }]}>
-            <InputNumber min={0} />
+
+          <Form.Item
+            name="stock"
+            label="Stock"
+            rules={[{ required: true, message: 'Please input the stock!' }]}
+          >
+            <InputNumber min={0} style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item name="categoryId" label="Category IDs" rules={[{ required: true, message: 'Please select at least one category!' }]}>
+
+          <Form.Item
+            name="categoryId"
+            label="Category"
+            rules={[{ required: true, message: 'Please select at least one category!' }]}
+          >
             <Select mode="multiple" placeholder="Select categories" allowClear>
-              {categories.map(category => (
-                <Option key={category._id} value={category._id}>{category.name}</Option>
+              {categories.map(category => ( 
+                <Option key={category._id} value={category._id}>
+                  {category.name}
+                </Option>
               ))}
             </Select>
           </Form.Item>
+
           <Form.Item>
-            <Button type="primary" htmlType="submit">Save</Button>
+            <Button type="primary" htmlType="submit">
+              Save
+            </Button>
           </Form.Item>
         </Form>
       </AntModal>
+
       <AntModal
         title="Product Details"
-        open={isViewModalVisible} 
+        open={isViewModalVisible}
         onCancel={() => setIsViewModalVisible(false)}
         footer={null}
         width={800}
       >
         {viewingProduct && (
           <div style={{ display: 'flex', gap: '20px' }}>
-            <div style={{ flex: '1', maxWidth: '300px' }}>
+            <div style={{ flex: 1, maxWidth: 300 }}>
               {viewingProduct.image ? (
                 <img
                   src={viewingProduct.image}
                   alt={viewingProduct.name}
-                  style={{ width: '100%', height: 'auto', objectFit: 'cover', borderRadius: '8px' }}
+                  style={{ width: '100%', height: 'auto', objectFit: 'cover', borderRadius: 8 }}
                 />
               ) : (
                 <div
                   style={{
                     width: '100%',
-                    height: '200px',
+                    height: 200,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     background: '#f0f0f0',
-                    borderRadius: '8px',
+                    borderRadius: 8
                   }}
                 >
                   No Image Available
                 </div>
               )}
             </div>
-            <div style={{ flex: '2' }}>
-              <p><strong>Name:</strong> {viewingProduct.name}</p>
-              <p><strong>Price:</strong> ${viewingProduct.price?.toFixed(2)}</p>
+            <div style={{ flex: 2 }}>
+              <p>
+                <strong>Name:</strong> {viewingProduct.name}
+              </p>
+              <p>
+                <strong>Price:</strong> ${viewingProduct.price?.toFixed(2)}
+              </p>
               <p>
                 <strong>Brand:</strong>{' '}
                 {brands.find(b => b._id === viewingProduct.details?.brandId)?.name || 'N/A'}
@@ -421,16 +568,28 @@ const ProductManagement = () => {
                   .filter(name => name)
                   .join(', ') || 'N/A'}
               </p>
-              <p><strong>Rating:</strong> {viewingProduct.rating || 'N/A'}</p>
-              <p><strong>Stock:</strong> {viewingProduct.stock || 'N/A'}</p>
-              <p><strong>Volume:</strong> {viewingProduct.details?.volume || 'N/A'}</p>
-              <p><strong>Ingredients:</strong> {viewingProduct.details?.ingredients || 'N/A'}</p>
-              <p><strong>Usage:</strong> {viewingProduct.details?.usage || 'N/A'}</p>
+              <p>
+                <strong>Rating:</strong> {viewingProduct.rating || 'N/A'}
+              </p>
+              <p>
+                <strong>Stock:</strong> {viewingProduct.stock || 'N/A'}
+              </p>
+              <p>
+                <strong>Volume:</strong> {viewingProduct.details?.volume || 'N/A'}
+              </p>
+              <p>
+                <strong>Ingredients:</strong> {viewingProduct.details?.ingredients || 'N/A'}
+              </p>
+              <p>
+                <strong>Usage:</strong> {viewingProduct.details?.usage || 'N/A'}
+              </p>
               <p>
                 <strong>Benefits:</strong>{' '}
                 {viewingProduct.details?.benefits?.join(', ') || 'N/A'}
               </p>
-              <p><strong>Description:</strong> {viewingProduct.description || 'N/A'}</p>
+              <p>
+                <strong>Description:</strong> {viewingProduct.description || 'N/A'}
+              </p>
             </div>
           </div>
         )}

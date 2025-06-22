@@ -16,7 +16,7 @@
     "axios": "^1.10.0",
     "bcrypt": "^6.0.0",
     "body-parser": "^2.2.0",
-    "cloudinary": "^2.6.1",
+    "cloudinary": "^2.7.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
@@ -26,10 +26,11 @@
     "kafkajs": "^2.2.4",
     "mongoose": "^8.15.0",
     "morgan": "^1.10.0",
-    "multer": "^2.0.0",
+    "multer": "^2.0.1",
     "node-cache": "^5.1.2",
     "nodemailer": "^7.0.3",
     "openai": "^5.5.1",
+    "streamifier": "^0.1.1",
     "string-similarity": "^4.0.4"
   },
   "devDependencies": {
