@@ -83,9 +83,7 @@ const ProductManagement = () => {
       let list = data;
       if (sortName) {
         list.sort((a, b) =>
-          sortName === 'asc'
-            ? a.name.localeCompare(b.name)
-            : b.name.localeCompare(a.name)
+          sortName === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)
         );
       }
       if (sortStock) {
@@ -239,6 +237,7 @@ const ProductManagement = () => {
     } else {
       setEditingProduct(null);
       form.resetFields();
+      // default new form to active
       form.setFieldsValue({ isActive: true });
     }
     setIsFormModalVisible(true);
@@ -450,13 +449,6 @@ const ProductManagement = () => {
           >
             <InputNumber min={0} style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item
-            name="isActive"
-            label="Active"
-            valuePropName="checked"
-          >
-            <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
-          </Form.Item>
           <Form.Item label="Ảnh sản phẩm">
             <Upload
               name="file"
@@ -524,6 +516,17 @@ const ProductManagement = () => {
                 <Option key={c._id} value={c._id}>{c.name}</Option>
               ))}
             </Select>
+          </Form.Item>
+          <Form.Item
+            name="isActive"
+            label="Active"
+            valuePropName="checked"
+          >
+            <Switch
+              checkedChildren="Active"
+              unCheckedChildren="Inactive"
+              disabled={!editingProduct}
+            />
           </Form.Item>
           <Form.Item>
             <Button type="primary" htmlType="submit">
