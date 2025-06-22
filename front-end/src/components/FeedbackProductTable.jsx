@@ -1,5 +1,5 @@
-import React from 'react';
-import { Table, Space, Tag, Image, Tooltip, Button, Spin, Empty, Typography, Badge, Rate, Popconfirm } from 'antd';
+import React, { useState } from 'react';
+import { Table, Space, Tag, Image, Tooltip, Button, Spin, Empty, Typography, Badge, Rate } from 'antd';
 import {
   UserOutlined, ShoppingOutlined, EyeOutlined, DeleteOutlined,
   CheckOutlined, CloseOutlined
@@ -16,6 +16,26 @@ const FeedbackProductTable = ({
   unapprovalFeedback, 
   deleteFeedback 
 }) => {
+  const [showModal, setShowModal] = useState(false);
+  const [modalConfig, setModalConfig] = useState({
+    title: '',
+    message: '',
+    action: null,
+    variant: 'primary'
+  });
+
+  const showConfirmModal = (title, message, action, variant = 'primary') => {
+    setModalConfig({ title, message, action, variant });
+    setShowModal(true);
+  };
+
+  const handleConfirm = () => {
+    if (modalConfig.action) {
+      modalConfig.action();
+    }
+    setShowModal(false);
+  };
+
   const columns = [
     {
       title: 'Reviewer',
@@ -134,7 +154,12 @@ const FeedbackProductTable = ({
               <Button
                 type="text"
                 icon={<CloseOutlined />}
-                onClick={() => unapprovalFeedback?.(record._id)}
+                onClick={() => showConfirmModal(
+                  'Unapprove Feedback',
+                  'Are you sure you want to unapprove this feedback?',
+                  () => unapprovalFeedback?.(record._id),
+                  'warning'
+                )}
                 size="small"
                 className="feedback-table-unapprove-btn"
               />
@@ -144,29 +169,32 @@ const FeedbackProductTable = ({
               <Button
                 type="text"
                 icon={<CheckOutlined />}
-                onClick={() => approveFeedback?.(record._id)}
+                onClick={() => showConfirmModal(
+                  'Approve Feedback',
+                  'Are you sure you want to approve this feedback?',
+                  () => approveFeedback?.(record._id),
+                  'success'
+                )}
                 size="small"
                 className="feedback-table-approve-btn"
               />
             </Tooltip>
           )}
           
-          <Popconfirm
-            title="Are you sure you want to delete this feedback?"
-            onConfirm={() => deleteFeedback?.(record._id)}
-            okText="Yes"
-            cancelText="No"
-            placement="topRight"
-          >
-            <Tooltip title="Delete">
-              <Button
-                type="text"
-                icon={<DeleteOutlined />}
-                danger
-                size="small"
-              />
-            </Tooltip>
-          </Popconfirm>
+          <Tooltip title="Delete">
+            <Button
+              type="text"
+              icon={<DeleteOutlined />}
+              onClick={() => showConfirmModal(
+                'Delete Feedback',
+                'Are you sure you want to delete this feedback?',
+                () => deleteFeedback?.(record._id),
+                'danger'
+              )}
+              danger
+              size="small"
+            />
+          </Tooltip>
         </Space>
       ),
       width: 160,
@@ -201,6 +229,58 @@ const FeedbackProductTable = ({
           scroll={{ x: 1000 }}
           size="middle"
         />
+      )}
+
+      {/* Bootstrap Modal for Confirmation */}
+      {showModal && (
+        <>
+          <div 
+            className="modal-backdrop fade show" 
+            onClick={() => setShowModal(false)}
+          ></div>
+          
+          <div 
+            className="modal fade show" 
+            style={{ display: 'block' }} 
+            tabIndex="-1"
+            onClick={() => setShowModal(false)}
+          >
+            <div 
+              className="modal-dialog modal-dialog-centered"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="modal-content">
+                <div className="modal-header">
+                  <h5 className="modal-title">{modalConfig.title}</h5>
+                  <button
+                    type="button"
+                    className="btn-close"
+                    onClick={() => setShowModal(false)}
+                  ></button>
+                </div>
+                <div className="modal-body">
+                  <p>{modalConfig.message}</p>
+                </div>
+                <div className="modal-footer">
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => setShowModal(false)}
+                  >
+                    No
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-${modalConfig.variant}`}
+                    onClick={handleConfirm}
+                  >
+                    Yes
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </>
   );
