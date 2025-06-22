@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Card, message, Modal } from 'antd';
-import { ExclamationCircleOutlined } from '@ant-design/icons';
+import { Card, message } from 'antd';
+import { Modal, Button } from 'react-bootstrap';
+import { ExclamationTriangle } from 'react-bootstrap-icons';
+import 'bootstrap/dist/css/bootstrap.min.css';
 import FeedbackBarberStats from '../../components/FeedbackBarberStats';
 import FeedbackBarberFilters from '../../components/FeedbackBarberFilters';
 import FeedbackBarberTable from '../../components/FeedbackBarberTable';
@@ -11,8 +13,6 @@ import {
   updateBarberFeedbackApproval,
   deleteBarberFeedback
 } from '../../services/api';
-
-const { confirm } = Modal;
 
 const ManageFeedbackBarber = () => {
   const [feedbacks, setFeedbacks] = useState([]);
@@ -26,7 +26,13 @@ const ManageFeedbackBarber = () => {
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
   const [selectedFeedback, setSelectedFeedback] = useState(null);
 
-  // Calculate stats
+  // Modal states
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
+
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  const [itemToToggle, setItemToToggle] = useState(null);
+
   const stats = {
     total: feedbacks.length,
     approved: feedbacks.filter(fb => fb.isApproved).length,
@@ -70,29 +76,35 @@ const ManageFeedbackBarber = () => {
     }
   };
 
-  // Initial load
   useEffect(() => {
     fetchFeedbacks();
   }, []);
 
-  // Reload when filters change
   useEffect(() => {
     fetchFeedbacks({ page: 1, limit: pagination.pageSize });
   }, [statusFilter, ratingFilter, barberFilter, bookingFilter, searchKeyword, dateRange]);
 
-  const toggleApproval = async (record) => {
+  const handleToggleApproval = (record) => {
     if (!record?._id) {
       message.error('Invalid feedback data');
       return;
     }
+    setItemToToggle(record);
+    setShowApproveModal(true);
+  };
 
-    const newStatus = !record.isApproved;
+  const confirmToggleApproval = async () => {
+    if (!itemToToggle?._id) return;
+
+    const newStatus = !itemToToggle.isApproved;
     const action = newStatus ? 'approve' : 'unapprove';
 
     try {
-      await updateBarberFeedbackApproval(record._id, newStatus);
+      await updateBarberFeedbackApproval(itemToToggle._id, newStatus);
       message.success(`Feedback ${action}d successfully`);
       fetchFeedbacks({ page: pagination.current, limit: pagination.pageSize });
+      setItemToToggle(null);
+      setShowApproveModal(false);
     } catch (error) {
       console.error(`Error ${action}ing feedback:`, error);
       message.error(`Failed to ${action} feedback`);
@@ -104,25 +116,23 @@ const ManageFeedbackBarber = () => {
       message.error('Invalid feedback data');
       return;
     }
+    setItemToDelete(record);
+    setShowDeleteModal(true);
+  };
 
-    confirm({
-      title: 'Delete Feedback',
-      icon: <ExclamationCircleOutlined />,
-      content: 'Are you sure you want to delete this feedback? This action cannot be undone.',
-      okText: 'Yes, Delete',
-      okType: 'danger',
-      cancelText: 'Cancel',
-      onOk: async () => {
-        try {
-          await deleteBarberFeedback(record._id);
-          message.success('Feedback deleted successfully');
-          fetchFeedbacks({ page: pagination.current, limit: pagination.pageSize });
-        } catch (error) {
-          console.error('Error deleting feedback:', error);
-          message.error('Failed to delete feedback');
-        }
-      }
-    });
+  const confirmDelete = async () => {
+    if (!itemToDelete?._id) return;
+
+    try {
+      await deleteBarberFeedback(itemToDelete._id);
+      message.success('Feedback deleted successfully');
+      fetchFeedbacks({ page: pagination.current, limit: pagination.pageSize });
+      setShowDeleteModal(false);
+      setItemToDelete(null);
+    } catch (error) {
+      console.error('Error deleting feedback:', error);
+      message.error('Failed to delete feedback');
+    }
   };
 
   const handleViewDetail = async (record) => {
@@ -164,8 +174,8 @@ const ManageFeedbackBarber = () => {
         setSearchKeyword={setSearchKeyword}
         dateRange={dateRange}
         setDateRange={setDateRange}
-        barbersList={[]} // You can pass actual barbers list here
-        bookingsList={[]} // You can pass actual bookings list here
+        barbersList={[]}
+        bookingsList={[]}
       />
 
       <Card>
@@ -175,7 +185,7 @@ const ManageFeedbackBarber = () => {
           pagination={pagination}
           handleTableChange={handleTableChange}
           handleViewDetail={handleViewDetail}
-          toggleApproval={toggleApproval}
+          toggleApproval={handleToggleApproval}
           handleDelete={handleDelete}
         />
       </Card>
@@ -185,6 +195,42 @@ const ManageFeedbackBarber = () => {
         onCancel={() => setSelectedFeedback(null)}
         feedback={selectedFeedback}
       />
+
+      {/* Modal xác nhận xóa */}
+      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <ExclamationTriangle className="text-warning me-2" />
+            Delete Feedback
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          Are you sure you want to delete this feedback? This action cannot be undone.
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>Cancel</Button>
+          <Button variant="danger" onClick={confirmDelete}>Yes, Delete</Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Modal xác nhận duyệt/hủy duyệt */}
+      <Modal show={showApproveModal} onHide={() => setShowApproveModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <ExclamationTriangle className="text-warning me-2" />
+            {itemToToggle?.isApproved ? 'Unapprove' : 'Approve'} Feedback
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          Are you sure you want to {itemToToggle?.isApproved ? 'unapprove' : 'approve'} this feedback?
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowApproveModal(false)}>Cancel</Button>
+          <Button variant="primary" onClick={confirmToggleApproval}>
+            Yes, {itemToToggle?.isApproved ? 'Unapprove' : 'Approve'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };
