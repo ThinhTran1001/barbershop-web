@@ -1,6 +1,7 @@
 // src/components/ProductManagement.jsx
 
 import React, { useState, useEffect } from 'react';
+import 'bootstrap/dist/css/bootstrap.min.css';
 import {
   Table,
   Button,
@@ -9,9 +10,9 @@ import {
   Input,
   InputNumber,
   Select,
-  message,
   Upload,
-  Spin
+  Spin,
+  Switch
 } from 'antd';
 import {
   DeleteFilled,
@@ -34,13 +35,9 @@ import {
 const { Option } = Select;
 
 const ProductManagement = () => {
-  const [products, setProducts] = useState([]);
+  // Data & filters
   const [allProducts, setAllProducts] = useState([]);
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [isViewModalVisible, setIsViewModalVisible] = useState(false);
-  const [viewingProduct, setViewingProduct] = useState(null);
-  const [form] = Form.useForm();
-  const [editingProduct, setEditingProduct] = useState(null);
+  const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [brands, setBrands] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -48,83 +45,99 @@ const ProductManagement = () => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [minPrice, setMinPrice] = useState(null);
   const [maxPrice, setMaxPrice] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5);
   const [isActiveFilter, setIsActiveFilter] = useState(undefined);
   const [sortName, setSortName] = useState(null);
   const [sortStock, setSortStock] = useState(null);
+
+  // Pagination & loading
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
   const [uploadingImage, setUploadingImage] = useState(false);
 
+  // Modals & forms
+  const [isFormModalVisible, setIsFormModalVisible] = useState(false);
+  const [isViewModalVisible, setIsViewModalVisible] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [viewingProduct, setViewingProduct] = useState(null);
+  const [deleteTargetId, setDeleteTargetId] = useState(null);
+  const [form] = Form.useForm();
+
+  // Toast notification
+  const [toast, setToast] = useState({ show: false, message: '', variant: 'success' });
+  const showToast = (variant, message) => {
+    setToast({ show: true, message, variant });
+    setTimeout(() => setToast(t => ({ ...t, show: false })), 3000);
+  };
+
+  // Initial load
   useEffect(() => {
-    fetchInitialData();
-    fetchCategories();
-    fetchBrands();
+    loadProducts();
+    loadCategories();
+    loadBrands();
   }, [sortName, sortStock]);
 
-  const fetchInitialData = async () => {
+  const loadProducts = async () => {
     try {
-      const response = await getProducts();
-      let fetchedProducts = response.data;
+      const { data } = await getProducts();
+      let list = data;
       if (sortName) {
-        fetchedProducts.sort((a, b) =>
+        list.sort((a, b) =>
           sortName === 'asc'
             ? a.name.localeCompare(b.name)
             : b.name.localeCompare(a.name)
         );
       }
       if (sortStock) {
-        fetchedProducts.sort((a, b) =>
+        list.sort((a, b) =>
           sortStock === 'asc' ? a.stock - b.stock : b.stock - a.stock
         );
       }
-      setAllProducts(fetchedProducts);
-      applyFilters(fetchedProducts);
-    } catch (error) {
-      message.error('Failed to fetch products: ' + error.message);
+      setAllProducts(list);
+      applyFilters(list);
+    } catch {
+      showToast('danger', 'Failed to load products');
     }
   };
 
-  const fetchCategories = async () => {
+  const loadCategories = async () => {
     try {
-      const response = await getCategories();
-      setCategories(response.data);
-    } catch (error) {
-      message.error('Failed to fetch categories: ' + error.message);
+      const { data } = await getCategories();
+      setCategories(data);
+    } catch {
+      showToast('danger', 'Failed to load categories');
     }
   };
 
-  const fetchBrands = async () => {
+  const loadBrands = async () => {
     try {
-      const response = await getBrands();
-      setBrands(response.data);
-    } catch (error) {
-      message.error('Failed to fetch brands: ' + error.message);
+      const { data } = await getBrands();
+      setBrands(data);
+    } catch {
+      showToast('danger', 'Failed to load brands');
     }
   };
 
-  const applyFilters = (data) => {
-    let filtered = [...data];
+  // Filtering
+  const applyFilters = list => {
+    let filtered = [...list];
     if (isActiveFilter !== undefined) {
-      filtered = filtered.filter(product => product.isActive === isActiveFilter);
+      filtered = filtered.filter(p => p.isActive === isActiveFilter);
     }
     if (searchTerm) {
-      filtered = filtered.filter(product =>
-        product.name.toLowerCase().includes(searchTerm.toLowerCase())
+      filtered = filtered.filter(p =>
+        p.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
     if (selectedBrand) {
-      filtered = filtered.filter(product =>
-        product.details?.brandId === selectedBrand
-      );
+      filtered = filtered.filter(p => p.details?.brandId === selectedBrand);
     }
     if (selectedCategory) {
-      filtered = filtered.filter(product =>
-        product.categoryId?.includes(selectedCategory)
-      );
+      filtered = filtered.filter(p => p.categoryId?.includes(selectedCategory));
     }
     if (minPrice !== null || maxPrice !== null) {
-      filtered = filtered.filter(product => {
-        const price = product.price || 0;
+      filtered = filtered.filter(p => {
+        const price = p.price || 0;
         const min = minPrice !== null ? minPrice : -Infinity;
         const max = maxPrice !== null ? maxPrice : Infinity;
         return price >= min && price <= max;
@@ -137,7 +150,8 @@ const ProductManagement = () => {
     applyFilters(allProducts);
   }, [searchTerm, selectedBrand, selectedCategory, minPrice, maxPrice, isActiveFilter, allProducts]);
 
-  const handleAddOrUpdateProduct = async (values) => {
+  // Create / Update
+  const handleSave = async values => {
     try {
       const payload = {
         ...values,
@@ -148,89 +162,95 @@ const ProductManagement = () => {
           ingredients: values.details?.ingredients || '',
           usage: values.details?.usage || '',
           benefits: values.details?.benefits
-            ? values.details.benefits.split(',').map(item => item.trim())
+            ? values.details.benefits.split(',').map(i => i.trim())
             : []
-        }
+        },
+        isActive: values.isActive !== undefined ? values.isActive : true
       };
       if (editingProduct) {
         await updateProduct(editingProduct._id, payload);
-        message.success('Product updated successfully');
+        showToast('success', 'Product updated');
       } else {
         await createProduct(payload);
-        message.success('Product created successfully');
+        showToast('success', 'Product created');
       }
-      setIsModalVisible(false);
+      setIsFormModalVisible(false);
       form.resetFields();
       setEditingProduct(null);
-      fetchInitialData();
-    } catch (error) {
-      message.error('Failed to save product: ' + error.message);
+      loadProducts();
+    } catch {
+      showToast('danger', 'Save failed');
     }
   };
 
-  const handleDeleteProduct = async (id) => {
-    const confirmed = window.confirm('Are you sure you want to deactivate this product?');
-    if (!confirmed) return;
+  // Delete flow
+  const askDelete = id => {
+    setDeleteTargetId(id);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
     try {
-      await deleteProduct(id);
-      message.success('Product deactivated successfully');
-      fetchInitialData();
-    } catch (error) {
-      message.error('Failed to deactivate product: ' + error.message);
+      await deleteProduct(deleteTargetId);
+      showToast('success', 'Product deactivated');
+      loadProducts();
+    } catch {
+      showToast('danger', 'Deactivation failed');
+    } finally {
+      setShowDeleteModal(false);
+      setDeleteTargetId(null);
     }
   };
 
-  const showModal = (product = null) => {
-    fetchBrands();
-    fetchCategories();
-    if (product) {
-      setEditingProduct(product);
-      form.setFieldsValue({
-        ...product,
-        categoryId: product.categoryId || [],
-        details: {
-          brandId: product.details?.brandId || null,
-          volume: product.details?.volume || '',
-          ingredients: product.details?.ingredients || '',
-          usage: product.details?.usage || '',
-          benefits: product.details?.benefits ? product.details.benefits.join(',') : ''
-        }
-      });
-    } else {
-      setEditingProduct(null);
-      form.resetFields();
-    }
-    setIsModalVisible(true);
-  };
-
-  const showViewModal = (product) => {
-    setViewingProduct(product);
-    setIsViewModalVisible(true);
-  };
-
-  // Upload handler for Ant Upload
+  // Image upload
   const handleImageUpload = async ({ file, onSuccess, onError }) => {
     setUploadingImage(true);
     try {
       const res = await uploadImage(file);
       form.setFieldsValue({ image: res.data.url });
       onSuccess(null, file);
-      message.success('Upload ảnh thành công');
-    } catch (err) {
-      console.error(err);
-      onError(err);
-      message.error('Upload ảnh thất bại');
+      showToast('success', 'Image uploaded');
+    } catch {
+      onError();
+      showToast('danger', 'Upload failed');
     } finally {
       setUploadingImage(false);
     }
   };
 
+  // Open modals
+  const openForm = product => {
+    loadBrands();
+    loadCategories();
+    if (product) {
+      setEditingProduct(product);
+      form.setFieldsValue({
+        ...product,
+        isActive: product.isActive,
+        categoryId: product.categoryId || [],
+        details: {
+          brandId: product.details?.brandId || null,
+          volume: product.details?.volume || '',
+          ingredients: product.details?.ingredients || '',
+          usage: product.details?.usage || '',
+          benefits: product.details?.benefits?.join(',') || ''
+        }
+      });
+    } else {
+      setEditingProduct(null);
+      form.resetFields();
+      form.setFieldsValue({ isActive: true });
+    }
+    setIsFormModalVisible(true);
+  };
+  const openView = product => {
+    setViewingProduct(product);
+    setIsViewModalVisible(true);
+  };
+
+  // Table columns
   const columns = [
-    {
-      title: 'ID',
-      key: 'index',
-      render: (text, record, index) => (currentPage - 1) * pageSize + index + 1,
-    },
+    { title: 'ID', key: 'idx', render: (_, __, i) => (currentPage - 1) * pageSize + i + 1 },
     {
       title: () => (
         <span>
@@ -247,32 +267,22 @@ const ProductManagement = () => {
         </span>
       ),
       dataIndex: 'name',
-      key: 'name',
+      key: 'name'
     },
-    {
-      title: 'Price',
-      dataIndex: 'price',
-      key: 'price',
-      render: price => `$${price.toFixed(2)}`,
-    },
+    { title: 'Price', dataIndex: 'price', key: 'price', render: v => `$${v.toFixed(2)}` },
     {
       title: 'Brand',
       key: 'brand',
-      render: record => {
-        const brand = brands.find(b => b._id === record.details?.brandId);
-        return brand ? brand.name : 'N/A';
-      },
+      render: rec => brands.find(b => b._id === rec.details?.brandId)?.name || 'N/A'
     },
     {
       title: 'Category',
       key: 'category',
-      render: record => {
-        const categoryNames = record.categoryId
-          .map(catId => categories.find(c => c._id === catId)?.name)
-          .filter(name => name)
-          .join(', ');
-        return categoryNames || 'N/A';
-      },
+      render: rec =>
+        (rec.categoryId || [])
+          .map(id => categories.find(c => c._id === id)?.name)
+          .filter(n => n)
+          .join(', ') || 'N/A'
     },
     {
       title: () => (
@@ -290,44 +300,57 @@ const ProductManagement = () => {
         </span>
       ),
       dataIndex: 'stock',
-      key: 'stock',
+      key: 'stock'
     },
-    {
-      title: 'Rating',
-      dataIndex: 'rating',
-      key: 'rating',
-    },
+    { title: 'Rating', dataIndex: 'rating', key: 'rating' },
     {
       title: 'Active',
       dataIndex: 'isActive',
-      key: 'isActive',
-      render: isActive => (
-        <span style={{ color: isActive ? 'green' : 'red' }}>
-          {isActive ? 'Active' : 'Inactive'}
-        </span>
-      ),
+      key: 'active',
+      render: v => <span style={{ color: v ? 'green' : 'red' }}>{v ? 'Active' : 'Inactive'}</span>
     },
     {
       title: 'Actions',
       key: 'actions',
-      render: (text, record) => (
+      render: (_, rec) => (
         <>
-          <Button className="me-2" onClick={() => showViewModal(record)}>
+          <Button className="me-2" onClick={() => openView(rec)}>
             <EyeOutlined />
           </Button>
-          <Button className="me-2" onClick={() => showModal(record)}>
+          <Button className="me-2" onClick={() => openForm(rec)}>
             <InfoCircleFilled />
           </Button>
-          <Button danger onClick={() => handleDeleteProduct(record._id)}>
+          <Button danger onClick={() => askDelete(rec._id)}>
             <DeleteFilled />
           </Button>
         </>
-      ),
-    },
+      )
+    }
   ];
 
   return (
     <div className="container mt-4">
+      {/* Toast */}
+      <div
+        className="position-fixed"
+        style={{ top: '4rem', right: '1rem', zIndex: 1060 }}
+      >
+        {toast.show && (
+          <div className={`toast align-items-center text-bg-${toast.variant} border-0 show`}>
+            <div className="d-flex">
+              <div className="toast-body">{toast.message}</div>
+              <button
+                type="button"
+                className="btn-close btn-close-white me-2 m-auto"
+                aria-label="Close"
+                onClick={() => setToast(t => ({ ...t, show: false }))}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Filters & Add */}
       <div className="mb-3">
         <Input
           placeholder="Search by name"
@@ -342,10 +365,8 @@ const ProductManagement = () => {
           allowClear
           style={{ width: 200, marginRight: 10 }}
         >
-          {brands.map(brand => (
-            <Option key={brand._id} value={brand._id}>
-              {brand.name}
-            </Option>
+          {brands.map(b => (
+            <Option key={b._id} value={b._id}>{b.name}</Option>
           ))}
         </Select>
         <Select
@@ -355,10 +376,8 @@ const ProductManagement = () => {
           allowClear
           style={{ width: 200, marginRight: 10 }}
         >
-          {categories.map(category => (
-            <Option key={category._id} value={category._id}>
-              {category.name}
-            </Option>
+          {categories.map(c => (
+            <Option key={c._id} value={c._id}>{c.name}</Option>
           ))}
         </Select>
         <InputNumber
@@ -376,7 +395,7 @@ const ProductManagement = () => {
           min={0}
         />
         <Select
-          placeholder="Filter by active status"
+          placeholder="By active"
           value={isActiveFilter}
           onChange={setIsActiveFilter}
           allowClear
@@ -385,50 +404,59 @@ const ProductManagement = () => {
           <Option value={true}>Active</Option>
           <Option value={false}>Inactive</Option>
         </Select>
-        <Button type="primary" onClick={() => showModal()}>
+        <Button type="primary" onClick={() => openForm(null)}>
           Add Product
         </Button>
       </div>
 
+      {/* Products table */}
       <Table
         dataSource={products}
         columns={columns}
         rowKey="_id"
         pagination={{
           current: currentPage,
-          pageSize: pageSize,
+          pageSize,
           total: allProducts.length,
-          onChange: (page, pageSize) => {
+          onChange: (page, size) => {
             setCurrentPage(page);
-            setPageSize(pageSize);
+            setPageSize(size);
           },
           showSizeChanger: true,
+          pageSizeOptions: ['5','10','20','50','100']
         }}
       />
 
+      {/* Add/Edit Modal */}
       <AntModal
         title={editingProduct ? 'Edit Product' : 'Add Product'}
-        open={isModalVisible}
-        onCancel={() => setIsModalVisible(false)}
+        open={isFormModalVisible}
+        onCancel={() => setIsFormModalVisible(false)}
         footer={null}
+        centered
       >
-        <Form form={form} onFinish={handleAddOrUpdateProduct} layout="vertical">
+        <Form form={form} onFinish={handleSave} layout="vertical">
           <Form.Item
             name="name"
             label="Name"
-            rules={[{ required: true, message: 'Please input the product name!' }]}
+            rules={[{ required: true, message: 'Enter product name' }]}
           >
             <Input />
           </Form.Item>
-
           <Form.Item
             name="price"
             label="Price"
-            rules={[{ required: true, message: 'Please input the price!' }]}
+            rules={[{ required: true, message: 'Enter price' }]}
           >
             <InputNumber min={0} style={{ width: '100%' }} />
           </Form.Item>
-
+          <Form.Item
+            name="isActive"
+            label="Active"
+            valuePropName="checked"
+          >
+            <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
+          </Form.Item>
           <Form.Item label="Ảnh sản phẩm">
             <Upload
               name="file"
@@ -453,63 +481,50 @@ const ProductManagement = () => {
               <Input type="hidden" />
             </Form.Item>
           </Form.Item>
-
           <Form.Item name="description" label="Description">
             <Input.TextArea />
           </Form.Item>
-
           <Form.Item
-            name={['details', 'brandId']}
+            name={['details','brandId']}
             label="Brand"
-            rules={[{ required: true, message: 'Please select a brand!' }]}
+            rules={[{ required: true, message: 'Select brand' }]}
           >
-            <Select placeholder="Select a brand" allowClear>
-              {brands.map(brand => (
-                <Option key={brand._id} value={brand._id}>
-                  {brand.name}
-                </Option>
+            <Select placeholder="Select brand" allowClear>
+              {brands.map(b => (
+                <Option key={b._id} value={b._id}>{b.name}</Option>
               ))}
             </Select>
           </Form.Item>
-
-          <Form.Item name={['details', 'volume']} label="Volume">
+          <Form.Item name={['details','volume']} label="Volume">
             <Input />
           </Form.Item>
-
-          <Form.Item name={['details', 'ingredients']} label="Ingredients">
+          <Form.Item name={['details','ingredients']} label="Ingredients">
             <Input />
           </Form.Item>
-
-          <Form.Item name={['details', 'usage']} label="Usage">
+          <Form.Item name={['details','usage']} label="Usage">
             <Input />
           </Form.Item>
-
-          <Form.Item name={['details', 'benefits']} label="Benefits (comma-separated)">
+          <Form.Item name={['details','benefits']} label="Benefits (comma-separated)">
             <Input />
           </Form.Item>
-
           <Form.Item
             name="stock"
             label="Stock"
-            rules={[{ required: true, message: 'Please input the stock!' }]}
+            rules={[{ required: true, message: 'Enter stock' }]}
           >
             <InputNumber min={0} style={{ width: '100%' }} />
           </Form.Item>
-
           <Form.Item
             name="categoryId"
             label="Category"
-            rules={[{ required: true, message: 'Please select at least one category!' }]}
+            rules={[{ required: true, message: 'Select categories' }]}
           >
             <Select mode="multiple" placeholder="Select categories" allowClear>
-              {categories.map(category => ( 
-                <Option key={category._id} value={category._id}>
-                  {category.name}
-                </Option>
+              {categories.map(c => (
+                <Option key={c._id} value={c._id}>{c.name}</Option>
               ))}
             </Select>
           </Form.Item>
-
           <Form.Item>
             <Button type="primary" htmlType="submit">
               Save
@@ -518,82 +533,77 @@ const ProductManagement = () => {
         </Form>
       </AntModal>
 
+      {/* View Modal */}
       <AntModal
         title="Product Details"
         open={isViewModalVisible}
         onCancel={() => setIsViewModalVisible(false)}
         footer={null}
         width={800}
+        centered
       >
         {viewingProduct && (
-          <div style={{ display: 'flex', gap: '20px' }}>
+          <div className="d-flex gap-3">
             <div style={{ flex: 1, maxWidth: 300 }}>
               {viewingProduct.image ? (
                 <img
                   src={viewingProduct.image}
                   alt={viewingProduct.name}
-                  style={{ width: '100%', height: 'auto', objectFit: 'cover', borderRadius: 8 }}
+                  className="img-fluid rounded"
                 />
               ) : (
                 <div
-                  style={{
-                    width: '100%',
-                    height: 200,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: '#f0f0f0',
-                    borderRadius: 8
-                  }}
+                  className="bg-light d-flex align-items-center justify-content-center rounded"
+                  style={{ height: 200 }}
                 >
-                  No Image Available
+                  No Image
                 </div>
               )}
             </div>
             <div style={{ flex: 2 }}>
-              <p>
-                <strong>Name:</strong> {viewingProduct.name}
-              </p>
-              <p>
-                <strong>Price:</strong> ${viewingProduct.price?.toFixed(2)}
-              </p>
-              <p>
-                <strong>Brand:</strong>{' '}
-                {brands.find(b => b._id === viewingProduct.details?.brandId)?.name || 'N/A'}
-              </p>
-              <p>
-                <strong>Categories:</strong>{' '}
-                {viewingProduct.categoryId
-                  ?.map(catId => categories.find(c => c._id === catId)?.name)
-                  .filter(name => name)
-                  .join(', ') || 'N/A'}
-              </p>
-              <p>
-                <strong>Rating:</strong> {viewingProduct.rating || 'N/A'}
-              </p>
-              <p>
-                <strong>Stock:</strong> {viewingProduct.stock || 'N/A'}
-              </p>
-              <p>
-                <strong>Volume:</strong> {viewingProduct.details?.volume || 'N/A'}
-              </p>
-              <p>
-                <strong>Ingredients:</strong> {viewingProduct.details?.ingredients || 'N/A'}
-              </p>
-              <p>
-                <strong>Usage:</strong> {viewingProduct.details?.usage || 'N/A'}
-              </p>
-              <p>
-                <strong>Benefits:</strong>{' '}
-                {viewingProduct.details?.benefits?.join(', ') || 'N/A'}
-              </p>
-              <p>
-                <strong>Description:</strong> {viewingProduct.description || 'N/A'}
-              </p>
+              <p><strong>Name:</strong> {viewingProduct.name}</p>
+              <p><strong>Price:</strong> ${viewingProduct.price?.toFixed(2)}</p>
+              <p><strong>Brand:</strong> {brands.find(b => b._id === viewingProduct.details?.brandId)?.name || 'N/A'}</p>
+              <p><strong>Categories:</strong> {(viewingProduct.categoryId || []).map(id => categories.find(c => c._id === id)?.name).filter(n => n).join(', ') || 'N/A'}</p>
+              <p><strong>Rating:</strong> {viewingProduct.rating || 'N/A'}</p>
+              <p><strong>Stock:</strong> {viewingProduct.stock || 'N/A'}</p>
+              <p><strong>Volume:</strong> {viewingProduct.details?.volume || 'N/A'}</p>
+              <p><strong>Ingredients:</strong> {viewingProduct.details?.ingredients || 'N/A'}</p>
+              <p><strong>Usage:</strong> {viewingProduct.details?.usage || 'N/A'}</p>
+              <p><strong>Benefits:</strong> {(viewingProduct.details?.benefits || []).join(', ') || 'N/A'}</p>
+              <p><strong>Description:</strong> {viewingProduct.description || 'N/A'}</p>
             </div>
           </div>
         )}
       </AntModal>
+
+      {/* Delete Confirmation Modal */}
+      <div
+        className={`modal fade ${showDeleteModal ? 'show d-block' : ''}`}
+        tabIndex="-1"
+        style={showDeleteModal ? { backgroundColor: 'rgba(0,0,0,0.5)' } : {}}
+        role="dialog"
+      >
+        <div className="modal-dialog modal-dialog-centered" role="document">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h5 className="modal-title">Confirm Deactivate</h5>
+              <button
+                type="button"
+                className="btn-close"
+                onClick={() => setShowDeleteModal(false)}
+              />
+            </div>
+            <div className="modal-body">
+              Are you sure you want to deactivate this product?
+            </div>
+            <div className="modal-footer">
+              <Button onClick={() => setShowDeleteModal(false)}>Cancel</Button>
+              <Button danger onClick={handleDeleteConfirm}>Deactivate</Button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

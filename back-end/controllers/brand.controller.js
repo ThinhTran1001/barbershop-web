@@ -1,5 +1,8 @@
+// controllers/brand.controller.js
+
 const Brand = require('../models/brand.model');
 const Product = require('../models/product.model');
+const mongoose = require('mongoose');
 
 exports.createBrand = async (req, res) => {
   try {
@@ -20,7 +23,9 @@ exports.getAllBrands = async (req, res) => {
       query.isActive = isActive === 'true';
     }
     if (name) query.name = { $regex: name, $options: 'i' };
-    const brands = await Brand.find(query);
+    const brands = await Brand.find(query)
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit, 10));
     res.status(200).json(brands);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -39,7 +44,16 @@ exports.getBrandById = async (req, res) => {
 
 exports.updateBrand = async (req, res) => {
   try {
-    const brand = await Brand.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    // parse isActive explicitly
+    const updateData = {
+      ...req.body,
+      isActive: req.body.isActive !== undefined ? req.body.isActive : true
+    };
+    const brand = await Brand.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true, runValidators: true }
+    );
     if (!brand) return res.status(404).json({ message: 'Brand not found' });
     res.status(200).json(brand);
   } catch (error) {
@@ -52,9 +66,16 @@ exports.deleteBrand = async (req, res) => {
     const brand = await Brand.findById(req.params.id);
     if (!brand) return res.status(404).json({ message: 'Brand not found' });
 
-    const activeProducts = await Product.countDocuments({ 'details.brandId': brand._id, stock: { $gt: 0 }, isActive: true });
+    // prevent deletion if active products in stock exist
+    const activeProducts = await Product.countDocuments({
+      'details.brandId': mongoose.Types.ObjectId(brand._id),
+      stock: { $gt: 0 },
+      isActive: true
+    });
     if (activeProducts > 0) {
-      return res.status(400).json({ message: 'Cannot delete brand with active products in stock' });
+      return res.status(400).json({
+        message: 'Cannot delete brand with active products in stock'
+      });
     }
 
     brand.isActive = false;
