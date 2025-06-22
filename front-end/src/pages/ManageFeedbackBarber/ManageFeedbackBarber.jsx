@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Card, message } from 'antd';
-import { Modal, Button } from 'react-bootstrap';
+import { Card } from 'antd';
+import { Modal, Button, Toast, ToastContainer } from 'react-bootstrap';
 import { ExclamationTriangle } from 'react-bootstrap-icons';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import FeedbackBarberStats from '../../components/FeedbackBarberStats';
@@ -26,12 +26,20 @@ const ManageFeedbackBarber = () => {
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
   const [selectedFeedback, setSelectedFeedback] = useState(null);
 
-  // Modal states
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
 
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [itemToToggle, setItemToToggle] = useState(null);
+
+  const [toast, setToast] = useState({ show: false, message: '', variant: 'success' });
+
+  const showToast = (message, variant = 'success') => {
+    setToast({ show: true, message, variant });
+    setTimeout(() => {
+      setToast(prev => ({ ...prev, show: false }));
+    }, 3000);
+  };
 
   const stats = {
     total: feedbacks.length,
@@ -68,7 +76,7 @@ const ManageFeedbackBarber = () => {
       setPagination(prev => ({ ...prev, current: page, pageSize: limit, total }));
     } catch (error) {
       console.error('Error fetching feedbacks:', error);
-      message.error('Failed to load feedbacks');
+      showToast('Failed to load feedbacks', 'danger');
       setFeedbacks([]);
       setPagination(prev => ({ ...prev, total: 0 }));
     } finally {
@@ -86,7 +94,7 @@ const ManageFeedbackBarber = () => {
 
   const handleToggleApproval = (record) => {
     if (!record?._id) {
-      message.error('Invalid feedback data');
+      showToast('Invalid feedback data', 'danger');
       return;
     }
     setItemToToggle(record);
@@ -97,23 +105,24 @@ const ManageFeedbackBarber = () => {
     if (!itemToToggle?._id) return;
 
     const newStatus = !itemToToggle.isApproved;
-    const action = newStatus ? 'approve' : 'unapprove';
+    const action = newStatus ? 'approved' : 'unapproved';
 
     try {
       await updateBarberFeedbackApproval(itemToToggle._id, newStatus);
-      message.success(`Feedback ${action}d successfully`);
+      showToast(`Feedback ${action} successfully`, 'success');
       fetchFeedbacks({ page: pagination.current, limit: pagination.pageSize });
+    } catch (error) {
+      console.error(`Error ${action} feedback:`, error);
+      showToast(`Failed to ${action} feedback`, 'danger');
+    } finally {
       setItemToToggle(null);
       setShowApproveModal(false);
-    } catch (error) {
-      console.error(`Error ${action}ing feedback:`, error);
-      message.error(`Failed to ${action} feedback`);
     }
   };
 
   const handleDelete = (record) => {
     if (!record?._id) {
-      message.error('Invalid feedback data');
+      showToast('Invalid feedback data', 'danger');
       return;
     }
     setItemToDelete(record);
@@ -125,19 +134,20 @@ const ManageFeedbackBarber = () => {
 
     try {
       await deleteBarberFeedback(itemToDelete._id);
-      message.success('Feedback deleted successfully');
+      showToast('Feedback deleted successfully', 'success');
       fetchFeedbacks({ page: pagination.current, limit: pagination.pageSize });
-      setShowDeleteModal(false);
-      setItemToDelete(null);
     } catch (error) {
       console.error('Error deleting feedback:', error);
-      message.error('Failed to delete feedback');
+      showToast('Failed to delete feedback', 'danger');
+    } finally {
+      setShowDeleteModal(false);
+      setItemToDelete(null);
     }
   };
 
   const handleViewDetail = async (record) => {
     if (!record?._id) {
-      message.error('Invalid feedback data');
+      showToast('Invalid feedback data', 'danger');
       return;
     }
 
@@ -147,7 +157,7 @@ const ManageFeedbackBarber = () => {
       setSelectedFeedback(detail);
     } catch (error) {
       console.error('Error loading feedback detail:', error);
-      message.error('Failed to load feedback details');
+      showToast('Failed to load feedback details', 'danger');
     }
   };
 
@@ -231,6 +241,13 @@ const ManageFeedbackBarber = () => {
           </Button>
         </Modal.Footer>
       </Modal>
+
+      {/* Bootstrap Toast thông báo */}
+      <ToastContainer position="top-end" className="p-3">
+        <Toast show={toast.show} bg={toast.variant} onClose={() => setToast({ ...toast, show: false })} delay={3000} autohide>
+          <Toast.Body className="text-white">{toast.message}</Toast.Body>
+        </Toast>
+      </ToastContainer>
     </div>
   );
 };
