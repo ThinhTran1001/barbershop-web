@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { message, Spin, Alert, Form } from 'antd';
+import { message, Spin, Form } from 'antd';
 import dayjs from 'dayjs';
 import DiscountTable from '../../components/DiscountTable';
 import DiscountStats from '../../components/DiscountStats';
@@ -39,7 +39,7 @@ const DiscountManagement = () => {
       });
       setDiscounts(discountsWithProducts);
     } catch (error) {
-      message.error('Lỗi khi tải danh sách giảm giá!');
+      message.error('Error loading discount list!');
       console.error('Fetch discounts error:', error);
     } finally {
       setLoading(false);
@@ -51,7 +51,7 @@ const DiscountManagement = () => {
       const { data } = await getProducts();
       setAvailableProducts(data.filter(product => product.isActive !== false));
     } catch (error) {
-      message.error('Lỗi khi tải danh sách sản phẩm!');
+      message.error('Error loading product list!');
       console.error('Fetch products error:', error);
     }
   }, []);
@@ -85,6 +85,7 @@ const DiscountManagement = () => {
     }
     if (statusFilter !== 'all') {
       filtered = filtered.filter(discount => {
+        let daysLeft; // Declare outside switch
         switch (statusFilter) {
           case 'active':
             return discount.isActive && !discount.isExpired;
@@ -93,8 +94,8 @@ const DiscountManagement = () => {
           case 'expired':
             return discount.isExpired;
           case 'expiring':
-            { const daysLeft = dayjs(discount.discountEndDate).diff(dayjs(), 'day');
-            return discount.isActive && !discount.isExpired && daysLeft <= 7; }
+            daysLeft = dayjs(discount.discountEndDate).diff(dayjs(), 'day');
+            return discount.isActive && !discount.isExpired && daysLeft <= 7;
           default:
             return true;
         }
@@ -106,7 +107,7 @@ const DiscountManagement = () => {
   const validateDiscount = useCallback((discount, productId, isAdd = false) => {
     const numDiscount = Number(discount);
     if (isNaN(numDiscount) || numDiscount <= 0) {
-      throw new Error('Giảm giá phải là số dương lớn hơn 0!');
+      throw new Error('Discount must be a positive number greater than 0!');
     }
     let comparePrice;
     if (isAdd) {
@@ -116,7 +117,7 @@ const DiscountManagement = () => {
       comparePrice = editingDiscount?.productPrice;
     }
     if (comparePrice && numDiscount >= comparePrice) {
-      throw new Error('Giảm giá không thể lớn hơn hoặc bằng giá gốc!');
+      throw new Error('Discount cannot be greater than or equal to the original price!');
     }
   }, [availableProducts, editingDiscount]);
 
@@ -130,12 +131,12 @@ const DiscountManagement = () => {
     setSubmitting(true);
     try {
       await deleteDiscount(deletingDiscount._id);
-      message.success('Xóa giảm giá thành công!');
+      message.success('Discount deleted successfully!');
       setDeleteModalVisible(false);
       setDeletingDiscount(null);
       await fetchDiscounts();
     } catch (error) {
-      message.error('Không thể xóa giảm giá. Vui lòng thử lại!');
+      message.error('Unable to delete discount. Please try again!');
       console.error('Delete discount error:', error);
     } finally {
       setSubmitting(false);
@@ -157,7 +158,7 @@ const DiscountManagement = () => {
     try {
       const selectedProduct = availableProducts.find(p => p._id === values.productId);
       if (!selectedProduct) {
-        throw new Error('Không tìm thấy sản phẩm được chọn!');
+        throw new Error('Selected product not found!');
       }
       validateDiscount(values.discount, values.productId, true);
       const discountData = {
@@ -167,12 +168,12 @@ const DiscountManagement = () => {
         isActive: values.isActive !== false,
       };
       await createDiscount(discountData);
-      message.success('Thêm giảm giá thành công!');
+      message.success('Discount added successfully!');
       setAddModalVisible(false);
       addForm.resetFields();
       await fetchDiscounts();
     } catch (error) {
-      message.error(error.message || 'Không thể thêm giảm giá. Vui lòng thử lại!');
+      message.error(error.message || 'Unable to add discount. Please try again!');
       console.error('Add discount error:', error);
     } finally {
       setSubmitting(false);
@@ -189,13 +190,13 @@ const DiscountManagement = () => {
         discountEndDate: values.discountEndDate.toDate(),
         isActive: values.isActive,
       });
-      message.success('Cập nhật giảm giá thành công!');
+      message.success('Discount updated successfully!');
       setEditModalVisible(false);
       form.resetFields();
       setEditingDiscount(null);
       await fetchDiscounts();
     } catch (error) {
-      message.error(error.message || 'Không thể cập nhật giảm giá. Vui lòng thử lại!');
+      message.error(error.message || 'Unable to update discount. Please try again!');
       console.error('Update discount error:', error);
     } finally {
       setSubmitting(false);
@@ -239,33 +240,15 @@ const DiscountManagement = () => {
   }, [availableProducts, discounts]);
 
   const getDiscountStatus = useCallback((discount) => {
-    if (!discount.isActive) return { color: 'default', text: 'Không hoạt động' };
-    if (discount.isExpired) return { color: 'red', text: 'Đã hết hạn' };
+    if (!discount.isActive) return { color: 'default', text: 'Inactive' };
+    if (discount.isExpired) return { color: 'red', text: 'Expired' };
     const daysLeft = dayjs(discount.discountEndDate).diff(dayjs(), 'day');
-    if (daysLeft <= 7) return { color: 'orange', text: 'Sắp hết hạn' };
-    return { color: 'green', text: 'Đang hoạt động' };
+    if (daysLeft <= 7) return { color: 'orange', text: 'Expiring Soon' };
+    return { color: 'green', text: 'Active' };
   }, []);
 
   return (
     <div className="mdp-discount-product-container">
-      {statistics.expired > 0 && (
-        <Alert
-          message={`Có ${statistics.expired} giảm giá đã hết hạn`}
-          type="warning"
-          showIcon
-          closable
-          style={{ marginBottom: 16 }}
-        />
-      )}
-      {statistics.expiring > 0 && (
-        <Alert
-          message={`Có ${statistics.expiring} giảm giá sắp hết hạn trong 7 ngày tới`}
-          type="info"
-          showIcon
-          closable
-          style={{ marginBottom: 16 }}
-        />
-      )}
       <DiscountStats statistics={statistics} />
       <DiscountSearch
         searchText={searchText}
@@ -283,7 +266,7 @@ const DiscountManagement = () => {
         {loading ? (
           <div className="mdp-discount-loading">
             <Spin size="large" />
-            <p>Đang tải dữ liệu...</p>
+            <p>Loading data...</p>
           </div>
         ) : (
           <DiscountTable
@@ -304,8 +287,8 @@ const DiscountManagement = () => {
         }}
         onOk={() => handleModalOk(false)}
         form={form}
-        title="Chỉnh sửa giảm giá"
-        okText="Lưu"
+        title="Edit Discount"
+        okText="Save"
         submitting={submitting}
         editingDiscount={editingDiscount}
         availableProducts={productsWithoutDiscount}
@@ -319,8 +302,8 @@ const DiscountManagement = () => {
         }}
         onOk={() => handleModalOk(true)}
         form={addForm}
-        title="Thêm giảm giá mới"
-        okText="Thêm"
+        title="Add New Discount"
+        okText="Add"
         submitting={submitting}
         editingDiscount={null}
         availableProducts={productsWithoutDiscount}

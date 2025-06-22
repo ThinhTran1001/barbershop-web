@@ -4,30 +4,34 @@ import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
 const DiscountTable = ({ discounts, loading, getDiscountStatus, handleEditDiscount, handleDeleteDiscount }) => {
+  // Function to format currency in VND
+  const formatVND = (amount) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'VND',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
   const columns = useMemo(() => [
     {
       title: 'Product',
       dataIndex: 'productName',
       key: 'productName',
       width: 250,
-      render: (name, record) => (
-        <div>
-          <div>{name}</div>
-          {record.isExpired && (
-            <Tag color="red" style={{ marginTop: 4 }}>
-              Expired
-            </Tag>
-          )}
-        </div>
-      ),
     },
     {
       title: 'Discount',
       dataIndex: 'discount',
       key: 'discount',
-      width: 120,
+      width: 150,
       align: 'right',
-      render: discount => <Tag color="red">-${discount}</Tag>,
+      render: discount => (
+        <Tag color="red" style={{ fontSize: '12px', padding: '4px 8px' }}>
+          -{formatVND(discount)}
+        </Tag>
+      ),
       sorter: (a, b) => a.discount - b.discount,
     },
     {
@@ -37,17 +41,9 @@ const DiscountTable = ({ discounts, loading, getDiscountStatus, handleEditDiscou
       width: 150,
       render: date => {
         const endDate = dayjs(date);
-        const daysLeft = endDate.diff(dayjs(), 'day');
-        const isExpiringSoon = daysLeft <= 7 && daysLeft > 0;
-
         return (
           <div>
             <div>{endDate.format('DD/MM/YYYY')}</div>
-            {isExpiringSoon && (
-              <Tag color="orange">
-                {daysLeft} days left
-              </Tag>
-            )}
           </div>
         );
       },
