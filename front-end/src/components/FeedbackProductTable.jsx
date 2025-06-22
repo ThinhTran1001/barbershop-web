@@ -23,6 +23,22 @@ const FeedbackProductTable = ({
     action: null,
     variant: 'primary'
   });
+  const [toasts, setToasts] = useState([]);
+
+  const showToast = (message, type = 'success') => {
+    const id = Date.now();
+    const newToast = { id, message, type };
+    setToasts(prev => [...prev, newToast]);
+    
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+      setToasts(prev => prev.filter(toast => toast.id !== id));
+    }, 3000);
+  };
+
+  const removeToast = (id) => {
+    setToasts(prev => prev.filter(toast => toast.id !== id));
+  };
 
   const showConfirmModal = (title, message, action, variant = 'primary') => {
     setModalConfig({ title, message, action, variant });
@@ -32,6 +48,22 @@ const FeedbackProductTable = ({
   const handleConfirm = () => {
     if (modalConfig.action) {
       modalConfig.action();
+      
+      // Show toast notification
+      let toastMessage = '';
+      let toastType = 'success';
+      
+      if (modalConfig.title.includes('Approve')) {
+        toastMessage = 'Feedback approved successfully!';
+      } else if (modalConfig.title.includes('Unapprove')) {
+        toastMessage = 'Feedback unapproved successfully!';
+        toastType = 'warning';
+      } else if (modalConfig.title.includes('Delete')) {
+        toastMessage = 'Feedback deleted successfully!';
+        toastType = 'danger';
+      }
+      
+      showToast(toastMessage, toastType);
     }
     setShowModal(false);
   };
@@ -282,6 +314,28 @@ const FeedbackProductTable = ({
           </div>
         </>
       )}
+
+      {/* Toast Notifications */}
+      <div className="toast-container position-fixed top-0 end-0 p-3" style={{ zIndex: 9999 }}>
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className={`toast show align-items-center text-bg-${toast.type} border-0`}
+            role="alert"
+          >
+            <div className="d-flex">
+              <div className="toast-body">
+                {toast.message}
+              </div>
+              <button
+                type="button"
+                className="btn-close btn-close-white me-2 m-auto"
+                onClick={() => removeToast(toast.id)}
+              ></button>
+            </div>
+          </div>
+        ))}
+      </div>
     </>
   );
 };
