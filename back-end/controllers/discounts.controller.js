@@ -1,4 +1,4 @@
-const Discount = require('../models/discount.model');
+const Discount = require('../models/discounts.model');
 const mongoose = require('mongoose');
 
 // Create a new discount
