@@ -6,7 +6,7 @@ import BusinessHours from "../../components/landing/BussinessHour";
 import Barbers from "../../components/landing/Barber";
 import BookingForm from "../../components/landing/Booking";
 import '../../css/landing/container.css'
-import ShopItems from "../../components/landing/products";
+import ShopItems from "../../components/landing/productlistd";
 
 
 export default function Landing() {
@@ -17,11 +17,14 @@ export default function Landing() {
         <AboutSection />
 
         <Services />
+        <br></br>   
         <br></br>
         <ShopItems />
+        <br></br>
+        <br></br>
         <BusinessHours />
-
-
+        <br></br>
+        <br></br>
         <Barbers />
         <BookingForm />
 

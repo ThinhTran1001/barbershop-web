@@ -18,6 +18,7 @@ import {
 } from "@ant-design/icons";
 
 import "../../css/product/productdetail.css";
+import { useCart } from "../../context/CartContext";
 
 import product1 from "../../assets/images/product1.jpg";
 import product2 from "../../assets/images/product2.jpg";
@@ -36,6 +37,7 @@ const { TabPane } = Tabs;
 const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { addToCart } = useCart();
   const [product, setProduct] = useState(null);
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -50,11 +52,13 @@ const ProductDetail = () => {
         const res = await fetch(`http://localhost:3000/api/products/${id}`);
         if (!res.ok) throw new Error("Lỗi khi tải sản phẩm");
         const data = await res.json();
-        setProduct(data);
-        setMainImage(data.image);
+        
+        const productData = data.data || data;
+        setProduct(productData);
+        setMainImage(productData.image);
 
-        if (data.relatedProducts?.length) {
-          const ids = data.relatedProducts.map((id) => `id=${id}`).join("&");
+        if (productData.relatedProducts?.length) {
+          const ids = productData.relatedProducts.map((id) => `id=${id}`).join("&");
           const relRes = await fetch(`http://localhost:9999/products?${ids}`);
           if (relRes.ok) {
             const relData = await relRes.json();
@@ -92,17 +96,20 @@ const ProductDetail = () => {
   };
 
   const handleAddToCart = () => {
-    notification.success({
-      message: "Đã thêm vào giỏ hàng",
-      description: `Đã thêm ${quantity} x ${product.name}`,
-      icon: <CheckCircleFilled style={{ color: "#52c41a" }} />,
-      placement: "topRight",
-    });
+    if (product) {
+      addToCart(product, quantity);
+      notification.success({
+        message: "Đã thêm vào giỏ hàng",
+        description: `Đã thêm ${quantity} x ${product.name}`,
+        icon: <CheckCircleFilled style={{ color: "#52c41a" }} />,
+        placement: "topRight",
+      });
+    }
   };
 
   const handleBuyNow = () => {
     handleAddToCart();
-    // navigate("/checkout");
+    navigate("/cart");
   };
 
   const toggleFavorite = () => {
@@ -152,7 +159,7 @@ const ProductDetail = () => {
               className="main-product-image"
               onError={(e) => {
                 e.target.onerror = null;
-                e.target.src = "https://via.placeholder.com/500x500?text=Product+Image";
+                e.target.src = "";
               }}
             />
             {product.discount > 0 && <div className="discount-badge">-{product.discount}%</div>}
@@ -321,7 +328,7 @@ const ProductDetail = () => {
                     alt={rel.name}
                     onError={(e) => {
                       e.target.onerror = null;
-                      e.target.src = "https://via.placeholder.com/200x200?text=Product";
+                      e.target.src = "";
                     }}
                   />
                   {rel.discount > 0 && (

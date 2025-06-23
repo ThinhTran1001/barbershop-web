@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Breadcrumb, Input, Select } from "antd";
+import { useCart } from "../../context/CartContext";
 import "../../css/landing/products.css";
 
 import product1 from "../../assets/images/product1.jpg";
@@ -29,6 +30,7 @@ export default function ProductList() {
   const [currentPage, setCurrentPage] = useState(1);
   const productsPerPage = 12;
   const navigate = useNavigate();
+  const { addToCart } = useCart();
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -50,6 +52,11 @@ export default function ProductList() {
     if (imageMap[imagePath]) return imageMap[imagePath];
     if (imagePath?.startsWith("/assets")) return imagePath.substring(1);
     return imagePath;
+  };
+
+  const handleBuyNow = (product) => {
+    addToCart(product, 1);
+    navigate('/cart');
   };
 
   const goToProductDetail = (productId) => {
@@ -168,7 +175,7 @@ export default function ProductList() {
                   className="item-image"
                   onError={(e) => {
                     e.target.onerror = null;
-                    e.target.src = "https://via.placeholder.com/300x300?text=Product+Image";
+                    e.target.src = "";
                   }}
                 />
               </div>
@@ -178,7 +185,7 @@ export default function ProductList() {
                   {product.price.toLocaleString("vi-VN")} VND
                 </p>
                 <div className="item-buttons">
-                  <button className="purchase-button">Mua hàng</button>
+                  <button className="purchase-button" onClick={() => handleBuyNow(product)}>Mua hàng</button>
                   <button className="detail-button" onClick={() => goToProductDetail(product._id)}>
                     Chi tiết
                   </button>

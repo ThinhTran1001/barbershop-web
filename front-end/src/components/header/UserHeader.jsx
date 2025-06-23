@@ -1,6 +1,8 @@
 import React from "react";
-import { Layout, Menu, Button, Dropdown } from "antd";
+import { Layout, Menu, Button, Dropdown, Badge } from "antd";
+import { ShoppingCartOutlined, UserOutlined } from "@ant-design/icons";
 import { useAuth } from "../../context/AuthContext";
+import { useCart } from "../../context/CartContext";
 import { useNavigate } from "react-router-dom";
 import "../../css/landing/common-header.css";
 
@@ -17,13 +19,10 @@ const navItems = [
 
 export default function UserHeader() {
   const { user, logout } = useAuth();
+  const { getCartCount } = useCart();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    await logout();
-    navigate("/login");
-  };
-  const handleOrder = async () => {
     await logout();
     navigate("/login");
   };
@@ -58,6 +57,15 @@ export default function UserHeader() {
       </div>
 
       <div className="d-flex align-items-center gap-2 ms-auto">
+        <Badge count={getCartCount()} showZero={false}>
+          <Button
+            type="text"
+            icon={<ShoppingCartOutlined />}
+            style={{ color: "#ffc107", fontSize: "18px" }}
+            onClick={() => navigate("/cart")}
+          />
+        </Badge>
+        
         {!user ? (
           <>
             <Button type="default" onClick={() => navigate("/login")}>
@@ -74,17 +82,13 @@ export default function UserHeader() {
           <Dropdown
             menu={{
               items: [
-                {
-                  key: "my-orders",
-                  label: "Lịch sử đơn hàng",
-                  onClick: () => navigate("/my-orders"),
-                },
                 { key: "logout", label: "Đăng xuất", onClick: handleLogout },
               ],
             }}
           >
             <Button type="text" style={{ color: "#ffc107" }}>
-              {user.name || user.email}
+              <UserOutlined />
+              <span style={{ marginLeft: '8px' }}>{user.name || user.email}</span>
             </Button>
           </Dropdown>
         )}
