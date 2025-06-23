@@ -12,7 +12,7 @@ const barberRoutes = require('./routes/barber.route');
 const reviewRoutes = require('./routes/productreview.route');
 const feedbackBarberRoutes = require('./routes/feedbackBarber.route');
 const discountRoutes = require('./routes/discounts.route');
-const bookingRoutes = require('./routes/booking.route');
+
 const cors = require('cors');
 const cookieParser = require("cookie-parser");
 
@@ -41,7 +41,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/product-reviews', reviewRoutes);
 app.use('/api/feedback-barber', feedbackBarberRoutes);
 app.use('/api/discounts', discountRoutes);
-app.use('/api/booking', require('./routes/booking.route'));
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
