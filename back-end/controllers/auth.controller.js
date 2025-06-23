@@ -96,7 +96,9 @@ exports.login = async (req, res) => {
             maxAge: 24 * 60 * 60 * 1000,
         });
 
-        return res.json({ message: "Login successfully!" });
+        return res.json({ message: "Login successfully!",
+            token: accessToken,
+         });
     } catch (err) {
         console.error(err);
         return res.status(500).json({ message: "Internal Error Server" });

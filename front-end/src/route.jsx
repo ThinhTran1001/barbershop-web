@@ -1,75 +1,72 @@
-import { createBrowserRouter } from "react-router-dom";
-import RequireRole from "./middleware/RequireAuth.jsx";
-import CommonLayout from "./pages/layout/CommonLayout.jsx";
+import { Routes, Route } from "react-router-dom";
+import Landing from "./pages/home/Landing.jsx";
+import LoginPage from "./pages/auth/LoginPage.jsx";
+import RegisterPage from "./pages/auth/RegisterPage.jsx";
 import AdminLayout from "./pages/layout/AdminLayout.jsx";
 import BarberLayout from "./pages/layout/BarberLayout.jsx";
-import RoleBasedLayout from "./pages/layout/RoleBasedLayout.jsx";
-import Landing from "./pages/home/Landing.jsx";
-import Login from "./pages/auth/LoginPage.jsx";
+import CommonLayout from "./pages/layout/CommonLayout.jsx";
 import ProductManagement from "./components/ProductManagement.jsx";
 import BrandManagement from "./components/BrandManagement.jsx";
 import CategoryManagement from "./components/CategoryManagement.jsx";
-import BarberManagement from "./components/BarberManagement.jsx";
 import UserManagement from "./components/UserManagement.jsx";
-import Register from "./pages/auth/RegisterPage.jsx";
-import ProductDetail from "./components/product/ProductDetail.jsx";
-import ProductList from "./pages/home/prodductList.jsx";
-import ManagingService from './pages/ManagingService/ManagingService.jsx'
+import BarberManagement from "./components/BarberManagement.jsx";
+import VoucherManagement from "./components/VoucherManagemet.jsx";
+import OrderManagement from "./components/OrderManagement.jsx";
+import ProductDetail from './components/product/ProductDetail';
+import ServiceBooking from './pages/ServiceBooking/ServiceBooking';
+import ManagingService from './pages/ManagingService/ManagingService';
+import RequireAuth from './middleware/RequireAuth';
+import ListOfOrder from './pages/order/ListOfOrder';
 import ForgotPasswordForm from "./components/auth/ForgotPasswordForm.jsx";
 import ResetPasswordForm from "./components/auth/ResetPasswordForm.jsx";
-import VoucherManagement from "./components/VoucherManagemet.jsx";
+import OrderDetail from "./pages/order/OrderDetail";
+import ProdductList from "./pages/home/prodductList";
+import UserVoucherManagement from "./components/UserVoucherManagement";
 
-const publicRoutes = {
-  element: <CommonLayout />,
-  children: [
-    { path: "/", element: <Landing /> },
-    { path: "/products/:id", element: <ProductDetail/> },
-    { path: "/login", element: <Login /> },
-    {path: "/register", element: <Register/>},
-    {path: "/products", element: <ProductList/>},
-    {path: "/forget", element: <ProductList/>},
-    { path: "/forgot-password", element: <ForgotPasswordForm /> },
-    { path: "/reset-password", element: <ResetPasswordForm /> },
-  ],
+const AppRoutes = () => {
+    return (
+        <Routes>
+            {/* Public and Common Routes */}
+            <Route element={<CommonLayout />}>
+                <Route path="/" element={<Landing />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordForm />} />
+                <Route path="/reset-password/:token" element={<ResetPasswordForm />} />
+                <Route path="/product/:id" element={<ProductDetail />} />
+                <Route path="/service-booking" element={<ServiceBooking />} />
+
+                {/* Protected Customer Routes */}
+                <Route element={<RequireAuth allowedRoles={['customer']} />}>
+                    <Route path="/my-orders" element={<ListOfOrder />} />
+                    <Route path="/my-orders/:id" element={<OrderDetail />} />
+                </Route>
+            </Route>
+
+            {/* Protected Admin Routes */}
+            <Route element={<RequireAuth allowedRoles={['admin']} />}>
+                <Route path="/admin" element={<AdminLayout />}>
+                    <Route index element={<ProductManagement />} />
+                    <Route path="product" element={<ProductManagement />} />
+                    <Route path="brand" element={<BrandManagement />} />
+                    <Route path="category" element={<CategoryManagement />} />
+                    <Route path="service" element={<ManagingService />} />
+                    <Route path="barber" element={<BarberManagement />} />
+                    <Route path="user" element={<UserManagement />} />
+                    <Route path="voucher" element={<VoucherManagement />} />
+                    <Route path="user-vouchers" element={<UserVoucherManagement />} />
+                    <Route path="order" element={<OrderManagement />} />
+                </Route>
+            </Route>
+
+            {/* Protected Barber Routes */}
+            <Route element={<RequireAuth allowedRoles={['barber']} />}>
+                <Route path="/barber" element={<BarberLayout />}>
+                    <Route index element={<ManagingService />} />
+                </Route>
+            </Route>
+        </Routes>
+    );
 };
 
-const adminRoutes = {
-  element: <RequireRole allowedRoles={["admin"]} />,
-  children: [
-    {
-      path: "/admin",
-      element: <AdminLayout />,
-      children: [
-        { index: true, element: <ProductManagement /> },
-        { path: "product", element: <ProductManagement /> },
-        { path: "brand", element: <BrandManagement /> },
-        { path: "category", element: <CategoryManagement /> },
-        { path: "service", element: <ManagingService /> },
-        { path: "barber", element: <BarberManagement /> },
-        { path: "user", element: <UserManagement /> },
-        { path: "voucher", element: <VoucherManagement /> },
-
-      ],
-    },
-  ],
-};
-
-const barberRoutes = {
-  element: <RequireRole allowedRoles={["barber"]} />,
-  children: [
-    {
-      path: "/barber",
-      element: <BarberLayout />,
-      children: [],
-    },
-  ],
-};
-
-const router = createBrowserRouter([
-  { path: "/dashboard", element: <RoleBasedLayout /> },
-  adminRoutes,
-  barberRoutes,
-  publicRoutes,
-]);
-
-export default router;
+export default AppRoutes;

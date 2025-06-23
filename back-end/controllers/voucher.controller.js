@@ -6,7 +6,6 @@ exports.createVoucher = async(req,res) =>{
         const newVoucher = await voucher.save();
         res.status(201).json(newVoucher);
     } catch (error) {
-    console.error(err);
     res.status(500).json({ success: false, message: 'Server Error' });
     }
 }
@@ -14,10 +13,61 @@ exports.createVoucher = async(req,res) =>{
 
 exports.getAllVoucher = async(req,res) =>{
     try {
-        const allVoucher = await Voucher.find();
-        res.status(200).json(allVoucher)
+        console.log('getAllVoucher called');
+        console.log('User info:', req.user);
+        console.log('User role:', req.user ? req.user.role : 'No user');
+        
+        const { startDate, endDate, isActive, sortByAmount, sortByUsageLimit, sortByUsedCount, page = 1, limit = 10 } = req.query;
+        let queryFilters = {};
+        
+        if (req.user && req.user.role === 'admin') {
+            console.log('Admin user - fetching all vouchers');
+            if (startDate) {
+                queryFilters.startDate = { $gte: new Date(startDate) };
+            }
+            if (endDate) {
+                queryFilters.endDate = { $lte: new Date(endDate) };
+            }
+            if (isActive !== undefined && isActive !== null && isActive !== '') {
+                queryFilters.isActive = String(isActive).toLowerCase() === 'true';
+            }
+        } else {
+            console.log('Customer user - fetching only active and valid vouchers');
+            const now = new Date();
+            queryFilters = {
+                isActive: true,
+                startDate: { $lte: now },
+                endDate: { $gte: now }
+            };
+        }
+        
+        const sortOptions = {};
+        if (sortByAmount) {
+            sortOptions.minOrderAmount = sortByAmount === 'asc' ? 1 : -1;
+        } else if (sortByUsageLimit) {
+            sortOptions.usageLimit = sortByUsageLimit === 'asc' ? 1 : -1;
+        } else if (sortByUsedCount) {
+            sortOptions.usedCount = sortByUsedCount === 'asc' ? 1 : -1;
+        }
+
+        const totalVouchers = await Voucher.countDocuments(queryFilters);
+        const allVoucher = await Voucher.find(queryFilters)
+            .sort(sortOptions)
+            .skip((page - 1) * limit)
+            .limit(parseInt(limit));
+        
+        console.log('Found vouchers:', allVoucher);
+        console.log('Number of vouchers found:', allVoucher ? allVoucher.length : 0);
+        
+        res.status(200).json({
+            data: allVoucher,
+            totalPages: Math.ceil(totalVouchers / limit),
+            currentPage: parseInt(page),
+            totalVouchers,
+        });
     } catch (error) {
-     res.status(500).json({ success: false, message: error.message });
+        console.error('Error in getAllVoucher:', error);
+        res.status(500).json({ success: false, message: error.message });
 
     }
 }

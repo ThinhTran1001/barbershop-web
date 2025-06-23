@@ -1,8 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, message, Select } from 'antd';
-import { getAllUser, updateUser, createUser } from '../services/api';
-import { InfoCircleFilled, SortAscendingOutlined, SortDescendingOutlined } from '@ant-design/icons';
+import { Table, Button, Modal, Form, Input, message, Select, Descriptions, Space, Image } from 'antd';
+import { getAllUser, updateUser, createUser, deleteUser } from '../services/api';
+import { EditOutlined, EyeOutlined, SortAscendingOutlined, SortDescendingOutlined, InfoCircleFilled, DeleteFilled } from '@ant-design/icons';
+import dayjs from 'dayjs';
 
 const { Option } = Select;
 
@@ -25,6 +25,8 @@ const UserManagement = () => {
   const [users, setUsers] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isViewModalVisible, setIsViewModalVisible] = useState(false);
+  const [viewingUser, setViewingUser] = useState(null);
   const [form] = Form.useForm();
   const [editingUser, setEditingUser] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -114,12 +116,23 @@ const UserManagement = () => {
     }
   };
 
+  const handleDeleteUser = async (userId) => {
+    if (window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+      try {
+        await deleteUser(userId);
+        message.success('User deleted successfully');
+        fetchInitialData();
+      } catch (error) {
+        message.error('Failed to delete user: ' + error.message);
+      }
+    }
+  };
+
   const showModal = (user = null) => {
     if (user) {
       setEditingUser(user);
       form.setFieldsValue({
         ...user,
-        // passwordHash: '***********************************************',
       });
     } else {
       setEditingUser(null);
@@ -127,6 +140,11 @@ const UserManagement = () => {
       form.setFieldsValue({ status: 'active', isVerified: true });
     }
     setIsModalVisible(true);
+  };
+
+  const showViewModal = (user) => {
+    setViewingUser(user);image.png
+    setIsViewModalVisible(true);
   };
 
   const columns = [
@@ -203,9 +221,11 @@ const UserManagement = () => {
       title: 'Actions',
       key: 'actions',
       render: (_, record) => (
-        <Button onClick={() => showModal(record)} className="me-2">
-          <InfoCircleFilled />
-        </Button>
+        <Space>
+          <Button onClick={() => showViewModal(record)} icon={<EyeOutlined />} />
+          <Button onClick={() => showModal(record)} icon={<InfoCircleFilled />} />
+          <Button onClick={() => handleDeleteUser(record._id)} icon={<DeleteFilled />} danger />
+        </Space>
       ),
     },
   ];
@@ -367,6 +387,43 @@ const UserManagement = () => {
             </Button>
           </Form.Item>
         </Form>
+      </Modal>
+
+      <Modal
+        title="User Details"
+        open={isViewModalVisible}
+        onCancel={() => setIsViewModalVisible(false)}
+        footer={[
+            <Button key="back" onClick={() => setIsViewModalVisible(false)}>
+                Close
+            </Button>,
+        ]}
+        width={800}
+      >
+        {viewingUser && (
+            <div style={{ display: 'flex', gap: '24px' }}>
+                <div style={{ flex: '0 0 200px' }}>
+                    <Image 
+                        width="100%" 
+                        src={viewingUser.avatarUrl || 'https://via.placeholder.com/200'}
+                        alt={viewingUser.name}
+                        style={{ borderRadius: '8px', objectFit: 'cover' }}
+                    />
+                </div>
+                <div style={{ flex: 1 }}>
+                    <Descriptions bordered column={1} size="small">
+                        <Descriptions.Item label="Name">{viewingUser.name}</Descriptions.Item>
+                        <Descriptions.Item label="Email">{viewingUser.email}</Descriptions.Item>
+                        <Descriptions.Item label="Phone">{viewingUser.phone || 'N/A'}</Descriptions.Item>
+                        <Descriptions.Item label="Role">{viewingUser.role}</Descriptions.Item>
+                        <Descriptions.Item label="Status">{viewingUser.status}</Descriptions.Item>
+                        <Descriptions.Item label="Verified">{viewingUser.isVerified ? 'Yes' : 'No'}</Descriptions.Item>
+                        <Descriptions.Item label="Created At">{dayjs(viewingUser.createdAt).format('DD/MM/YYYY HH:mm')}</Descriptions.Item>
+                        <Descriptions.Item label="Updated At">{dayjs(viewingUser.updatedAt).format('DD/MM/YYYY HH:mm')}</Descriptions.Item>
+                    </Descriptions>
+                </div>
+            </div>
+        )}
       </Modal>
     </div>
   );

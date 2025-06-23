@@ -10,7 +10,8 @@ const serviceRoutes = require('./routes/service.route');
 const userRoutes = require('./routes/user.route');
 const barberRoutes = require('./routes/barber.route');
 const voucherRoutes = require('./routes/voucher.route')
-
+const orderRoutes = require('./routes/order.route')
+const userVoucherRoutes = require('./routes/user_voucher.route');
 const cors = require('cors');
 const cookieParser = require("cookie-parser");
 
@@ -37,6 +38,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/barbers',barberRoutes)
 app.use('/api/users', userRoutes);
 app.use('/api/vouchers', voucherRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/user-vouchers', userVoucherRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

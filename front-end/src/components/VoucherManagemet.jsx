@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, message, Select, DatePicker, Tag } from 'antd';
-import { getAllVoucher, createVoucher, updateVoucher } from '../services/api';
-import { InfoCircleFilled, SortAscendingOutlined, SortDescendingOutlined } from '@ant-design/icons';
+import { Table, Button, Modal, Form, Input, message, Select, DatePicker, Tag, Switch, Descriptions, Space } from 'antd';
+import { getAllVoucher, createVoucher, updateVoucher, deleteVoucher } from '../services/api';
+import { InfoCircleFilled, SortAscendingOutlined, SortDescendingOutlined, EyeOutlined, EditOutlined, DeleteFilled } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
 const { Option } = Select;
@@ -15,28 +15,51 @@ const VoucherManagement = () => {
     const [vouchers, setVouchers] = useState([]);
     const [allVouchers, setAllVouchers] = useState([]);
     const [isModalVisible, setIsModalVisible] = useState(false);
+    const [isViewModalVisible, setIsViewModalVisible] = useState(false);
+    const [viewingVoucher, setViewingVoucher] = useState(null);
     const [form] = Form.useForm();
     const [editingVoucher, setEditingVoucher] = useState(null); 
     const [searchTerm, setSearchTerm] = useState(''); 
-    const [typeFilter, setTypeFilter] = useState(''); 
-    const [currentPage, setCurrentPage] = useState(1);
-    const [pageSize, setPageSize] = useState(5);
+    const [typeFilter, setTypeFilter] = useState(null); 
+    const [startDate, setStartDate] = useState(null);
+    const [endDate, setEndDate] = useState(null);
+    const [isActiveFilter, setIsActiveFilter] = useState(null);
+    const [pagination, setPagination] = useState({
+        currentPage: 1,
+        pageSize: 5,
+        totalVouchers: 0,
+    });
     const [sortName, setSortName] = useState(null);
+    const [sortAmount, setSortAmount] = useState(null);
+    const [sortUsageLimit, setSortUsageLimit] = useState(null);
+    const [sortUsedCount, setSortUsedCount] = useState(null);
 
     useEffect(() => {
         fetchInitialData();
-    }, []);
+    }, [startDate, endDate, isActiveFilter, sortAmount, sortUsageLimit, sortUsedCount, pagination.currentPage, pagination.pageSize]);
 
     useEffect(() => {
         filterVouchers()
-    }, [searchTerm, typeFilter, sortName]);
+    }, [searchTerm, typeFilter, sortName, allVouchers]);
 
     const fetchInitialData = async() => {
         try {
-            const response = await getAllVoucher();
+            const params = {
+                page: pagination.currentPage,
+                limit: pagination.pageSize,
+            };
+            if (startDate) params.startDate = startDate.toISOString();
+            if (endDate) params.endDate = endDate.toISOString();
+            if (isActiveFilter !== null) params.isActive = isActiveFilter;
+            if (sortAmount) params.sortByAmount = sortAmount;
+            if (sortUsageLimit) params.sortByUsageLimit = sortUsageLimit;
+            if (sortUsedCount) params.sortByUsedCount = sortUsedCount;
+
+            const response = await getAllVoucher(params);
             console.log('Voucher data after fetch:', response.data);
-            setAllVouchers(response.data);
-            setVouchers(response.data);
+            setAllVouchers(response.data.data);
+            setPagination(prev => ({ ...prev, totalVouchers: response.data.totalVouchers }));
+            // setVouchers(response.data); // This is handled by filterVouchers
         } catch (error) {
             message.error('Failed to load voucher list: ' + error.message);
         }
@@ -71,6 +94,8 @@ const VoucherManagement = () => {
                 ...values,
                 startDate: values.startDate ? dayjs(values.startDate).toISOString() : null,
                 endDate: values.endDate ? dayjs(values.endDate).toISOString() : null,
+                // Đảm bảo isActive luôn có giá trị boolean
+                isActive: values.isActive !== undefined ? values.isActive : true
             };
             
             console.log('Payload sent:', voucherData);
@@ -97,6 +122,18 @@ const VoucherManagement = () => {
         }
     }
 
+    const handleDeleteVoucher = async (voucherId) => {
+        if (window.confirm('Are you sure you want to delete this voucher?')) {
+            try {
+              await deleteVoucher(voucherId);
+              message.success('Voucher deleted successfully');
+              fetchInitialData();
+            } catch (error) {
+              message.error('Failed to delete voucher: ' + error.message);
+            }
+        }
+    };
+
     const showModal = (voucher = null) => {
         if (voucher) {
             setEditingVoucher(voucher);
@@ -111,10 +148,16 @@ const VoucherManagement = () => {
             form.resetFields();
             form.setFieldsValue({ 
                 usedCount: 0,
-                type: 'percent'
+                type: 'percent',
+                isActive: true // Set default value cho isActive
             });
         }
         setIsModalVisible(true);
+    };
+
+    const showViewModal = (voucher) => {
+        setViewingVoucher(voucher);
+        setIsViewModalVisible(true);
     };
 
     // Cải thiện hàm formatDate với error handling
@@ -178,8 +221,8 @@ const VoucherManagement = () => {
             dataIndex: 'value',
             key: 'value',
             render: (value, record) => {
-                if (!value) return 'N/A';
-                return record.type === 'percent' ? `${value}%` : `$${value}`;
+                if (value == null) return 'N/A';
+                return record.type === 'percent' ? `${value}%` : `${value.toLocaleString('vi-VN')} VND`;
             },
         },
         {
@@ -198,7 +241,7 @@ const VoucherManagement = () => {
             title: 'Min Order Amount',
             dataIndex: 'minOrderAmount',
             key: 'minOrderAmount',
-            render: (amount) => amount ? `$${amount}` : 'N/A',
+            render: (amount) => `${(amount || 0).toLocaleString('vi-VN')} VND`,
         },
         {
             title: 'Start Date',
@@ -226,30 +269,42 @@ const VoucherManagement = () => {
                 );
             },
         },
+        // {
+        //     title: 'Status',
+        //     key: 'status',
+        //     render: (_, record) => {
+        //         const status = getDateStatus(record.startDate, record.endDate);
+        //         const statusConfig = {
+        //             upcoming: { color: 'orange', text: 'Upcoming' },
+        //             active: { color: 'green', text: 'Active' },
+        //             expired: { color: 'red', text: 'Expired' }
+        //         };
+        //         return (
+        //             <Tag color={statusConfig[status].color}>
+        //                 {statusConfig[status].text}
+        //             </Tag>
+        //         );
+        //     },
+        // },
         {
-            title: 'Status',
-            key: 'status',
-            render: (_, record) => {
-                const status = getDateStatus(record.startDate, record.endDate);
-                const statusConfig = {
-                    upcoming: { color: 'orange', text: 'Upcoming' },
-                    active: { color: 'green', text: 'Active' },
-                    expired: { color: 'red', text: 'Expired' }
-                };
-                return (
-                    <Tag color={statusConfig[status].color}>
-                        {statusConfig[status].text}
-                    </Tag>
-                );
-            },
+            title: 'Is Active',
+            dataIndex: 'isActive',
+            key: 'isActive',
+            render: (isActive) => (
+                <Tag color={isActive ? 'green' : 'red'}>
+                    {isActive ? 'Active' : 'Inactive'}
+                </Tag>
+            ),
         },
         {
             title: 'Actions',
             key: 'actions',
             render: (_, record) => (
-                <Button onClick={() => showModal(record)} className="me-2">
-                    <InfoCircleFilled />
-                </Button>
+                <Space>
+                    <Button onClick={() => showViewModal(record)} icon={<EyeOutlined />} />
+                    <Button onClick={() => showModal(record)} icon={<InfoCircleFilled />} />
+                    <Button onClick={() => handleDeleteVoucher(record._id)} icon={<DeleteFilled />} danger />
+                </Space>
             ),
         },
     ];
@@ -264,7 +319,7 @@ const VoucherManagement = () => {
                     style={{ width: 200 }}
                 />
                 <Select
-                    placeholder="Filter by type"
+                    placeholder="Type"
                     value={typeFilter}
                     onChange={setTypeFilter}
                     style={{ width: 150 }}
@@ -276,6 +331,54 @@ const VoucherManagement = () => {
                         </Option>
                     ))}
                 </Select>
+                <Select
+                    placeholder="Filter by Active"
+                    value={isActiveFilter}
+                    onChange={setIsActiveFilter}
+                    allowClear
+                    style={{ width: 150 }}
+                >
+                    <Option value={true}>Active</Option>
+                    <Option value={false}>Inactive</Option>
+                </Select>
+                <DatePicker 
+                    placeholder="Start Date" 
+                    onChange={date => setStartDate(date)} 
+                />
+                <DatePicker 
+                    placeholder="End Date" 
+                    onChange={date => setEndDate(date)} 
+                />
+                <Select
+                    placeholder="Sort by Amount"
+                    value={sortAmount}
+                    onChange={setSortAmount}
+                    allowClear
+                    style={{ width: 180 }}
+                >
+                    <Option value="asc">Amount (Low to High)</Option>
+                    <Option value="desc">Amount (High to Low)</Option>
+                </Select>
+                <Select
+                    placeholder="Sort by Usage Limit"
+                    value={sortUsageLimit}
+                    onChange={setSortUsageLimit}
+                    allowClear
+                    style={{ width: 180 }}
+                >
+                    <Option value="asc">Limit (Low to High)</Option>
+                    <Option value="desc">Limit (High to Low)</Option>
+                </Select>
+                <Select
+                    placeholder="Sort by Used Count"
+                    value={sortUsedCount}
+                    onChange={setSortUsedCount}
+                    allowClear
+                    style={{ width: 180 }}
+                >
+                    <Option value="asc">Used (Low to High)</Option>
+                    <Option value="desc">Used (High to Low)</Option>
+                </Select>
                 <Button type="primary" onClick={() => showModal()}>
                     Add Voucher
                 </Button>
@@ -286,12 +389,11 @@ const VoucherManagement = () => {
                 columns={columns}
                 rowKey="_id"
                 pagination={{
-                    current: currentPage,
-                    pageSize: pageSize,
-                    total: vouchers.length,
-                    onChange: (page, size) => {
-                        setCurrentPage(page);
-                        setPageSize(size);
+                    current: pagination.currentPage,
+                    pageSize: pagination.pageSize,
+                    total: pagination.totalVouchers,
+                    onChange: (page, pageSize) => {
+                        setPagination(prev => ({ ...prev, currentPage: page, pageSize: pageSize }));
                     },
                     showSizeChanger: true,
                 }}
@@ -396,6 +498,19 @@ const VoucherManagement = () => {
                         </Form.Item>
                     </div>
                     
+                    {/* Thêm field isActive với Switch component */}
+                    <Form.Item
+                        name="isActive"
+                        label="Is Active"
+                        valuePropName="checked" // Quan trọng: để Switch hoạt động với Form
+                        rules={[{ required: true, message: 'Please set active status' }]}
+                    >
+                        <Switch 
+                            checkedChildren="Active" 
+                            unCheckedChildren="Inactive"
+                        />
+                    </Form.Item>
+                    
                     <Form.Item style={{ marginTop: '24px', textAlign: 'right' }}>
                         <Button onClick={() => setIsModalVisible(false)} style={{ marginRight: '8px' }}>
                             Cancel
@@ -405,6 +520,46 @@ const VoucherManagement = () => {
                         </Button>
                     </Form.Item>
                 </Form>
+            </Modal>
+
+            <Modal
+                title="Voucher Details"
+                open={isViewModalVisible}
+                onCancel={() => setIsViewModalVisible(false)}
+                footer={[
+                    <Button key="back" onClick={() => setIsViewModalVisible(false)}>
+                        Close
+                    </Button>,
+                ]}
+                width={600}
+            >
+                {viewingVoucher && (
+                    <Descriptions bordered column={1}>
+                        <Descriptions.Item label="Code">{viewingVoucher.code}</Descriptions.Item>
+                        <Descriptions.Item label="Type">
+                            <Tag color={viewingVoucher.type === 'percent' ? 'blue' : 'green'}>
+                                {viewingVoucher.type?.toUpperCase()}
+                            </Tag>
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Value">
+                            {viewingVoucher.type === 'percent' ? `${viewingVoucher.value}%` : `${viewingVoucher.value?.toLocaleString('vi-VN')} VND`}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Min Order Amount">
+                            {`${(viewingVoucher.minOrderAmount || 0).toLocaleString('vi-VN')} VND`}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Usage Limit">{viewingVoucher.usageLimit || 'Unlimited'}</Descriptions.Item>
+                        <Descriptions.Item label="Used Count">{viewingVoucher.usedCount}</Descriptions.Item>
+                        <Descriptions.Item label="Start Date">{formatDate(viewingVoucher.startDate)}</Descriptions.Item>
+                        <Descriptions.Item label="End Date">{formatDate(viewingVoucher.endDate)}</Descriptions.Item>
+                        <Descriptions.Item label="Is Active">
+                            <Tag color={viewingVoucher.isActive ? 'green' : 'red'}>
+                                {viewingVoucher.isActive ? 'Active' : 'Inactive'}
+                            </Tag>
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Created At">{formatDate(viewingVoucher.createdAt)}</Descriptions.Item>
+                        <Descriptions.Item label="Updated At">{formatDate(viewingVoucher.updatedAt)}</Descriptions.Item>
+                    </Descriptions>
+                )}
             </Modal>
         </div>
     );

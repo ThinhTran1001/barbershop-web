@@ -23,6 +23,10 @@ export default function UserHeader() {
     await logout();
     navigate("/login");
   };
+  const handleOrder = async () => {
+    await logout();
+    navigate("/login");
+  };
 
   return (
     <Header
@@ -70,6 +74,11 @@ export default function UserHeader() {
           <Dropdown
             menu={{
               items: [
+                {
+                  key: "my-orders",
+                  label: "Lịch sử đơn hàng",
+                  onClick: () => navigate("/my-orders"),
+                },
                 { key: "logout", label: "Đăng xuất", onClick: handleLogout },
               ],
             }}

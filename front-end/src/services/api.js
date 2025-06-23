@@ -34,12 +34,22 @@ export const createBarber = (data) => api.post('/barbers', data);
 export const updateBarber = (id, data) => api.put(`/barbers/${id}`, data); 
 export const deleteBarber = (id) => api.delete(`/barbers/${id}`);
 
-export const getAllVoucher = () => api.get('/vouchers');
+export const getAllVoucher = (params) => api.get('/vouchers', { params });
 export const createVoucher = (data) => api.post('/vouchers', data); 
 export const updateVoucher = (id, data) => api.put(`/vouchers/${id}`, data); 
 export const deleteVoucher = (id) => api.delete(`/vouchers/${id}`);
 
+// User Voucher API
+export const getAllUserVouchers = (params) => api.get('/user-vouchers', { params });
+export const createUserVoucher = (data) => api.post('/user-vouchers', data);
+export const updateUserVoucher = (id, data) => api.put(`/user-vouchers/${id}`, data);
+export const deleteUserVoucher = (id) => api.delete(`/user-vouchers/${id}`);
 
+export const getAllOrder = (params) => api.get('/orders', { params });
+export const getOrderById = (id) => api.get(`/orders/${id}`);
+export const createOrder = (data) => api.post('/orders', data);
+export const updateOrder = (id, data) => api.put(`/orders/${id}`, data);
+export const deleteOrder = (id) => api.delete(`/orders/${id}`);
 
 export const loginUser = (data) => api.post('/auth/login', data);
 export const register = (data) => api.post('/auth/register', data);
