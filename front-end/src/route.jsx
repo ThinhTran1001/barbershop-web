@@ -18,6 +18,9 @@ import ManagingService from './pages/ManagingService/ManagingService.jsx'
 import ForgotPasswordForm from "./components/auth/ForgotPasswordForm.jsx";
 import ResetPasswordForm from "./components/auth/ResetPasswordForm.jsx";
 import ServiceBooking from "./pages/ServiceBooking/ServiceBooking.jsx";
+import CustomerProfile from './components/profile/customerProfile.jsx'
+import Cart from './components/cart/Cart.jsx'
+
 const publicRoutes = {
   element: <CommonLayout />,
   children: [
@@ -30,6 +33,8 @@ const publicRoutes = {
     {path: "/services", element: <ServiceBooking/>},
     { path: "/forgot-password", element: <ForgotPasswordForm /> },
     { path: "/reset-password", element: <ResetPasswordForm /> },
+    { path: "/profile", element: <CustomerProfile /> },
+    { path: "/cart", element: <Cart /> },
   ],
 };
 
