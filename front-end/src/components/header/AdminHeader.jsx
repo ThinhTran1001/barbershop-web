@@ -15,15 +15,28 @@ const AdminHeader = () => {
     navigate("/login");
   };
 
-  const selectedKey = location.pathname.includes("brand")
-    ? "brand"
-     : location.pathname.includes("category")
-        ? "category"
-        : location.pathname.includes("service")
-        ? "service"
-        : location.pathname.includes("product") ? "product"
-        : location.pathname.includes("barber") ? "barber"
-        : "user"
+  const selectedKey = location.pathname.includes("feedback-product")
+  ? "feedback product"
+  : location.pathname.includes("feedback-barber")
+  ? "feedback barber"
+  : location.pathname.includes("discount-product")
+  ? "discount-product"
+  : location.pathname.includes("brand")
+  ? "brand"
+  : location.pathname.includes("category")
+  ? "category"
+  : location.pathname.includes("service")
+  ? "service"
+  : location.pathname.includes("product")
+  ? "product"
+  : location.pathname.includes("barber")
+  ? "barber"
+  : location.pathname.includes("user")
+  ? "user"
+  : "product"; // Default to 'product' if no match found
+
+
+
   return (
     <Header
       className="d-flex align-items-center justify-content-between px-4"
@@ -66,6 +79,15 @@ const AdminHeader = () => {
         </Menu.Item>
         <Menu.Item key="user" onClick={() => navigate("/admin/user")}>
           User
+        </Menu.Item>
+        <Menu.Item key="feedback product" onClick={() => navigate("/admin/feedback-product")}>
+          FeedBack Product
+        </Menu.Item>
+        <Menu.Item key="feedback barber" onClick={() => navigate("/admin/feedback-barber")}>
+          FeedBack Barber
+          </Menu.Item>
+        <Menu.Item key="discount-product" onClick={() => navigate("/admin/discount-product")}>
+          Discount Product
         </Menu.Item>
       </Menu>
 
