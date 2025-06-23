@@ -5,10 +5,6 @@ import ProductManagement from '../../components/ProductManagement.jsx';
 import CategoryManagement from '../../components/CategoryManagement.jsx';
 import BrandManagement from '../../components/BrandManagement.jsx';
 import ManagingService from '../pages/ManagingService/ManagingService.jsx';
-import BarberManagemnt from '../../components/BarberManagement.jsx'
-import UserManegement from '../../components/UserManagement.jsx'
-import VoucherManagement from '../../components/VoucherManagemet.jsx'
-import OrderManagement from '../../components/OrderManagement.jsx'
 
 const { TabPane } = Tabs;
 
@@ -17,22 +13,12 @@ const tabKeyToPath = {
   '1': 'product',
   '2': 'category',
   '3': 'brand',
-  '4': 'service',
-  '5': 'barber',
-  '6': 'user',
-  '7': 'voucher',
-  '8': 'order'
 };
 
 const pathToTabKey = {
   'product': '1',
   'category': '2',
   'brand': '3',
-  'service' : '4',
-  'barber' : '5',
-  'user' : '6',
-  'voucher' : '7',
-  'order' : '8'
 };
 
 const AdminDashboard = () => {
@@ -65,18 +51,6 @@ const AdminDashboard = () => {
         </TabPane>
         <TabPane tab="Service Management" key="4">
           <ManagingService />
-        </TabPane>
-        <TabPane tab="Service Management" key="5">
-          <BarberManagemnt />
-        </TabPane>
-        <TabPane tab="Service Management" key="6">
-          <UserManegement />
-        </TabPane>
-        <TabPane tab="Service Management" key="7">
-          <VoucherManagement />
-        </TabPane>
-        <TabPane tab="Order Management" key="8">
-          <OrderManagement />
         </TabPane>
       </Tabs>
     </div>
