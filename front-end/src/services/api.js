@@ -46,6 +46,26 @@ export const updateProfile = (formData) =>  api.patch(`/users/profile/me`, formD
 export const forgotPassword = (data) => api.post('/auth/forgot-password', data);
 export const resetPassword = (data) => api.post('/auth/reset-password', data);
 
+export const sendChat = async (message) => {
+  try {
+    const response = await api.post(`/chatbot`, { message }, {
+      headers: { 'Content-Type': 'application/json' },
+    });
+    console.log('API response data:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('API error details:', error.response ? error.response.data : error.message);
+    throw error;
+  }
+};
+
+export const uploadImage = (file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  return api.post("/upload", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+};
 export const getFeedbacksByProduct = (productId) => api.get(`/product-reviews/product/${productId}`);
 export const getAllFeedbacks = (params) => api.get('/product-reviews', { params });
 export const createFeedback = (data) => api.post('/product-reviews', data);

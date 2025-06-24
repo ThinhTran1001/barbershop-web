@@ -88,12 +88,29 @@
   }
   
   .barber-name {
-    font-size: 1.3rem;
-    font-weight: 600;
-    color: #d4a449;
-    margin-bottom: 0.5rem;
-    letter-spacing: 1px;
-  }
+  font-size: 2.2rem;                        
+  font-weight: 800;                          
+  color: #111;                               
+  margin: 0 0 1rem;                          
+  letter-spacing: 1px;                       
+  line-height: 1.1;                          
+  text-transform: uppercase;                 
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.barber-specialty {
+  font-size: 1.3rem;                         
+  font-weight: 600;                          
+  font-style: normal;                        
+  color: #444;                              
+  opacity: 1;                                
+  margin: 0 0 1.5rem;                        
+  line-height: 1.4;                          
+  letter-spacing: 0.5px;                     
+  text-transform: capitalize;                
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+}
   .pagination {
     display: flex;
     justify-content: center;
