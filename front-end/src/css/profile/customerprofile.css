@@ -1,0 +1,73 @@
+.customer-profile {
+  max-width: 600px;
+  margin: 150px auto;
+  padding: 32px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.customer-profile__title {
+  font-size: 26px;
+  text-align: center;
+  margin-bottom: 24px;
+  font-weight: 600;
+}
+
+.customer-profile__avatar {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #eee;
+  margin-bottom: 20px;
+  transition: transform 0.2s ease;
+}
+
+.customer-profile__avatar:hover {
+  transform: scale(1.05);
+}
+
+.customer-profile__avatar-placeholder {
+  width: 140px;
+  height: 140px;
+  background: #f0f0f0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  color: #bbb;
+  margin-bottom: 20px;
+}
+
+.customer-profile__info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.customer-profile__field {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.customer-profile__field-label {
+  font-weight: 500;
+  color: #333;
+  flex-basis: 40%;
+}
+
+.customer-profile__field-value {
+  flex: 1;
+  text-align: right;
+}
+
+.customer-profile__field-value--empty {
+  color: #aaa;
+  font-style: italic;
+}

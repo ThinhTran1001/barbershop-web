@@ -1,0 +1,227 @@
+import React from 'react';
+import { Table, Space, Tag, Avatar, Rate, Image, Tooltip, Button } from 'antd';
+import {
+  UserOutlined, FileTextOutlined, EyeOutlined, DeleteOutlined,
+  CheckOutlined, CloseOutlined
+} from '@ant-design/icons';
+
+const FeedbackBarberTable = ({
+  feedbacks,
+  loading,
+  pagination,
+  handleTableChange,
+  handleViewDetail,
+  toggleApproval,
+  handleDelete
+}) => {
+  const columns = [
+    {
+      title: 'Customer',
+      dataIndex: 'reviewer',
+      key: 'reviewer',
+      render: (reviewer, record) => (
+        <Space>
+          <Avatar icon={<UserOutlined />} style={{ backgroundColor: '#1890ff' }}>
+            {(reviewer || record.customerId?.name || 'U').charAt(0).toUpperCase()}
+          </Avatar>
+          <span style={{ fontWeight: 500 }}>
+            {reviewer || record.customerId?.name || record.customerId?._id || 'Unknown'}
+          </span>
+        </Space>
+      ),
+      width: 150,
+    },
+    {
+      title: 'Barber',
+      dataIndex: 'barberId',
+      key: 'barberId',
+      render: (barber) => (
+        <Space>
+          <span style={{ fontWeight: 500 }}>
+            {barber?.name || 'Unknown Barber'}
+          </span>
+        </Space>
+      ),
+      width: 160,
+    },
+    {
+      title: 'Booking',
+      dataIndex: 'bookingId',
+      key: 'bookingId',
+      render: (booking) => (
+        <Space>
+          <FileTextOutlined style={{ color: '#666' }} />
+          <span>{booking?.name || booking?.title || 'Unknown Booking'}</span>
+        </Space>
+      ),
+      width: 120,
+    },
+    {
+      title: 'Rating',
+      dataIndex: 'rating',
+      key: 'rating',
+      render: (rating) => (
+        <Space>
+          <Rate disabled value={rating || 0} />
+          <span style={{ fontWeight: 'bold', marginLeft: 8 }}>{rating || 0}</span>
+        </Space>
+      ),
+      width: 180,
+      sorter: (a, b) => (a.rating || 0) - (b.rating || 0),
+    },
+    {
+      title: 'Comment',
+      dataIndex: 'comment',
+      key: 'comment',
+      render: (text) => (
+        <Tooltip title={text || 'No comment'}>
+          <div style={{
+            maxWidth: 250, 
+            overflow: 'hidden',
+            textOverflow: 'ellipsis', 
+            whiteSpace: 'nowrap'
+          }}>
+            {text || 'No comment'}
+          </div>
+        </Tooltip>
+      ),
+      width: 250,
+    },
+    {
+      title: 'Images',
+      dataIndex: 'images',
+      key: 'images',
+      render: (images) => (
+        <div style={{ position: 'relative', display: 'inline-block' }}>
+          {images?.length ? (
+            <>
+              <Image
+                width={50}
+                height={50}
+                src={images[0]}
+                style={{ borderRadius: 6, objectFit: 'cover' }}
+                preview={{ src: images[0] }}
+              />
+              {images.length > 1 && (
+                <div style={{
+                  position: 'absolute', 
+                  top: -6, 
+                  right: -6, 
+                  backgroundColor: '#ff4d4f',
+                  color: 'white', 
+                  borderRadius: '50%', 
+                  width: 18, 
+                  height: 18,
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  fontSize: 11, 
+                  fontWeight: 'bold'
+                }}>
+                  {images.length}
+                </div>
+              )}
+            </>
+          ) : (
+            <div style={{
+              width: 50, 
+              height: 50, 
+              backgroundColor: '#f5f5f5', 
+              borderRadius: 6,
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              color: '#999',
+              fontSize: 12
+            }}>
+              No Image
+            </div>
+          )}
+        </div>
+      ),
+      width: 80,
+    },
+    {
+      title: 'Status',
+      dataIndex: 'isApproved',
+      key: 'isApproved',
+      render: (isApproved) => (
+        <Tag 
+          color={isApproved ? 'success' : 'warning'} 
+          icon={isApproved ? <CheckOutlined /> : <CloseOutlined />}
+        >
+          {isApproved ? 'Approved' : 'Pending'}
+        </Tag>
+      ),
+      width: 110,
+      filters: [
+        { text: 'Approved', value: true },
+        { text: 'Pending', value: false },
+      ],
+      onFilter: (value, record) => record.isApproved === value,
+    },
+    {
+      title: 'Date',
+      dataIndex: 'createdAt',
+      key: 'createdAt',
+      render: (date) => date ? new Date(date).toLocaleDateString('en-GB') : 'N/A',
+      width: 100,
+      sorter: (a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0),
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      render: (_, record) => (
+        <Space size="small">
+          <Tooltip title="View Details">
+            <Button 
+              type="text" 
+              icon={<EyeOutlined />} 
+              onClick={() => handleViewDetail(record)} 
+            />
+          </Tooltip>
+          <Tooltip title={record.isApproved ? 'Unapprove' : 'Approve'}>
+            <Button
+              type="text"
+              icon={record.isApproved ? <CloseOutlined /> : <CheckOutlined />}
+              onClick={() => toggleApproval(record)}
+              style={{ color: record.isApproved ? '#ff4d4f' : '#52c41a' }}
+            />
+          </Tooltip>
+          <Tooltip title="Delete">
+            <Button 
+              type="text" 
+              icon={<DeleteOutlined />} 
+              danger 
+              onClick={() => handleDelete(record)} 
+            />
+          </Tooltip>
+        </Space>
+      ),
+      width: 120,
+      fixed: 'right'
+    }
+  ];
+
+  return (
+    <Table
+      rowKey="_id"
+      columns={columns}
+      dataSource={feedbacks || []}
+      loading={loading}
+      pagination={{
+        current: pagination.current,
+        pageSize: pagination.pageSize,
+        total: pagination.total,
+        showSizeChanger: true,
+        pageSizeOptions: ['5', '10', '20', '50'],
+        showTotal: (total) => `Total ${total} records`
+      }}
+      onChange={handleTableChange}
+      scroll={{ x: 1200 }}
+      size="middle"
+    />
+  );
+};
+
+export default FeedbackBarberTable;

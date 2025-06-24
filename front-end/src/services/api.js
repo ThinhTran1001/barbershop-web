@@ -41,28 +41,36 @@ export const resend = (data) => api.post('/auth/resend-otp', data);
 export const logoutUser = () => api.post('/auth/logout');
 export const refreshToken = () => api.post('/auth/refresh-token');
 export const getMe = () => api.get(`/auth/me`);
+export const getProfile = () => api.get(`/users/profile/me`);
+export const updateProfile = (formData) =>  api.patch(`/users/profile/me`, formData);
 export const forgotPassword = (data) => api.post('/auth/forgot-password', data);
 export const resetPassword = (data) => api.post('/auth/reset-password', data);
 
-export const sendChat = async (message) => {
-  try {
-    const response = await api.post(`/chatbot`, { message }, {
-      headers: { 'Content-Type': 'application/json' },
-    });
-    console.log('API response data:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('API error details:', error.response ? error.response.data : error.message);
-    throw error;
-  }
-};
+export const getFeedbacksByProduct = (productId) => api.get(`/product-reviews/product/${productId}`);
+export const getAllFeedbacks = (params) => api.get('/product-reviews', { params });
+export const createFeedback = (data) => api.post('/product-reviews', data);
+export const approveFeedback = (id) => api.patch(`/product-reviews/${id}/approve`);
+export const unapprovalFeedback = (id) => api.patch(`/product-reviews/${id}/unapprove`);
+export const deleteFeedback = (id) => api.delete(`/product-reviews/${id}`);
 
-export const uploadImage = (file) => {
-  const formData = new FormData();
-  formData.append("file", file);
-  return api.post("/upload", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
-};
+// Feedback APIs (Barber)
+export const getBarberFeedbacks = (params) => api.get('/feedback-barber', { params });
+export const getBarberFeedbackById = (id) => api.get(`/feedback-barber/${id}`);
+export const createBarberFeedback = (data) => api.post('/feedback-barber', data);
+export const updateBarberFeedbackApproval = (id, isApproved) =>
+  api.patch(`/feedback-barber/${id}/approve`, { isApproved });
+export const deleteBarberFeedback = (id) => api.delete(`/feedback-barber/${id}`);
+
+
+export const getDiscounts = (params) => api.get('/discounts', { params }); 
+export const getDiscountById = (id) => api.get(`/discounts/${id}`);
+export const createDiscount = (data) => api.post('/discounts', data);
+export const updateDiscount = (id, data) => api.put(`/discounts/${id}`, data);
+export const deleteDiscount = (id) => api.delete(`/discounts/${id}`);
+export const getProductDiscounts = (productId) => api.get(`/discounts/product/${productId}`);
+export const toggleDiscountStatus = (id) => api.patch(`/discounts/${id}/toggle-status`);
+export const getDiscountStats = () => api.get('/discounts/stats');
+export const cleanupExpiredDiscounts = () => api.post('/discounts/cleanup-expired');
+
 
 export default api;
