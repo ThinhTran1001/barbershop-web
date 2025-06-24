@@ -43,6 +43,8 @@ export const resend = (data) => api.post('/auth/resend-otp', data);
 export const logoutUser = () => api.post('/auth/logout');
 export const refreshToken = () => api.post('/auth/refresh-token');
 export const getMe = () => api.get(`/auth/me`);
+export const getProfile = () => api.get(`/users/profile/me`);
+export const updateProfile = (formData) =>  api.patch(`/users/profile/me`, formData);
 export const forgotPassword = (data) => api.post('/auth/forgot-password', data);
 export const resetPassword = (data) => api.post('/auth/reset-password', data);
 
