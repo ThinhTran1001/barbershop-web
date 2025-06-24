@@ -3,6 +3,7 @@ import { Layout, Menu, Button, Dropdown, Badge } from "antd";
 import { ShoppingCartOutlined, UserOutlined } from "@ant-design/icons";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
+import { useCartLoggedIn } from "../../context/CartLoggedInContext";
 import { useNavigate } from "react-router-dom";
 import "../../css/landing/common-header.css";
 
@@ -19,13 +20,17 @@ const navItems = [
 
 export default function UserHeader() {
   const { user, logout } = useAuth();
-  const { getCartCount } = useCart();
+  const { getCartCount: getCartCountLocal } = useCart();
+  const { getCartCount: getCartCountLoggedIn } = useCartLoggedIn();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
     await logout();
     navigate("/login");
   };
+
+  // Chọn đúng context để lấy số lượng sản phẩm
+  const cartCount = user ? getCartCountLoggedIn() : getCartCountLocal();
 
   return (
     <Header
@@ -57,7 +62,7 @@ export default function UserHeader() {
       </div>
 
       <div className="d-flex align-items-center gap-2 ms-auto">
-        <Badge count={getCartCount()} showZero={false}>
+        <Badge count={cartCount} showZero={false}>
           <Button
             type="text"
             icon={<ShoppingCartOutlined />}
@@ -68,21 +73,23 @@ export default function UserHeader() {
         
         {!user ? (
           <>
-            <Button type="default" onClick={() => navigate("/login")}>
-              Đăng nhập
-            </Button>
-            <Button
-              className="bg-warning"
-              onClick={() => navigate("/register")}
-            >
-              Đăng ký
-            </Button>
+            <Button type="default" onClick={() => navigate("/login")}>Đăng nhập</Button>
+            <Button className="bg-warning" onClick={() => navigate("/register")}>Đăng ký</Button>
           </>
         ) : (
           <Dropdown
             menu={{
               items: [
-                { key: "logout", label: "Đăng xuất", onClick: handleLogout },
+                {
+                  key: "orders",
+                  label: "Lịch sử đơn hàng",
+                  onClick: () => navigate("/my-orders"),
+                },
+                {
+                  key: "logout",
+                  label: "Đăng xuất",
+                  onClick: handleLogout,
+                },
               ],
             }}
           >

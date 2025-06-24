@@ -185,6 +185,18 @@
   border-color: #d4a449;
 }
 
+.item-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 10px;
+  flex-wrap: nowrap;
+}
+.purchase-button, .detail-button {
+  font-size: 0.85rem;
+  padding: 7px 14px;
+  white-space: nowrap;
+}
 
 @media (max-width: 1100px) {
   .shop-grid-full {

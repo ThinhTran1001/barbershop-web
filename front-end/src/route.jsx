@@ -15,6 +15,11 @@ import ResetPasswordForm from "./components/auth/ResetPasswordForm.jsx";
 import ProductList from "./pages/home/prodductList.jsx";
 import ProductDetail from "./components/product/ProductDetail.jsx";
 import ServiceBooking from "./pages/ServiceBooking/ServiceBooking.jsx";
+import Cart from "./components/cart/Cart.jsx";
+import CartLoggedIn from "./components/cart/CartLoggedIn.jsx";
+import Checkout from "./pages/checkout/Checkout.jsx";
+import OrderSuccess from "./pages/checkout/OrderSuccess.jsx";
+import CheckoutGuest from "./pages/checkout/CheckoutGuest.jsx";
 
 // Customer pages
 import ListOfOrder from "./pages/order/ListOfOrder.jsx";
@@ -26,48 +31,68 @@ import BrandManagement from "./components/BrandManagement.jsx";
 import CategoryManagement from "./components/CategoryManagement.jsx";
 import UserManagement from "./components/UserManagement.jsx";
 import BarberManagement from "./components/BarberManagement.jsx";
-import UserManagement from "./components/UserManagement.jsx";
-import Register from "./pages/auth/RegisterPage.jsx";
-import ProductDetail from "./components/product/ProductDetail.jsx";
-import ProductList from "./pages/home/prodductList.jsx";
-import ManagingService from './pages/ManagingService/ManagingService.jsx'
-import ForgotPasswordForm from "./components/auth/ForgotPasswordForm.jsx";
-import ResetPasswordForm from "./components/auth/ResetPasswordForm.jsx";
-import ServiceBooking from "./pages/ServiceBooking/ServiceBooking.jsx";
-const publicRoutes = {
-  element: <CommonLayout />,
-  children: [
-    { path: "/", element: <Landing /> },
-    { path: "/products/:id", element: <ProductDetail/> },
-    { path: "/login", element: <Login /> },
-    {path: "/register", element: <Register/>},
-    {path: "/products", element: <ProductList/>},
-    {path: "/forget", element: <ProductList/>},
-    {path: "/services", element: <ServiceBooking/>},
-    { path: "/forgot-password", element: <ForgotPasswordForm /> },
-    { path: "/reset-password", element: <ResetPasswordForm /> },
-  ],
-};
+import VoucherManagement from "./components/VoucherManagemet.jsx";
+import UserVoucherManagement from "./components/UserVoucherManagement.jsx";
+import OrderManagement from "./components/OrderManagement.jsx";
+import ManagingService from "./pages/ManagingService/ManagingService.jsx";
+import ManageFeedbackProduct from "./pages/ManageFeedbackProduct/ManageFeedbackProduct.jsx";
+import ManageFeedbackBarber from "./pages/ManageFeedbackBarber/ManageFeedbackBarber.jsx";
+import ManageDiscountProduct from "./pages/ManageDiscountProduct/ManageDiscountProduct.jsx";
 
-const adminRoutes = {
-  element: <RequireRole allowedRoles={["admin"]} />,
-  children: [
-    {
-      path: "/admin",
-      element: <AdminLayout />,
-      children: [
-        { index: true, element: <ProductManagement /> },
-        { path: "product", element: <ProductManagement /> },
-        { path: "brand", element: <BrandManagement /> },
-        { path: "category", element: <CategoryManagement /> },
-        { path: "service", element: <ManagingService /> },
-        { path: "barber", element: <BarberManagement /> },
-        { path: "user", element: <UserManagement /> },
+// Routing
+const router = createBrowserRouter([
+  {
+    element: <CommonLayout />,
+    children: [
+      { path: "/", element: <Landing /> },
+      { path: "/login", element: <LoginPage /> },
+      { path: "/register", element: <RegisterPage /> },
+      { path: "/forgot-password", element: <ForgotPasswordForm /> },
+      { path: "/reset-password/:token", element: <ResetPasswordForm /> },
+      { path: "/products", element: <ProductList /> },
+      { path: "/products/:id", element: <ProductDetail /> },
+      { path: "/services", element: <ServiceBooking /> },
+      { path: "/cart", element: <CartLoggedIn /> },
+      { path: "/checkout", element: <Checkout /> },
+      { path: "/order-success", element: <OrderSuccess /> },
+      { path: "/checkout-guest", element: <CheckoutGuest /> },
 
-      ],
-    },
-  ],
-};
+      // Customer protected routes
+      {
+        element: <RequireAuth allowedRoles={["customer"]} />,
+        children: [
+          { path: "/my-orders", element: <ListOfOrder /> },
+          { path: "/my-orders/:id", element: <OrderDetail /> },
+        ],
+      },
+    ],
+  },
+
+  // Admin protected routes
+  {
+    element: <RequireAuth allowedRoles={["admin"]} />,
+    children: [
+      {
+        path: "/admin",
+        element: <AdminLayout />,
+        children: [
+          { index: true, element: <ProductManagement /> },
+          { path: "product", element: <ProductManagement /> },
+          { path: "brand", element: <BrandManagement /> },
+          { path: "category", element: <CategoryManagement /> },
+          { path: "service", element: <ManagingService /> },
+          { path: "barber", element: <BarberManagement /> },
+          { path: "user", element: <UserManagement /> },
+          { path: "voucher", element: <VoucherManagement /> },
+          { path: "user-vouchers", element: <UserVoucherManagement /> },
+          { path: "order", element: <OrderManagement /> },
+          { path: "feedback-product", element: <ManageFeedbackProduct /> },
+          { path: "feedback-barber", element: <ManageFeedbackBarber /> },
+          { path: "discount-product", element: <ManageDiscountProduct /> },
+        ],
+      },
+    ],
+  },
 
   // Barber protected routes
   {

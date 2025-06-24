@@ -28,6 +28,10 @@ const voucherSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+  totalOrderAmount: {
+    type: Number,
+    default: 0
+  },
   startDate: {
     type: Date,
     set : (value) =>{
@@ -59,5 +63,6 @@ const voucherSchema = new mongoose.Schema({
     required: true
   }
 });
+
 
 module.exports = mongoose.model('Voucher', voucherSchema);

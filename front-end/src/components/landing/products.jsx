@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../../css/landing/products.css";
+import { useCart } from '../../context/CartContext';
+import { useAuth } from '../../context/AuthContext';
 
 import product1 from "../../assets/images/product1.jpg";
 import product2 from "../../assets/images/product2.jpg";
@@ -23,6 +25,8 @@ export default function ShopItems() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const { addToCart } = useCart();
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -61,6 +65,15 @@ export default function ShopItems() {
     if (page >= 1 && page <= totalPages) setCurrentPage(page);
   };
 
+  const handleBuyNow = (product) => {
+    addToCart(product, 1);
+    if (user) {
+      navigate("/checkout", { state: { products: [{ productId: product._id, quantity: 1, product }] } });
+    } else {
+      navigate("/checkout-guest");
+    }
+  };
+
   return (
     <section className="shop-section">
       <div className="shop-container">
@@ -92,7 +105,13 @@ export default function ShopItems() {
                     <h3 className="item-name">{product.name}</h3>
                     <p className="item-price">{product.price}</p>
                     <div className="item-buttons">
-                      <button className="purchase-button">Mua hàng</button>
+                      <button 
+                        className="purchase-button" 
+                        onClick={() => handleBuyNow(product)}
+                        disabled={product.stock === 0}
+                      >
+                        {product.stock === 0 ? "Hết hàng" : "Mua hàng"}
+                      </button>
                       <button
                         className="detail-button"
                         onClick={() => goToProductDetail(product._id)}

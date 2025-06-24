@@ -40,14 +40,16 @@ export const updateVoucher = (id, data) => api.put(`/vouchers/${id}`, data);
 export const deleteVoucher = (id) => api.delete(`/vouchers/${id}`);
 
 // User Voucher API
-export const getAllUserVouchers = (params) => api.get('/user-vouchers', { params });
-export const createUserVoucher = (data) => api.post('/user-vouchers', data);
-export const updateUserVoucher = (id, data) => api.put(`/user-vouchers/${id}`, data);
-export const deleteUserVoucher = (id) => api.delete(`/user-vouchers/${id}`);
+export const getAllUserVouchers = (params) => api.get('vouchers', { params });
+export const getAllVoucherByUser = () => api.get('/vouchers/user');
+export const createUserVoucher = (data) => api.post('/vouchers', data);
+export const updateUserVoucher = (id, data) => api.put(`/vouchers/${id}`, data);
+export const deleteUserVoucher = (id) => api.delete(`/vouchers/${id}`);
 
 export const getAllOrder = (params) => api.get('/orders', { params });
 export const getOrderById = (id) => api.get(`/orders/${id}`);
 export const createOrder = (data) => api.post('/orders', data);
+export const createOrderGuest = (data) => api.post('/orders/guest', data);
 export const updateOrder = (id, data) => api.put(`/orders/${id}`, data);
 export const deleteOrder = (id) => api.delete(`/orders/${id}`);
 
@@ -70,6 +72,13 @@ export const approveFeedback = (id) => api.patch(`/product-reviews/${id}/approve
 export const unapprovalFeedback = (id) => api.patch(`/product-reviews/${id}/unapprove`);
 export const deleteFeedback = (id) => api.delete(`/product-reviews/${id}`);
 
+// Cart API
+export const getCart = () => api.get('/carts');
+export const addToCart = (data) => api.post('/carts', data);
+export const updateCart = (data) => api.put('/carts', data);
+export const removeFromCart = (id) => api.delete(`/carts/${id}`);
+export const clearCart = () => api.delete('/carts/clear');
+
 // Feedback APIs (Barber)
 export const getBarberFeedbacks = (params) => api.get('/feedback-barber', { params });
 export const getBarberFeedbackById = (id) => api.get(`/feedback-barber/${id}`);
@@ -77,6 +86,8 @@ export const createBarberFeedback = (data) => api.post('/feedback-barber', data)
 export const updateBarberFeedbackApproval = (id, isApproved) =>
   api.patch(`/feedback-barber/${id}/approve`, { isApproved });
 export const deleteBarberFeedback = (id) => api.delete(`/feedback-barber/${id}`);
+
+// Cart API
 
 
 export const getDiscounts = (params) => api.get('/discounts', { params }); 

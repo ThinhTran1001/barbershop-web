@@ -141,6 +141,7 @@ const VoucherManagement = () => {
                 ...voucher,
                 startDate: voucher.startDate ? dayjs(voucher.startDate).format('YYYY-MM-DD') : '',
                 endDate: voucher.endDate ? dayjs(voucher.endDate).format('YYYY-MM-DD') : '',
+                totalOrderAmount: voucher.totalOrderAmount || 0,
             };
             form.setFieldsValue(formattedVoucher);
         } else {
@@ -241,20 +242,19 @@ const VoucherManagement = () => {
             title: 'Min Order Amount',
             dataIndex: 'minOrderAmount',
             key: 'minOrderAmount',
-            render: (amount) => `${(amount || 0).toLocaleString('vi-VN')} VND`,
+            render: (amount) => amount?.toLocaleString('vi-VN') + ' VND',
+        },
+        {
+            title: 'Total Order Amount',
+            dataIndex: 'totalOrderAmount',
+            key: 'totalOrderAmount',
+            render: (amount) => ((amount ?? 0).toLocaleString('vi-VN') + ' VND'),
         },
         {
             title: 'Start Date',
             dataIndex: 'startDate',
             key: 'startDate',
-            render: (date, record) => {
-                const status = getDateStatus(record.startDate, record.endDate);
-                return (
-                    <Tag color={status === 'upcoming' ? 'orange' : status === 'active' ? 'green' : 'default'}>
-                        {formatDate(date)}
-                    </Tag>
-                );
-            },
+            render: (date) => formatDate(date),
         },
         {
             title: 'End Date',
@@ -498,6 +498,13 @@ const VoucherManagement = () => {
                         </Form.Item>
                     </div>
                     
+                    <Form.Item
+                        label="Total Order Amount"
+                        name="totalOrderAmount"
+                    >
+                        <Input type="number" min={0} />
+                    </Form.Item>
+                    
                     {/* Thêm field isActive với Switch component */}
                     <Form.Item
                         name="isActive"
@@ -546,6 +553,9 @@ const VoucherManagement = () => {
                         </Descriptions.Item>
                         <Descriptions.Item label="Min Order Amount">
                             {`${(viewingVoucher.minOrderAmount || 0).toLocaleString('vi-VN')} VND`}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Total Order Amount">
+                            {(viewingVoucher?.totalOrderAmount ?? 0).toLocaleString('vi-VN')} VND
                         </Descriptions.Item>
                         <Descriptions.Item label="Usage Limit">{viewingVoucher.usageLimit || 'Unlimited'}</Descriptions.Item>
                         <Descriptions.Item label="Used Count">{viewingVoucher.usedCount}</Descriptions.Item>

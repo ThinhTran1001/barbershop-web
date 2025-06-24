@@ -290,14 +290,6 @@ const OrderManagement = () => {
             </Select>
           </Form.Item>
 
-          <Form.Item
-            name="shippingAddress"
-            label="Shipping Address"
-            rules={[{ required: true, message: 'Please enter shipping address' }]}
-          >
-            <TextArea rows={3} placeholder="Enter shipping address" />
-          </Form.Item>
-
           <Form.Item style={{ textAlign: 'right' }}>
             <Button onClick={() => setIsModalVisible(false)} style={{ marginRight: '8px' }}>
               Cancel
@@ -323,7 +315,12 @@ const OrderManagement = () => {
           <>
             <Descriptions bordered column={2}>
               <Descriptions.Item label="Order Code">{viewingOrder.orderCode}</Descriptions.Item>
-              <Descriptions.Item label="Customer">{viewingOrder.userId?.name}</Descriptions.Item>
+              <Descriptions.Item label="Customer">{viewingOrder.userId?.name || viewingOrder.customerName}</Descriptions.Item>
+              <Descriptions.Item label="Phone">{viewingOrder.userId?.phone || viewingOrder.customerPhone}</Descriptions.Item>
+              <Descriptions.Item label="Email">
+              {viewingOrder.userId?.email || viewingOrder.customerEmail || 'N/A'}
+              </Descriptions.Item>
+
 
               <Descriptions.Item label="Status">
                 <Tag color={getStatusColor(viewingOrder.status)}>

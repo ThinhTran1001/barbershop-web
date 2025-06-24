@@ -6,6 +6,8 @@ const { authenticate } = require('../middlewares/auth.middleware');
 // Tạo đơn hàng
 router.post('/', authenticate, orderController.createOrder);
 
+router.post('/guest', orderController.createOrderGuest);
+
 router.get('/', authenticate, orderController.getAllOrders);
 
 // Lấy chi tiết một đơn hàng

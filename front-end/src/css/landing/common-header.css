@@ -19,3 +19,17 @@
   font-weight: 700;
   border-bottom: 2px solid #ffc107; /* tùy chọn */
 }
+
+/* Cart container styles */
+.cart-container {
+  position: relative;
+  display: inline-block;
+}
+
+.cart-container .cart-mini {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 1001;
+  margin-top: 8px;
+}

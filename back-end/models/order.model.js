@@ -1,9 +1,31 @@
-const mongoose = require('mongoose')
+const mongoose = require('mongoose');
 
 const orderSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
+    default: null  // Có thể null nếu là khách vãng lai
+  },
+  customerName: {
+    type: String,
+    required: function() {
+      return !this.userId; // Bắt buộc nếu không login
+    }
+  },
+  customerEmail: {
+    type: String,
+    required: function() {
+      return !this.userId;
+    }
+  },
+  customerPhone: {
+    type: String,
+    required: function() {
+      return !this.userId;
+    }
+  },
+  shippingAddress: {
+    type: String,
     required: true
   },
   orderCode: {
@@ -14,10 +36,6 @@ const orderSchema = new mongoose.Schema({
     type: String,
     enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'],
     required: true
-  },
-  shippingAddress: {
-    type: String,
-    default: null
   },
   totalAmount: {
     type: Number,
@@ -30,13 +48,15 @@ const orderSchema = new mongoose.Schema({
   },
   createdAt: {
     type: Date,
-    required: true,
     default: Date.now
   },
   updatedAt: {
     type: Date,
-    required: true,
     default: Date.now
+  },
+  addressChanged: {
+    type: Boolean,
+    default: false
   }
 });
 

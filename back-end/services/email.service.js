@@ -25,5 +25,21 @@ const sendEmail = async (to, subject, html) => {
         html,
     });
 };
+const sendOrderCodeToGuestEmail = async (to, orderCode) => {
+    const subject = 'Mã đơn hàng của bạn từ Barber App';
+    const html = `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+            <h3>Xin chào,</h3>
+            <p>Cảm ơn bạn đã đặt hàng tại <strong>Barber App</strong>.</p>
+            <p>Mã đơn hàng của bạn là: <strong style="color: #007bff;">${orderCode}</strong></p>
+            <p>Hãy giữ lại mã này để tra cứu hoặc hỗ trợ nếu cần.</p>
+            <br />
+            <p>Trân trọng,<br/>Barber App Team</p>
+        </div>
+    `;
 
-module.exports = { sendOtp, sendEmail };
+    await sendEmail(to, subject, html);
+};
+
+
+module.exports = { sendOtp, sendEmail, sendOrderCodeToGuestEmail };
