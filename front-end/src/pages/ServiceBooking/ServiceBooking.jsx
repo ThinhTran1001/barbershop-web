@@ -1,3 +1,5 @@
+// src/pages/ServiceBooking.jsx
+
 import React, { useEffect, useState } from 'react';
 import { message } from 'antd';
 import ServiceList from '../../components/ServiceList';
@@ -11,6 +13,7 @@ import barber2 from '../../assets/images/barber2.png';
 import barber3 from '../../assets/images/barber3.png';
 import barber4 from '../../assets/images/barber4.png';
 import barber5 from '../../assets/images/barber5.png';
+import ShopItems from '../../components/landing/products';
 
 const images = [barber1, barber2, barber3, barber4, barber5];
 
@@ -56,8 +59,6 @@ const ServiceBooking = () => {
       const filtered = services.filter(service => {
         const category = service.category?.toLowerCase() || '';
         const serviceName = service.name?.toLowerCase() || '';
-
-        // Check if service is a combo
         const isCombo = comboNames.includes(serviceName);
 
         switch (activeTab) {
@@ -96,14 +97,18 @@ const ServiceBooking = () => {
       <div className="row">
         <div className="col-md-6">
           <ServiceList
-            services={filteredServices}
+          services={filteredServices}
             tabs={tabs}
             activeTab={activeTab}
             handleTabClick={handleTabClick}
           />
         </div>
         <div className="col-md-6">
-          <ImageSlider src={images} />
+        
+          <ImageSlider images={images} />
+        </div>
+        <div>
+          <ShopItems/>
         </div>
       </div>
     </div>
