@@ -9,6 +9,8 @@ const authRoutes = require("./routes/auth.route");
 const serviceRoutes = require('./routes/service.route');
 const userRoutes = require('./routes/user.route');
 const barberRoutes = require('./routes/barber.route');
+const chatbotAI = require('./routes/chatbot.route');
+const updaloadRoutes = require('./routes/upload.route');
 const reviewRoutes = require('./routes/productreview.route');
 const feedbackBarberRoutes = require('./routes/feedbackBarber.route');
 const discountRoutes = require('./routes/discounts.route');
@@ -38,6 +40,8 @@ app.use('/api/services', serviceRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/barbers',barberRoutes)
 app.use('/api/users', userRoutes);
+app.use('/api/chatbot', chatbotAI);
+app.use('/api/upload', updaloadRoutes);
 app.use('/api/product-reviews', reviewRoutes);
 app.use('/api/feedback-barber', feedbackBarberRoutes);
 app.use('/api/discounts', discountRoutes);

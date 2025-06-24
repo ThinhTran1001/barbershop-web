@@ -26,15 +26,13 @@ export const removeService = (id) => api.delete(`/services/${id}`);
 
 export const getAllUser = () => api.get('/users');
 export const createUser = (data) => api.post('/users', data);
-export const updateUser = (id, data) => api.put(`/users/${id}`, data); 
+export const updateUser = (id, data) => api.put(`/users/${id}`, data);
 export const deleteUser = (id) => api.delete(`/users/${id}`);
 
 export const getAllBarber = () => api.get('/barbers');
-export const createBarber = (data) => api.post('/barbers', data); 
-export const updateBarber = (id, data) => api.put(`/barbers/${id}`, data); 
+export const createBarber = (data) => api.post('/barbers', data);
+export const updateBarber = (id, data) => api.put(`/barbers/${id}`, data);
 export const deleteBarber = (id) => api.delete(`/barbers/${id}`);
-
-
 
 export const loginUser = (data) => api.post('/auth/login', data);
 export const register = (data) => api.post('/auth/register', data);
@@ -48,6 +46,26 @@ export const updateProfile = (formData) =>  api.patch(`/users/profile/me`, formD
 export const forgotPassword = (data) => api.post('/auth/forgot-password', data);
 export const resetPassword = (data) => api.post('/auth/reset-password', data);
 
+export const sendChat = async (message) => {
+  try {
+    const response = await api.post(`/chatbot`, { message }, {
+      headers: { 'Content-Type': 'application/json' },
+    });
+    console.log('API response data:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('API error details:', error.response ? error.response.data : error.message);
+    throw error;
+  }
+};
+
+export const uploadImage = (file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  return api.post("/upload", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+};
 export const getFeedbacksByProduct = (productId) => api.get(`/product-reviews/product/${productId}`);
 export const getAllFeedbacks = (params) => api.get('/product-reviews', { params });
 export const createFeedback = (data) => api.post('/product-reviews', data);
