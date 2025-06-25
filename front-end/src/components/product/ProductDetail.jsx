@@ -18,9 +18,8 @@ import {
 } from "@ant-design/icons";
 
 import "../../css/product/productdetail.css";
-import { useCartLoggedIn } from "../../context/CartLoggedInContext";
 import { useAuth } from '../../context/AuthContext';
-import { useCart } from '../../context/CartContext';
+
 
 import product1 from "../../assets/images/product1.jpg";
 import product2 from "../../assets/images/product2.jpg";

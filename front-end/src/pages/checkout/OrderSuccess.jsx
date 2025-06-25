@@ -18,7 +18,6 @@ import {
   CopyOutlined
 } from '@ant-design/icons';
 import { notification } from 'antd';
-import { useCartLoggedIn } from '../../context/CartLoggedInContext';
 import '../../css/checkout/order-success.css';
 
 const { Title, Text, Paragraph } = Typography;

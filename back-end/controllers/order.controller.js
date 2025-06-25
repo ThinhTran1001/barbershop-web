@@ -83,15 +83,27 @@ exports.createOrderGuest = async (req, res) => {
 
 exports.createOrder = async (req, res) => {
   try {
-    const { shippingAddress, items, voucherId, paymentMethod } = req.body;
+
+    const findUser = await User.findById(req.user.id);
+    if (!findUser) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const {customerName,customerEmail,customerPhone,shippingAddress, items, voucherId, paymentMethod } = req.body;
+
+    const finalCustomerName  = (customerName  || findUser.name);
+    const finalCustomerEmail = (customerEmail || findUser.email)
+    const finalCustomerPhone = (customerPhone || findUser.phone);
 
     const order = new Order({
       userId: req.user.id,
       orderCode: `ORD-${Date.now()}`,
+      customerName : finalCustomerName,
+      customerEmail: finalCustomerEmail,
+      customerPhone: finalCustomerPhone,
       status: 'pending',
       shippingAddress,
       voucherId: voucherId || null,
     });
+
 
     let originalTotal = 0;
     let discountAmount = 0;
@@ -111,6 +123,9 @@ exports.createOrder = async (req, res) => {
 
       orderItems.push({
         orderId: order._id,
+        customerName: finalCustomerName,
+        customerEmail: finalCustomerEmail,
+        customerPhone: finalCustomerPhone,
         productId: product._id,
         productName: product.name,
         quantity: item.quantity,
@@ -218,6 +233,7 @@ exports.createOrder = async (req, res) => {
       success: true,
       message: 'Tạo đơn hàng thành công',
       data: savedOrder,
+      message: findUser,
     });
   } catch (error) {
     console.error('Lỗi tạo đơn hàng:', error);

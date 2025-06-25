@@ -178,9 +178,23 @@ const OrderDetail = () => {
               </div>
               <div className="summary-item">
                 <Text>Trạng thái thanh toán:</Text>
-                <Tag color={order.payment?.status === 'paid' ? 'green' : 'gold'}>
-                  {order.payment?.status?.toUpperCase() || 'N/A'}
-                </Tag>
+                {order.status === 'pending' ? (
+                  <span>
+                    {order.payment?.status === 'paid' ? 'Đã thanh toán' : 'Chưa thanh toán'}
+                  </span>
+                ) : (
+                  <Tag>
+                    {order.payment?.status?.toUpperCase() || 'N/A'}
+                  </Tag>
+                )}
+              </div>
+              <div className="summary-item">
+                <Text>Tên người nhận:</Text>
+                <Text>{order.customerName}</Text>
+              </div>
+              <div className="summary-item">
+                <Text>Số điện thoại:</Text>
+                <Text>{order.customerPhone}</Text>
               </div>
               <div className="summary-item">
                 <Text>Địa chỉ giao hàng:</Text>

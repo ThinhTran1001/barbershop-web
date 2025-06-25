@@ -20,7 +20,6 @@ import {
   ArrowLeftOutlined
 } from '@ant-design/icons';
 import { useAuth } from '../../context/AuthContext';
-import { useCartLoggedIn } from '../../context/CartLoggedInContext';
 import '../../css/checkout/checkout.css';
 import { getAllVoucherByUser, createOrder } from '../../services/api';
 
@@ -99,8 +98,9 @@ const Checkout = () => {
 
     if (user) {
       form.setFieldsValue({
-        fullName: user.name || '',
-        phone: user.phone || '',
+        customerName: user.name || '',
+        customerEmail: user.email || '',
+        customerPhone: user.phone || '',
       });
       fetchVouchers();
     }
@@ -143,6 +143,9 @@ const Checkout = () => {
     setLoading(true);
     try {
       const orderData = {
+        customerName: values.customerName,
+        customerEmail: values.customerEmail,
+        customerPhone: values.customerPhone,
         shippingAddress: values.address,
         voucherId: selectedVoucher?._id || undefined,
         paymentMethod: values.paymentMethod,
@@ -153,7 +156,9 @@ const Checkout = () => {
       };
 
       const res = await createOrder(orderData);
-      await clearCart();
+      if (!location.state?.products) {
+        await clearCart();
+      }
 
       notification.success({
         message: 'Đặt hàng thành công!',
@@ -204,6 +209,35 @@ const Checkout = () => {
         <div className="checkout-form-section">
           <Card title="Thông tin giao hàng" className="checkout-card">
             <Form form={form} layout="vertical" onFinish={handleSubmit}>
+                <Form.Item
+                  name='customerName'
+                  label='Tên khách hàng'
+                  rules={[{ required: true, message: 'Vui lòng nhập tên khách hàng!' },
+                    {type: 'name', message: 'Tên khách hàng không hợp lệ'}
+                  ]}
+                >
+                  <Input placeholder='Nhập tên khách hàng' />
+                </Form.Item>
+                <Form.Item
+                  name='customerEmail'
+                  label='Địa chỉ email'
+                  rules={[
+                    { required: true, message: 'Vui lòng nhập email' },
+                    { type: 'email', message: 'Email không hợp lệ' }
+                  ]}
+                >
+                  <Input placeholder='Nhập email' />
+                </Form.Item>
+                <Form.Item
+                  name='customerPhone'
+                  label='Số điện thoại nhận hàng'
+                  rules={[
+                    { required: true, message: 'Vui lòng nhập số điện thoại' },
+                    { pattern: /^[0-9]{10}$/, message: 'Số điện thoại phải có 10 chữ số' }
+                  ]}
+                >
+                  <Input placeholder='Nhập số điện thoại' />
+                </Form.Item>
               <Form.Item
                 name="address"
                 label="Địa chỉ giao hàng"

@@ -4,12 +4,12 @@ const orderSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    default: null  // Có thể null nếu là khách vãng lai
+    default: null  
   },
   customerName: {
     type: String,
     required: function() {
-      return !this.userId; // Bắt buộc nếu không login
+      return !this.userId; 
     }
   },
   customerEmail: {
@@ -30,7 +30,8 @@ const orderSchema = new mongoose.Schema({
   },
   orderCode: {
     type: String,
-    required: true
+    required: true,
+    unique: true
   },
   status: {
     type: String,

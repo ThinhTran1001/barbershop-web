@@ -55,41 +55,4 @@ export const localStorageUtils = {
       return false;
     }
   }
-};
-
-// Cart-specific localStorage functions
-export const cartStorage = {
-  CART_KEY: 'cart',
-
-  getCart: () => {
-    return localStorageUtils.getItem(cartStorage.CART_KEY, { items: [] });
-  },
-
-  setCart: (cart) => {
-    return localStorageUtils.setItem(cartStorage.CART_KEY, cart);
-  },
-
-  clearCart: () => {
-    return localStorageUtils.removeItem(cartStorage.CART_KEY);
-  },
-
-  // Get cart count
-  getCartCount: () => {
-    const cart = cartStorage.getCart();
-    return cart.items ? cart.items.reduce((count, item) => count + item.quantity, 0) : 0;
-  },
-
-  // Get cart total
-  getCartTotal: () => {
-    const cart = cartStorage.getCart();
-    if (!cart.items) return 0;
-    
-    return cart.items.reduce((total, item) => {
-      const price = parseFloat(item.price.toString().replace(/[^\d]/g, ""));
-      const discountedPrice = item.discount > 0 
-        ? price - (price * item.discount / 100) 
-        : price;
-      return total + (discountedPrice * item.quantity);
-    }, 0);
-  }
 }; 

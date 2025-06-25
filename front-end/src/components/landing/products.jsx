@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../../css/landing/products.css";
-import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 
 import product1 from "../../assets/images/product1.jpg";
@@ -66,11 +65,10 @@ export default function ShopItems() {
   };
 
   const handleBuyNow = (product) => {
-    addToCart(product, 1);
     if (user) {
       navigate("/checkout", { state: { products: [{ productId: product._id, quantity: 1, product }] } });
     } else {
-      navigate("/checkout-guest");
+      navigate("/checkout-guest", { state: { products: [{ productId: product._id, quantity: 1, product }] } });
     }
   };
 

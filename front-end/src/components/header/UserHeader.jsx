@@ -2,8 +2,6 @@ import React from "react";
 import { Layout, Menu, Button, Dropdown, Badge } from "antd";
 import { ShoppingCartOutlined, UserOutlined } from "@ant-design/icons";
 import { useAuth } from "../../context/AuthContext";
-import { useCart } from "../../context/CartContext";
-import { useCartLoggedIn } from "../../context/CartLoggedInContext";
 import { useNavigate } from "react-router-dom";
 import "../../css/landing/common-header.css";
 
@@ -20,17 +18,12 @@ const navItems = [
 
 export default function UserHeader() {
   const { user, logout } = useAuth();
-  const { getCartCount: getCartCountLocal } = useCart();
-  const { getCartCount: getCartCountLoggedIn } = useCartLoggedIn();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
     await logout();
     navigate("/login");
   };
-
-  // Chọn đúng context để lấy số lượng sản phẩm
-  const cartCount = user ? getCartCountLoggedIn() : getCartCountLocal();
 
   return (
     <Header
@@ -62,15 +55,6 @@ export default function UserHeader() {
       </div>
 
       <div className="d-flex align-items-center gap-2 ms-auto">
-        <Badge count={cartCount} showZero={false}>
-          <Button
-            type="text"
-            icon={<ShoppingCartOutlined />}
-            style={{ color: "#ffc107", fontSize: "18px" }}
-            onClick={() => navigate("/cart")}
-          />
-        </Badge>
-        
         {!user ? (
           <>
             <Button type="default" onClick={() => navigate("/login")}>Đăng nhập</Button>

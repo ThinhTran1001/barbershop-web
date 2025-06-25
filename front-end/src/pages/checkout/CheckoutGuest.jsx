@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { useCart } from '../../context/CartContext';
 import { Button, Form, Input, Card, Divider, notification, Empty, Select } from 'antd';
 import { ShoppingCartOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const { TextArea } = Input;
 
@@ -12,6 +11,9 @@ const CheckoutGuest = () => {
   const [loading, setLoading] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const buyNowItems = location.state?.products;
+  const itemsToCheckout = buyNowItems && buyNowItems.length > 0 ? buyNowItems : cart.items;
 
   const formatPrice = (price) =>
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
@@ -38,6 +40,13 @@ const CheckoutGuest = () => {
     }
   };
 
+  const getTotal = () => {
+    return itemsToCheckout.reduce((sum, item) => {
+      const price = item.discount > 0 ? item.price * (1 - item.discount / 100) : item.price;
+      return sum + price * item.quantity;
+    }, 0);
+  };
+
   if (orderSuccess) {
     return (
       <div className="checkout-empty">
@@ -51,7 +60,7 @@ const CheckoutGuest = () => {
     );
   }
 
-  if (!cart.items || cart.items.length === 0) {
+  if (!itemsToCheckout || itemsToCheckout.length === 0) {
     return (
       <div className="checkout-empty">
         <Empty
@@ -109,7 +118,7 @@ const CheckoutGuest = () => {
                 <div>Số lượng</div>
                 <div>Giá</div>
               </div>
-              {cart.items.map((item, index) => (
+              {itemsToCheckout.map((item, index) => (
                 <div key={index} className="checkout-product-row">
                   <div className="checkout-product-image">
                     <img src={item.image} alt={item.name} />
@@ -135,7 +144,7 @@ const CheckoutGuest = () => {
             <div className="order-summary">
               <div className="summary-row">
                 <span>Tạm tính:</span>
-                <span>{formatPrice(getCartTotal())}</span>
+                <span>{formatPrice(getTotal())}</span>
               </div>
               <div className="summary-row">
                 <span>Phí vận chuyển:</span>
@@ -143,7 +152,7 @@ const CheckoutGuest = () => {
               </div>
               <div className="summary-row total">
                 <strong>Tổng cộng:</strong>
-                <strong>{formatPrice(getCartTotal())}</strong>
+                <strong>{formatPrice(getTotal())}</strong>
               </div>
             </div>
           </Card>

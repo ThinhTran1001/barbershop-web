@@ -15,8 +15,6 @@ import ResetPasswordForm from "./components/auth/ResetPasswordForm.jsx";
 import ProductList from "./pages/home/prodductList.jsx";
 import ProductDetail from "./components/product/ProductDetail.jsx";
 import ServiceBooking from "./pages/ServiceBooking/ServiceBooking.jsx";
-import Cart from "./components/cart/Cart.jsx";
-import CartLoggedIn from "./components/cart/CartLoggedIn.jsx";
 import Checkout from "./pages/checkout/Checkout.jsx";
 import OrderSuccess from "./pages/checkout/OrderSuccess.jsx";
 import CheckoutGuest from "./pages/checkout/CheckoutGuest.jsx";
@@ -52,7 +50,6 @@ const router = createBrowserRouter([
       { path: "/products", element: <ProductList /> },
       { path: "/products/:id", element: <ProductDetail /> },
       { path: "/services", element: <ServiceBooking /> },
-      { path: "/cart", element: <CartLoggedIn /> },
       { path: "/checkout", element: <Checkout /> },
       { path: "/order-success", element: <OrderSuccess /> },
       { path: "/checkout-guest", element: <CheckoutGuest /> },

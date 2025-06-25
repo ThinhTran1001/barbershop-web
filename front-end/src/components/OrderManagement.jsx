@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Table, Button, Modal, Form, Input, message, Select, Tag, Space,
-  Tooltip, Descriptions, InputNumber
+  Tooltip, Descriptions
 } from 'antd';
 import {
   getAllOrder, updateOrder, getOrderById, deleteOrder
@@ -12,7 +12,6 @@ import {
 import dayjs from 'dayjs';
 
 const { Option } = Select;
-const { TextArea } = Input;
 
 const OrderManagement = () => {
   const STATUS_OPTIONS = [
@@ -145,9 +144,9 @@ const OrderManagement = () => {
     },
     {
       title: 'Customer Name',
-      dataIndex: 'userId',
-      key: 'userId',
-      render: (user) => user?.name || 'N/A',
+      key: 'customerName',
+      render: (_, record) =>
+        record.customerName || record.userId?.name || 'N/A',
     },
     {
       title: 'Payment Method',
@@ -211,48 +210,6 @@ const OrderManagement = () => {
 
   return (
     <div className="container mt-4">
-      <div className="mb-3 d-flex align-items-center" style={{ gap: '10px', flexWrap: 'wrap' }}>
-        <Input
-          placeholder="Search by order code or shipping address"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          style={{ width: 300 }}
-        />
-        <Select
-          placeholder="Filter by status"
-          value={statusFilter}
-          onChange={setStatusFilter}
-          allowClear
-          style={{ width: 150 }}
-        >
-          {STATUS_OPTIONS.map(option => (
-            <Option key={option.value} value={option.value}>
-              {option.label}
-            </Option>
-          ))}
-        </Select>
-        <Select
-          placeholder="Sort By Date"
-          value={dateSortOrder}
-          onChange={setDateSortOrder}
-          allowClear
-          style={{ width: 180 }}
-        >
-          <Option value="desc">Date (Newest First)</Option>
-          <Option value="asc">Date (Oldest First)</Option>
-        </Select>
-        <Select
-          placeholder="Sort By Amount"
-          value={amountSortOrder}
-          onChange={setAmountSortOrder}
-          allowClear
-          style={{ width: 180 }}
-        >
-          <Option value="asc">Amount (Low to High)</Option>
-          <Option value="desc">Amount (High to Low)</Option>
-        </Select>
-      </div>
-
       <Table
         dataSource={orders}
         columns={columns}
@@ -269,59 +226,21 @@ const OrderManagement = () => {
         scroll={{ x: 1200 }}
       />
 
-      {/* Edit Modal */}
-      <Modal
-        title="Edit Order"
-        open={isModalVisible}
-        onCancel={() => setIsModalVisible(false)}
-        footer={null}
-        width={600}
-      >
-        <Form form={form} onFinish={handleUpdateOrder} layout="vertical">
-          <Form.Item
-            name="status"
-            label="Status"
-            rules={[{ required: true, message: 'Please choose order status' }]}
-          >
-            <Select placeholder="Select order status">
-              {STATUS_OPTIONS.map(opt => (
-                <Option key={opt.value} value={opt.value}>{opt.label}</Option>
-              ))}
-            </Select>
-          </Form.Item>
-
-          <Form.Item style={{ textAlign: 'right' }}>
-            <Button onClick={() => setIsModalVisible(false)} style={{ marginRight: '8px' }}>
-              Cancel
-            </Button>
-            <Button type="primary" htmlType="submit">
-              Update Order
-            </Button>
-          </Form.Item>
-        </Form>
-      </Modal>
-
       {/* View Modal */}
       <Modal
         title="Order Details"
         open={isViewModalVisible}
         onCancel={() => setIsViewModalVisible(false)}
-        footer={[
-          <Button key="back" onClick={() => setIsViewModalVisible(false)}>Close</Button>
-        ]}
+        footer={[<Button key="back" onClick={() => setIsViewModalVisible(false)}>Close</Button>]}
         width={800}
       >
         {viewingOrder && (
           <>
             <Descriptions bordered column={2}>
               <Descriptions.Item label="Order Code">{viewingOrder.orderCode}</Descriptions.Item>
-              <Descriptions.Item label="Customer">{viewingOrder.userId?.name || viewingOrder.customerName}</Descriptions.Item>
-              <Descriptions.Item label="Phone">{viewingOrder.userId?.phone || viewingOrder.customerPhone}</Descriptions.Item>
-              <Descriptions.Item label="Email">
-              {viewingOrder.userId?.email || viewingOrder.customerEmail || 'N/A'}
-              </Descriptions.Item>
-
-
+              <Descriptions.Item label="Customer">{viewingOrder.customerName || viewingOrder.userId?.name || 'N/A'}</Descriptions.Item>
+              <Descriptions.Item label="Phone">{viewingOrder.customerPhone || viewingOrder.userId?.phone || 'N/A'}</Descriptions.Item>
+              <Descriptions.Item label="Email">{viewingOrder.customerEmail || viewingOrder.userId?.email || 'N/A'}</Descriptions.Item>
               <Descriptions.Item label="Status">
                 <Tag color={getStatusColor(viewingOrder.status)}>
                   {viewingOrder.status.toUpperCase()}
@@ -332,29 +251,16 @@ const OrderManagement = () => {
                   ? `${viewingOrder.totalAmount.toLocaleString('vi-VN')} VND`
                   : 'N/A'}
               </Descriptions.Item>
-
-              <Descriptions.Item label="Payment Method">
-                {viewingOrder.payment?.method?.toUpperCase() || 'N/A'}
-              </Descriptions.Item>
+              <Descriptions.Item label="Payment Method">{viewingOrder.payment?.method?.toUpperCase() || 'N/A'}</Descriptions.Item>
               <Descriptions.Item label="Payment Status">
-                <Tag color={
-                  viewingOrder.payment?.status === 'paid'
-                    ? 'green'
-                    : viewingOrder.payment?.status === 'unpaid'
-                      ? 'gold'
-                      : 'default'
-                }>
+                <Tag color={viewingOrder.payment?.status === 'paid' ? 'green' : 'gold'}>
                   {viewingOrder.payment?.status?.toUpperCase() || 'N/A'}
                 </Tag>
               </Descriptions.Item>
-
               <Descriptions.Item label="Shipping Address" span={2}>
                 {viewingOrder.shippingAddress}
               </Descriptions.Item>
-
-              <Descriptions.Item label="Voucher Code">
-                {viewingOrder.voucherId?.code || 'N/A'}
-              </Descriptions.Item>
+              <Descriptions.Item label="Voucher Code">{viewingOrder.voucherId?.code || 'N/A'}</Descriptions.Item>
               <Descriptions.Item label="Discount Amount">
                 {(() => {
                   if (!viewingOrder.items || typeof viewingOrder.totalAmount !== 'number') return 'N/A';
@@ -363,7 +269,6 @@ const OrderManagement = () => {
                   return discount > 0 ? `${discount.toLocaleString('vi-VN')} VND` : '0 VND';
                 })()}
               </Descriptions.Item>
-
               <Descriptions.Item label="Created At">{formatDate(viewingOrder.createdAt)}</Descriptions.Item>
               <Descriptions.Item label="Updated At">{formatDate(viewingOrder.updatedAt)}</Descriptions.Item>
             </Descriptions>
@@ -385,6 +290,26 @@ const OrderManagement = () => {
             />
           </>
         )}
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal
+        title="Edit Order Status"
+        open={isModalVisible}
+        onCancel={() => setIsModalVisible(false)}
+        onOk={() => form.submit()}
+        okText="Update"
+        cancelText="Cancel"
+      >
+        <Form form={form} onFinish={handleUpdateOrder} layout="vertical">
+          <Form.Item name="status" label="Status" rules={[{ required: true, message: 'Please select status' }]}> 
+            <Select>
+              {STATUS_OPTIONS.map(opt => (
+                <Select.Option key={opt.value} value={opt.value}>{opt.label}</Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+        </Form>
       </Modal>
     </div>
   );

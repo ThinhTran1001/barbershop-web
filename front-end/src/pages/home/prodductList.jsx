@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { Input, Select, Breadcrumb } from "antd";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from '../../context/AuthContext';
-import { useCart } from '../../context/CartContext';
 import "../../css/landing/products.css";
 
 import product1 from "../../assets/images/product1.jpg";
