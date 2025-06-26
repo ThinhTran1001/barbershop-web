@@ -1,5 +1,8 @@
+// controllers/category.controller.js
+
 const Category = require('../models/category.model');
 const Product = require('../models/product.model');
+const mongoose = require('mongoose');
 
 exports.createCategory = async (req, res) => {
   try {
@@ -20,7 +23,9 @@ exports.getAllCategories = async (req, res) => {
       query.isActive = isActive === 'true';
     }
     if (name) query.name = { $regex: name, $options: 'i' };
-    const categories = await Category.find(query);
+    const categories = await Category.find(query)
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit, 10));
     res.status(200).json(categories);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -39,7 +44,15 @@ exports.getCategoryById = async (req, res) => {
 
 exports.updateCategory = async (req, res) => {
   try {
-    const category = await Category.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    const updateData = {
+      ...req.body,
+      isActive: req.body.isActive !== undefined ? req.body.isActive : true
+    };
+    const category = await Category.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true, runValidators: true }
+    );
     if (!category) return res.status(404).json({ message: 'Category not found' });
     res.status(200).json(category);
   } catch (error) {
@@ -52,9 +65,15 @@ exports.deleteCategory = async (req, res) => {
     const category = await Category.findById(req.params.id);
     if (!category) return res.status(404).json({ message: 'Category not found' });
 
-    const activeProducts = await Product.countDocuments({ categoryId: category._id, stock: { $gt: 0 }, isActive: true });
+    const activeProducts = await Product.countDocuments({
+      categoryId: mongoose.Types.ObjectId(category._id),
+      stock: { $gt: 0 },
+      isActive: true
+    });
     if (activeProducts > 0) {
-      return res.status(400).json({ message: 'Cannot delete category with active products in stock' });
+      return res.status(400).json({
+        message: 'Cannot delete category with active products in stock'
+      });
     }
 
     category.isActive = false;
