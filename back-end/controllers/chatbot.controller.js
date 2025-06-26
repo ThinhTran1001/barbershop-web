@@ -1,5 +1,3 @@
-// controllers/chatbot.controller.js
-
 const Product = require('../models/product.model');
 const Brand = require('../models/brand.model');
 const Category = require('../models/category.model');
@@ -28,31 +26,33 @@ const createCartItem = (product, quantity) => {
   };
 };
 
-async function analyzeIntent(message) {
+async function analyzeIntent(message, chatHistory = []) {
+  const historyText = chatHistory.map(m => `${m.sender}: ${m.text}`).join('\n');
   const prompt = `
-Bạn là một trợ lý AI thông minh, chuyên cung cấp thông tin trang trọng, lịch sự và thân thiện cho khách hàng tại BerGer Barbershop. Phân tích câu hỏi sau và trả về JSON chứa:
+Bạn là một trợ lý AI thông minh, chuyên cung cấp thông tin trang trọng, lịch sự và thân thiện cho khách hàng tại BerGer Barbershop. Phân tích câu hỏi sau dựa trên ngữ cảnh từ lịch sử cuộc trò chuyện và trả về JSON chứa:
 - intent: Ý định của người dùng (ví dụ: "get_product_list", "get_brand_list", "get_category_list", "get_service_list", "get_barber_list", "book_appointment", "general", "add_to_cart").
-- entities: Các thực thể trong câu hỏi (ví dụ: {"name": "TestProduct", "brand": "TestBrand", "category": "Duy", "priceMin": 0, "priceMax": 100, "minRating": 4, "maxRating": 5, "service": "cắt tóc", "servicePriceMin": 0, "servicePriceMax": 50, "suggestedFor": "da dầu", "barber": "John", "experienceYears": 5, "barberRatingMin": 4, "barberRatingMax": 5, "quantity": 2 }, có thể rỗng nếu không có).
+- entities: Các thực thể trong câu hỏi (ví dụ: {"name": "Dầu xả Schwarzkopf BC Bonacure", "brand": "Schwarzkopf", "category": "Dầu xả", "service": "cắt tóc", "barber": "Lê Quang Vinh", "quantity": 1}, có thể rỗng nếu không có).
 Câu hỏi: "${message}"
+Lịch sử cuộc trò chuyện:\n${historyText || 'Không có lịch sử'}
 
 Lưu ý quan trọng:
+- Nếu người dùng nói "sản phẩm này", "dịch vụ này", hoặc "thợ này" mà không rõ ràng, hãy tham chiếu đến sản phẩm/dịch vụ/thợ gần nhất từ lịch sử (ví dụ: sản phẩm/dịch vụ/thợ đầu tiên trong danh sách trả về trước đó).
 - Không sử dụng dấu * để đánh dấu danh sách. Thay vào đó, sử dụng dấu ✦ (dấu sao) kèm xuống dòng (\n✦ ) để định dạng danh sách rõ ràng, chỉ đặt ✦ trước phần tử chính (ví dụ: tên sản phẩm, tên dịch vụ), các thuộc tính con (như giá, thương hiệu) không cần ✦ mà chỉ thụt đầu dòng.
 - Trả lời bằng giọng điệu trang trọng, lịch sự, thân thiện, dễ hiểu và trực quan.
 - Khi tạo danh sách, luôn xuống dòng sau mỗi mục và bắt đầu bằng ✦ cho phần tử chính.
 
 Ví dụ đầu ra:
 {
-  "intent": "get_service_list",
+  "intent": "add_to_cart",
   "entities": {
-    "service": "cắt tóc",
-    "servicePriceMax": 50,
-    "suggestedFor": "da dầu"
+    "name": "Dầu xả Schwarzkopf BC Bonacure",
+    "quantity": 1
   }
 }
 Lưu ý: Khi trích xuất priceMin, priceMax, servicePriceMin, servicePriceMax, chỉ lấy giá trị số (bỏ qua đơn vị như $ hoặc VNĐ), ví dụ: "dưới 100$" → priceMax: 100.
 `;
   try {
-    console.log('Analyzing intent for message:', message);
+    console.log('Analyzing intent for message:', message, 'with history:', historyText);
     const raw = await gemini.generate({ prompt });
     const fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
     const jsonText = fence ? fence[1].trim() : raw.trim();
@@ -230,7 +230,7 @@ async function callFunction(fnName, entities, req) {
       };
     }
     case 'add_to_cart': {
-      const product = await Product.findOne({ name: new RegExp(entities.name, 'i'), isActive: true }).lean();
+      const product = await Product.findOne({ name: new RegExp(entities.name || '', 'i'), isActive: true }).lean();
       if (!product) {
         return { error: `Không tìm thấy sản phẩm "${entities.name}" tại BerGer Barbershop.` };
       }
@@ -245,7 +245,6 @@ async function callFunction(fnName, entities, req) {
 
       const quantity = entities.quantity || 1;
 
-      // Kiểm tra token từ request
       const token = req.headers.authorization;
       if (token) {
         return addToCartWithToken(product);
@@ -344,6 +343,7 @@ function generateNaturalResponse(fnName, data, userMessage, entities) {
 
 exports.handleChatbot = async (req, res) => {
   const userMessage = req.body.message || '';
+  const chatHistory = req.body.chatHistory || []; // Nhận lịch sử từ frontend
 
   const knowledge = `
 Bạn là một trợ lý AI thông minh, chuyên cung cấp thông tin và hỗ trợ khách hàng, hỗ trợ khách hàng thêm sản phẩm vào giỏ và thanh toán đơn hàng, đồng thời hỗ trợ khách hàng thực hiện chức năng đặt lịch cắt, chăm sóc tóc tại BerGer Barbershop.
@@ -361,11 +361,11 @@ Email: bergerbarbershop@gmail.com
 
   try {
     console.log('Received message:', userMessage);
-    const { intent, entities } = await analyzeIntent(userMessage);
+    const { intent, entities } = await analyzeIntent(userMessage, chatHistory);
 
     if (intent === 'general') {
       console.log('Processing general intent');
-      const prompt = `${knowledge}\nUser: ${userMessage}\nAssistant: Kính chào bạn! `;
+      const prompt = `${knowledge}\nLịch sử:\n${chatHistory.map(m => `${m.sender}: ${m.text}`).join('\n')}\nUser: ${userMessage}\nAssistant: Kính chào bạn! `;
       let reply = await gemini.generate({ prompt });
       if (typeof reply !== 'string') reply = String(reply);
       reply = reply.replace(/\*/g, '✦').replace(/✦\s+/g, '\n✦ ');

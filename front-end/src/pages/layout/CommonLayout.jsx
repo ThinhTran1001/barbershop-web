@@ -3,6 +3,7 @@ import { Outlet } from "react-router-dom";
 import UserHeader from "../../components/Header/UserHeader.jsx";
 import Footer from "../../components/Footer/Footer.jsx";
 import HeroSection from "../../components/landing/HeroSection.jsx";
+import ChatWidget from "../../components/chatbot/ChatWidget.jsx";
 
 const { Content } = Layout;
 
@@ -17,6 +18,7 @@ const CommonLayout = () => {
         <div className="container" >
           <Outlet />
         </div>
+        <ChatWidget/>
       </Content>
       <Footer />
     </Layout>

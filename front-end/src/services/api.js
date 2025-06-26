@@ -46,9 +46,9 @@ export const updateProfile = (formData) =>  api.patch(`/users/profile/me`, formD
 export const forgotPassword = (data) => api.post('/auth/forgot-password', data);
 export const resetPassword = (data) => api.post('/auth/reset-password', data);
 
-export const sendChat = async (message) => {
+export const sendChat = async (message, chatHistory = []) => {
   try {
-    const response = await api.post(`/chatbot`, { message }, {
+    const response = await api.post(`/chatbot`, { message, chatHistory }, {
       headers: { 'Content-Type': 'application/json' },
     });
     console.log('API response data:', response.data);
