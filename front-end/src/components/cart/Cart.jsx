@@ -2,10 +2,12 @@ import React from 'react';
 import { useCart } from '../../context/CartContext';
 import { Button, InputNumber, Empty, notification } from 'antd';
 import { DeleteOutlined, ShoppingCartOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import '../../css/cart/cart.css';
 
 const Cart = () => {
   const { cart, removeFromCart, updateQuantity, clearCart, getCartTotal, getCartCount } = useCart();
+  const navigate = useNavigate();
 
   const formatPrice = (price) =>
     new Intl.NumberFormat("vi-VN", {
@@ -59,7 +61,7 @@ const Cart = () => {
       return;
     }
     // Navigate to checkout page
-    // navigate("/checkout");
+    navigate("/checkout-guest");
     notification.info({
       message: "Chuyển đến trang thanh toán",
       description: "Tính năng đang được phát triển",

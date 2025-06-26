@@ -1,28 +1,38 @@
 import { createBrowserRouter } from "react-router-dom";
-import RequireRole from "./middleware/RequireAuth.jsx";
+import RequireAuth from "./middleware/RequireAuth";
 import CommonLayout from "./pages/layout/CommonLayout.jsx";
 import AdminLayout from "./pages/layout/AdminLayout.jsx";
 import BarberLayout from "./pages/layout/BarberLayout.jsx";
 import RoleBasedLayout from "./pages/layout/RoleBasedLayout.jsx";
 import Landing from "./pages/home/Landing.jsx";
 import Login from "./pages/auth/LoginPage.jsx";
+import Register from "./pages/auth/RegisterPage.jsx";
+import ForgotPasswordForm from "./components/auth/ForgotPasswordForm.jsx";
+import ResetPasswordForm from "./components/auth/ResetPasswordForm.jsx";
+import ProductList from "./pages/home/prodductList.jsx";
+import ProductDetail from "./components/product/ProductDetail.jsx";
+import ServiceBooking from "./pages/ServiceBooking/ServiceBooking.jsx";
+import Checkout from "./pages/checkout/Checkout.jsx";
+import CheckoutGuest from "./pages/checkout/CheckoutGuest.jsx";
+import OrderSuccess from "./pages/checkout/OrderSuccess.jsx";
+import CustomerProfile from "./components/profile/customerProfile.jsx";
+import Cart from "./components/cart/Cart";
+import UserCart from "./components/cart/UserCart";
+import ListOfOrder from "./pages/order/ListOfOrder.jsx";
+import OrderDetail from "./pages/order/OrderDetail.jsx";
 import ProductManagement from "./components/ProductManagement.jsx";
 import BrandManagement from "./components/BrandManagement.jsx";
 import CategoryManagement from "./components/CategoryManagement.jsx";
 import BarberManagement from "./components/BarberManagement.jsx";
 import UserManagement from "./components/UserManagement.jsx";
-import Register from "./pages/auth/RegisterPage.jsx";
-import ProductDetail from "./components/product/ProductDetail.jsx";
-import ProductList from "./pages/home/prodductList.jsx";
-import ManagingService from './pages/ManagingService/ManagingService.jsx'
-import ForgotPasswordForm from "./components/auth/ForgotPasswordForm.jsx";
-import ResetPasswordForm from "./components/auth/ResetPasswordForm.jsx";
-import ServiceBooking from "./pages/ServiceBooking/ServiceBooking.jsx";
-import CustomerProfile from './components/profile/customerProfile.jsx';
-import Cart from './components/cart/Cart.jsx';
+import VoucherManagement from "./components/VoucherManagemet.jsx";
+import UserVoucherManagement from "./components/UserVoucherManagement.jsx";
+import OrderManagement from "./components/OrderManagement.jsx";
+import ManagingService from "./pages/ManagingService/ManagingService.jsx";
 import ManageFeedbackProduct from "./pages/ManageFeedbackProduct/ManageFeedbackProduct.jsx";
 import ManageFeedbackBarber from "./pages/ManageFeedbackBarber/ManageFeedbackBarber.jsx";
 import ManageDiscountProduct from "./pages/ManageDiscountProduct/ManageDiscountProduct.jsx";
+import RequireRole from "./middleware/RequireAuth.jsx";
 
 const publicRoutes = {
   element: <CommonLayout />,
@@ -75,10 +85,80 @@ const barberRoutes = {
 };
 
 const router = createBrowserRouter([
+  // Common layout with public and customer routes
+  {
+    element: <CommonLayout />,
+    children: [
+      { path: "/", element: <Landing /> },
+      { path: "/login", element: <Login /> },
+      { path: "/register", element: <Register /> },
+      { path: "/forgot-password", element: <ForgotPasswordForm /> },
+      { path: "/reset-password/:token", element: <ResetPasswordForm /> },
+      { path: "/products", element: <ProductList /> },
+      { path: "/products/:id", element: <ProductDetail /> },
+      { path: "/services", element: <ServiceBooking /> },
+      { path: "/checkout", element: <Checkout /> },
+      { path: "/checkout-guest", element: <CheckoutGuest /> },
+      { path: "/order-success", element: <OrderSuccess /> },
+      { path: "/cart-guest", element: <Cart /> },
+      { path: "/cart", element: <UserCart /> },
+      { path: "/profile", element: <CustomerProfile /> },
+      { path: "/checkout-guest", element: <CheckoutGuest/>},
+
+      // Customer protected routes
+      {
+        element: <RequireAuth allowedRoles={["customer"]} />,
+        children: [
+          { path: "/my-orders", element: <ListOfOrder /> },
+          { path: "/my-orders/:id", element: <OrderDetail /> },
+        ],
+      },
+    ],
+  },
+
+  // Admin protected routes
+  {
+    element: <RequireAuth allowedRoles={["admin"]} />,
+    children: [
+      {
+        path: "/admin",
+        element: <AdminLayout />,
+        children: [
+          { index: true, element: <ProductManagement /> },
+          { path: "product", element: <ProductManagement /> },
+          { path: "brand", element: <BrandManagement /> },
+          { path: "category", element: <CategoryManagement /> },
+          { path: "service", element: <ManagingService /> },
+          { path: "barber", element: <BarberManagement /> },
+          { path: "user", element: <UserManagement /> },
+          { path: "voucher", element: <VoucherManagement /> },
+          { path: "user-vouchers", element: <UserVoucherManagement /> },
+          { path: "order", element: <OrderManagement /> },
+          { path: "feedback-product", element: <ManageFeedbackProduct /> },
+          { path: "feedback-barber", element: <ManageFeedbackBarber /> },
+          { path: "discount-product", element: <ManageDiscountProduct /> },
+        ],
+      },
+    ],
+  },
+
+  // Barber protected routes
+  {
+    element: <RequireAuth allowedRoles={["barber"]} />,
+    children: [
+      {
+        path: "/barber",
+        element: <BarberLayout />,
+        children: [
+          { index: true, element: <ManagingService /> },
+          // thêm các route riêng cho barber ở đây nếu có
+        ],
+      },
+    ],
+  },
+
+  // Optional role-based layout
   { path: "/dashboard", element: <RoleBasedLayout /> },
-  adminRoutes,
-  barberRoutes,
-  publicRoutes,
 ]);
 
 export default router;

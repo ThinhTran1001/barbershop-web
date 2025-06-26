@@ -2,7 +2,9 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Breadcrumb, Input, Select } from "antd";
+import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
+import { useUserCart } from "../../context/UserCartContext";
 import "../../css/landing/products.css";
 
 import product1 from "../../assets/images/product1.jpg";
@@ -31,7 +33,18 @@ export default function ProductList() {
   const [currentPage, setCurrentPage] = useState(1);
   const productsPerPage = 4;
   const navigate = useNavigate();
-  const { addToCart } = useCart();
+  const { user } = useAuth();
+  const { addToCart: addToGuestCart } = useCart();
+  const { addToCart: addToUserCart } = useUserCart();
+
+  // Dùng cart function theo trạng thái đăng nhập
+  const addToCart = (product, quantity) => {
+    if (user) {
+      addToUserCart(product, quantity);
+    } else {
+      addToGuestCart(product, quantity);
+    }
+  };
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -58,7 +71,7 @@ export default function ProductList() {
 
   const handleBuyNow = (product) => {
     addToCart(product, 1);
-    navigate('/cart');
+    navigate(user ? "/cart" : "/cart-guest");
   };
 
   const goToProductDetail = (productId) => {

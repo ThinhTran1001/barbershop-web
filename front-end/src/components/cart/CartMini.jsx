@@ -1,12 +1,12 @@
 import React from 'react';
 import { useCart } from '../../context/CartContext';
-import { Button, Empty } from 'antd';
+import { Button, Empty, notification } from 'antd';
 import { ShoppingCartOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import '../../css/cart/cart-mini.css';
 
 const CartMini = () => {
-  const { cart, removeFromCart, getCartCount, getCartTotal } = useCart();
+  const { cart, removeFromCart, getCartCount, getCartTotal, isLoggedIn } = useCart();
   const navigate = useNavigate();
 
   const formatPrice = (price) =>
@@ -23,6 +23,36 @@ const CartMini = () => {
 
   const handleRemoveItem = (productId) => {
     removeFromCart(productId);
+  };
+
+  const handleCheckout = () => {
+    if (cart.items.length === 0) {
+      notification.warning({
+        message: "Giỏ hàng trống",
+        description: "Vui lòng thêm sản phẩm vào giỏ hàng trước khi thanh toán",
+        placement: "topRight",
+      });
+      return;
+    }
+
+    // Điều hướng dựa trên trạng thái đăng nhập
+    if (isLoggedIn) {
+      // User đã đăng nhập - chuyển đến checkout bình thường
+      navigate("/checkout");
+      notification.info({
+        message: "Chuyển đến trang thanh toán",
+        description: "Vui lòng hoàn tất thông tin thanh toán",
+        placement: "topRight",
+      });
+    } else {
+      // User chưa đăng nhập - chuyển đến checkout guest
+      navigate("/checkout-guest");
+      notification.info({
+        message: "Chuyển đến trang thanh toán khách",
+        description: "Vui lòng nhập thông tin cá nhân để thanh toán",
+        placement: "topRight",
+      });
+    }
   };
 
   if (cart.items.length === 0) {

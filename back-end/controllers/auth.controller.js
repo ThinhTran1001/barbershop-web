@@ -78,7 +78,7 @@ exports.login = async (req, res) => {
         const validPassword = await bcrypt.compare(password, user.passwordHash);
         if (!validPassword) return res.status(401).json({ message: 'Password Incorrect' });
 
-        const payload = { id: user._id, email: user.email, role: user.role };
+        const payload = { id: user._id, email: user.email, role: user.role, name: user.name, phone: user.phone };
         const accessToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '15m' });
         const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, { expiresIn: '1d' });
 
@@ -96,7 +96,9 @@ exports.login = async (req, res) => {
             maxAge: 24 * 60 * 60 * 1000,
         });
 
-        return res.json({ message: "Login successfully!" });
+        return res.json({ message: "Login successfully!",
+            token: accessToken,
+         });
     } catch (err) {
         console.error(err);
         return res.status(500).json({ message: "Internal Error Server" });
@@ -151,6 +153,8 @@ exports.getCurrentUser = (req, res) => {
     res.json({
         user: {
             id: req.userId,
+            name: req.user.name,
+            phone: req.user.phone,
             email: req.user.email,
             role: req.role,
         }

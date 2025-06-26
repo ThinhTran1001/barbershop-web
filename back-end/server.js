@@ -9,15 +9,17 @@ const authRoutes = require("./routes/auth.route");
 const serviceRoutes = require('./routes/service.route');
 const userRoutes = require('./routes/user.route');
 const barberRoutes = require('./routes/barber.route');
+const voucherRoutes = require('./routes/voucher.route');
+const orderRoutes = require('./routes/order.route');
+const userVoucherRoutes = require('./routes/user_voucher.route');
+const cartRoutes = require('./routes/cart.route')
 const chatbotAI = require('./routes/chatbot.route');
 const updaloadRoutes = require('./routes/upload.route');
 const reviewRoutes = require('./routes/productreview.route');
 const feedbackBarberRoutes = require('./routes/feedbackBarber.route');
 const discountRoutes = require('./routes/discounts.route');
-
 const cors = require('cors');
 const cookieParser = require("cookie-parser");
-
 const app = express();
 
 app.use(express.json());
@@ -40,6 +42,10 @@ app.use('/api/services', serviceRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/barbers',barberRoutes)
 app.use('/api/users', userRoutes);
+app.use('/api/vouchers', voucherRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/user-vouchers', userVoucherRoutes);
+app.use('/api/carts', cartRoutes)
 app.use('/api/chatbot', chatbotAI);
 app.use('/api/upload', updaloadRoutes);
 app.use('/api/product-reviews', reviewRoutes);

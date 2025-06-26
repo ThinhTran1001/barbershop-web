@@ -3,6 +3,7 @@ import { Layout, Menu, Button, Dropdown, Badge } from "antd";
 import { ShoppingCartOutlined, UserOutlined } from "@ant-design/icons";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
+import { useUserCart } from "../../context/UserCartContext";
 import { useNavigate } from "react-router-dom";
 import "../../css/landing/common-header.css";
 
@@ -19,8 +20,14 @@ const navItems = [
 
 export default function UserHeader() {
   const { user, logout } = useAuth();
-  const { getCartCount } = useCart();
+  const { getCartCount: getGuestCartCount } = useCart();
+  const { getCartCount: getUserCartCount } = useUserCart();
   const navigate = useNavigate();
+
+  // Dùng cart count theo trạng thái đăng nhập
+  const getCartCount = () => {
+    return user ? getUserCartCount() : getGuestCartCount();
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -33,6 +40,11 @@ export default function UserHeader() {
       icon: <UserOutlined />,
       label: "Thông tin cá nhân",
       onClick: () => navigate("/profile"),
+    },
+    {
+      key: "orders",
+      label: "Lịch sử đơn hàng",
+      onClick: () => navigate("/my-orders"),
     },
     {
       key: "logout",
@@ -76,10 +88,10 @@ export default function UserHeader() {
             type="text"
             icon={<ShoppingCartOutlined />}
             style={{ color: "#ffc107", fontSize: "18px" }}
-            onClick={() => navigate("/cart")}
+            onClick={() => navigate(user ? "/cart" : "/cart-guest")}
           />
         </Badge>
-        
+
         {!user ? (
           <>
             <Button type="default" onClick={() => navigate("/login")}>
@@ -96,7 +108,9 @@ export default function UserHeader() {
           <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
             <Button type="text" style={{ color: "#ffc107" }}>
               <UserOutlined />
-              <span style={{ marginLeft: '8px' }}>{user.name || user.email}</span>
+              <span style={{ marginLeft: "8px" }}>
+                {user.name || user.email}
+              </span>
             </Button>
           </Dropdown>
         )}

@@ -34,6 +34,33 @@ export const createBarber = (data) => api.post('/barbers', data);
 export const updateBarber = (id, data) => api.put(`/barbers/${id}`, data);
 export const deleteBarber = (id) => api.delete(`/barbers/${id}`);
 
+export const getAllVoucher = (params) => api.get('/vouchers', { params });
+export const createVoucher = (data) => api.post('/vouchers', data); 
+export const getVoucherById = (id) => api.get(`/vouchers/${id}`);
+export const getVoucherByUser = () => api.get('/vouchers/user');
+export const updateVoucher = (id, data) => api.put(`/vouchers/${id}`, data); 
+export const deleteVoucher = (id) => api.delete(`/vouchers/${id}`);
+
+// User Voucher API
+export const getAllUserVouchers = (params) => api.get('/user-vouchers', { params });
+export const getAllVoucherByUser = () => api.get('/user-vouchers/user');
+export const createUserVoucher = (data) => api.post('/user-vouchers', data);
+export const updateUserVoucher = (id, data) => api.put(`/user-vouchers/${id}`, data);
+export const deleteUserVoucher = (id) => api.delete(`/user-vouchers/${id}`);
+
+export const getAllOrder = (params) => api.get('/orders', { params });
+export const getOrderById = (id) => api.get(`/orders/${id}`);
+export const createOrder = (data) => api.post('/orders', data);
+export const createOrderGuest = (data) => api.post('/orders/guest', data);
+export const updateOrder = (id, data) => api.put(`/orders/${id}`, data);
+export const deleteOrder = (id) => api.delete(`/orders/${id}`);
+
+export const getCart = (params) => api.get('/carts',{params});
+export const addItem = (data) => api.post('/carts', data);
+export const updateItem = (productId, data) => api.put('/carts', { productId, ...data });
+export const removeItem = (id) => api.delete(`/carts/${id}`);
+export const clearCart = () => api.delete(`/carts`);
+
 export const loginUser = (data) => api.post('/auth/login', data);
 export const register = (data) => api.post('/auth/register', data);
 export const verify = (data) => api.post('/auth/verify-otp', data);
@@ -81,7 +108,6 @@ export const updateBarberFeedbackApproval = (id, isApproved) =>
   api.patch(`/feedback-barber/${id}/approve`, { isApproved });
 export const deleteBarberFeedback = (id) => api.delete(`/feedback-barber/${id}`);
 
-
 export const getDiscounts = (params) => api.get('/discounts', { params }); 
 export const getDiscountById = (id) => api.get(`/discounts/${id}`);
 export const createDiscount = (data) => api.post('/discounts', data);
@@ -91,6 +117,5 @@ export const getProductDiscounts = (productId) => api.get(`/discounts/product/${
 export const toggleDiscountStatus = (id) => api.patch(`/discounts/${id}/toggle-status`);
 export const getDiscountStats = () => api.get('/discounts/stats');
 export const cleanupExpiredDiscounts = () => api.post('/discounts/cleanup-expired');
-
 
 export default api;

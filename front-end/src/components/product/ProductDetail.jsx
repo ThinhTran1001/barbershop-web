@@ -18,7 +18,9 @@ import {
 } from "@ant-design/icons";
 
 import "../../css/product/productdetail.css";
+import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
+import { useUserCart } from "../../context/UserCartContext";
 
 import product1 from "../../assets/images/product1.jpg";
 import product2 from "../../assets/images/product2.jpg";
@@ -37,7 +39,9 @@ const { TabPane } = Tabs;
 const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { addToCart } = useCart();
+  const { user } = useAuth();
+  const { addToCart: addToGuestCart } = useCart();
+  const { addToCart: addToUserCart } = useUserCart();
   const [product, setProduct] = useState(null);
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -45,6 +49,20 @@ const ProductDetail = () => {
   const [mainImage, setMainImage] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [isFavorite, setIsFavorite] = useState(false);
+
+  
+  const addToCart = async (product, quantity) => {
+    try {
+      if (user) {
+        await addToUserCart(product, quantity);
+      } else {
+        addToGuestCart(product, quantity);
+      }
+      return true;
+    } catch (err) {
+      return false;
+    }
+  };
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -95,21 +113,37 @@ const ProductDetail = () => {
     return formatPrice(result);
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (product) {
-      addToCart(product, quantity);
-      notification.success({
-        message: "Đã thêm vào giỏ hàng",
-        description: `Đã thêm ${quantity} x ${product.name}`,
-        icon: <CheckCircleFilled style={{ color: "#52c41a" }} />,
-        placement: "topRight",
-      });
+      const success = await addToCart(product, quantity);
+      if (success) {
+        notification.success({
+          message: "Đã thêm vào giỏ hàng",
+          description: `Đã thêm ${quantity} x ${product.name}`,
+          icon: <CheckCircleFilled style={{ color: "#52c41a" }} />,
+          placement: "topRight",
+        });
+      } else {
+        notification.error({
+          message: "Thêm vào giỏ hàng thất bại",
+          description: "Vui lòng thử lại hoặc kiểm tra đăng nhập.",
+          placement: "topRight",
+        });
+      }
     }
   };
 
-  const handleBuyNow = () => {
-    handleAddToCart();
-    navigate("/cart");
+  const handleBuyNow = async () => {
+    const success = await addToCart(product, quantity);
+    if (success) {
+      navigate(user ? "/cart" : "/cart-guest");
+    } else {
+      notification.error({
+        message: "Mua ngay thất bại",
+        description: "Vui lòng thử lại hoặc kiểm tra đăng nhập.",
+        placement: "topRight",
+      });
+    }
   };
 
   const toggleFavorite = () => {

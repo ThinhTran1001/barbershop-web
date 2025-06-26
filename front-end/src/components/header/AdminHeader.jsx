@@ -15,27 +15,28 @@ const AdminHeader = () => {
     navigate("/login");
   };
 
-  const selectedKey = location.pathname.includes("feedback-product")
-  ? "feedback product"
-  : location.pathname.includes("feedback-barber")
-  ? "feedback barber"
-  : location.pathname.includes("discount-product")
-  ? "discount-product"
-  : location.pathname.includes("brand")
-  ? "brand"
-  : location.pathname.includes("category")
-  ? "category"
-  : location.pathname.includes("service")
-  ? "service"
-  : location.pathname.includes("product")
-  ? "product"
-  : location.pathname.includes("barber")
-  ? "barber"
-  : location.pathname.includes("user")
-  ? "user"
-  : "product"; // Default to 'product' if no match found
-
-
+  const selectedKey =
+    location.pathname.includes("brand")
+      ? "brand"
+      : location.pathname.includes("category")
+      ? "category"
+      : location.pathname.includes("service")
+      ? "service"
+      : location.pathname.includes("product")
+      ? "product"
+      : location.pathname.includes("barber")
+      ? "barber"
+      : location.pathname.includes("user-vouchers")
+      ? "user-vouchers"
+      : location.pathname.includes("voucher")
+      ? "voucher"
+      : location.pathname.includes("order")
+      ? "order"
+      : location.pathname.includes("feedback-product")
+      ? "feedback-product"
+      : location.pathname.includes("feedback-barber")
+      ? "feedback-barber"
+      : "user";
 
   return (
     <Header
@@ -62,33 +63,17 @@ const AdminHeader = () => {
         className="flex-grow-1 mx-5 border-0"
         style={{ background: "transparent" }}
       >
-        <Menu.Item key="product" onClick={() => navigate("/admin/product")}>
-          Product
-        </Menu.Item>
-        <Menu.Item key="brand" onClick={() => navigate("/admin/brand")}>
-          Brand
-        </Menu.Item>
-        <Menu.Item key="category" onClick={() => navigate("/admin/category")}>
-          Category
-        </Menu.Item>
-        <Menu.Item key="service" onClick={() => navigate("/admin/service")}>
-          Service
-        </Menu.Item>
-        <Menu.Item key="barber" onClick={() => navigate("/admin/barber")}>
-          Barber
-        </Menu.Item>
-        <Menu.Item key="user" onClick={() => navigate("/admin/user")}>
-          User
-        </Menu.Item>
-        <Menu.Item key="feedback product" onClick={() => navigate("/admin/feedback-product")}>
-          FeedBack Product
-        </Menu.Item>
-        <Menu.Item key="feedback barber" onClick={() => navigate("/admin/feedback-barber")}>
-          FeedBack Barber
-          </Menu.Item>
-        <Menu.Item key="discount-product" onClick={() => navigate("/admin/discount-product")}>
-          Discount Product
-        </Menu.Item>
+        <Menu.Item key="product" onClick={() => navigate("/admin/product")}>Product</Menu.Item>
+        <Menu.Item key="brand" onClick={() => navigate("/admin/brand")}>Brand</Menu.Item>
+        <Menu.Item key="category" onClick={() => navigate("/admin/category")}>Category</Menu.Item>
+        <Menu.Item key="service" onClick={() => navigate("/admin/service")}>Service</Menu.Item>
+        <Menu.Item key="barber" onClick={() => navigate("/admin/barber")}>Barber</Menu.Item>
+        <Menu.Item key="user" onClick={() => navigate("/admin/user")}>User</Menu.Item>
+        <Menu.Item key="voucher" onClick={() => navigate("/admin/voucher")}>Voucher</Menu.Item>
+        <Menu.Item key="user-vouchers" onClick={() => navigate("/admin/user-vouchers")}>User Voucher</Menu.Item>
+        <Menu.Item key="order" onClick={() => navigate("/admin/order")}>Order</Menu.Item>
+        <Menu.Item key="feedback-product" onClick={() => navigate("/admin/feedback-product")}>Feedback Product</Menu.Item>
+        <Menu.Item key="feedback-barber" onClick={() => navigate("/admin/feedback-barber")}>Feedback Barber</Menu.Item>
       </Menu>
 
       {/* User info + logout */}
