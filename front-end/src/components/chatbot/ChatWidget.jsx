@@ -1,9 +1,9 @@
-// src/components/ChatWidget.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import { Input } from 'antd';
 import { MessageOutlined, SendOutlined } from '@ant-design/icons';
 import { ChevronsDown } from 'lucide-react';
 import { sendChat } from '../../services/api';
+import { useCart } from '../../context/CartContext'; 
 import './ChatWidget.css';
 
 const ProductCard = ({ product }) => (
@@ -45,6 +45,7 @@ export default function ChatWidget() {
   const contentRef = useRef();
   const inputRef = useRef(null);
   const [showScroll, setShowScroll] = useState(false);
+  const { addToCart } = useCart(); // Sử dụng useCart hook
 
   // Khi open = true, focus vào ô input
   useEffect(() => {
@@ -86,6 +87,12 @@ export default function ChatWidget() {
       const response = await sendChat(input);
       console.log('API response:', response);
       const { reply = 'Không có phản hồi', data = null } = response;
+
+      if (data?.cartItem && !msgs.some(m => m.data?.cartItem?.id === data.cartItem.id)) {
+        addToCart(data.cartItem, data.cartItem.quantity);
+        console.log('Added to cart:', data.cartItem);
+      }
+
       setMsgs(m => [...m, { sender: 'bot', text: reply, data }]);
       console.log('Bot message added:', { text: reply, data });
     } catch (err) {
