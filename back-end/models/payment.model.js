@@ -8,7 +8,7 @@ const paymentSchema = new mongoose.Schema({
   },
   method: {
     type: String,
-    enum: ['momo', 'vnpay', 'cash', 'paypal'],
+    enum: ['payOS', 'cash'],
     required: true
   },
   status: {
