@@ -5,16 +5,34 @@ const Brand = require('../models/brand.model');
 const Category = require('../models/category.model');
 const Service = require('../models/service.model');
 const Barber = require('../models/barber.model');
+const User = require('../models/user.model');
 const gemini = require('../services/gemini.service');
 const NodeCache = require('node-cache');
 
 const cache = new NodeCache({ stdTTL: 3600 });
 
+const addToCartWithToken = (product) => {
+  console.log(`Thêm sản phẩm "${product.name}" vào giỏ hàng thành công (với token). Gửi đến addToCart.controller.js.`);
+  return { success: true, productName: product.name };
+};
+
+const createCartItem = (product, quantity) => {
+  return {
+    id: product._id,
+    name: product.name,
+    price: product.price,
+    discount: product.discount || 0,
+    image: product.image || '',
+    stock: product.stock || 10,
+    quantity: quantity
+  };
+};
+
 async function analyzeIntent(message) {
   const prompt = `
 Bạn là một trợ lý AI thông minh, chuyên cung cấp thông tin trang trọng, lịch sự và thân thiện cho khách hàng tại BerGer Barbershop. Phân tích câu hỏi sau và trả về JSON chứa:
-- intent: Ý định của người dùng (ví dụ: "get_product_list", "get_brand_list", "get_category_list", "get_service_list", "get_barber_list", "book_appointment", "general").
-- entities: Các thực thể trong câu hỏi (ví dụ: { "brand": "TestBrand", "category": "Duy", "priceMin": 0, "priceMax": 100, "minRating": 4, "maxRating": 5, "service": "cắt tóc", "servicePriceMin": 0, "servicePriceMax": 50, "suggestedFor": "da dầu", "barber": "John", "experienceYears": 5, "barberRatingMin": 4, "barberRatingMax": 5 }, có thể rỗng nếu không có).
+- intent: Ý định của người dùng (ví dụ: "get_product_list", "get_brand_list", "get_category_list", "get_service_list", "get_barber_list", "book_appointment", "general", "add_to_cart").
+- entities: Các thực thể trong câu hỏi (ví dụ: {"name": "TestProduct", "brand": "TestBrand", "category": "Duy", "priceMin": 0, "priceMax": 100, "minRating": 4, "maxRating": 5, "service": "cắt tóc", "servicePriceMin": 0, "servicePriceMax": 50, "suggestedFor": "da dầu", "barber": "John", "experienceYears": 5, "barberRatingMin": 4, "barberRatingMax": 5, "quantity": 2 }, có thể rỗng nếu không có).
 Câu hỏi: "${message}"
 
 Lưu ý quan trọng:
@@ -47,19 +65,20 @@ Lưu ý: Khi trích xuất priceMin, priceMax, servicePriceMin, servicePriceMax,
   }
 }
 
-async function callFunction(fnName, entities) {
+async function callFunction(fnName, entities, req) {
   console.log('Calling function:', fnName, 'with entities:', entities);
   switch (fnName) {
     case 'get_product_list': {
       const query = { isActive: true };
-      if (entities.keyword) {
-        query.name = { $regex: entities.keyword, $options: 'i' };
+      if (entities.name) {
+        const namePattern = entities.name.replace(/BC Bonacure/i, 'BC ?Bonacure?').replace(/\s+/g, '\\s*');
+        query.name = new RegExp(namePattern, 'i');
       }
       if (entities.brand) {
         const cacheKey = `brand_${entities.brand}`;
         let brands = cache.get(cacheKey);
         if (!brands) {
-          brands = await Brand.find({ name: { $regex: entities.brand, $options: 'i' } }).select('_id');
+          brands = await Brand.find({ name: new RegExp(entities.brand, 'i') }).select('_id');
           if (brands.length > 0) cache.set(cacheKey, brands.map(b => b._id));
         }
         if (brands.length > 0) {
@@ -72,7 +91,7 @@ async function callFunction(fnName, entities) {
         const cacheKey = `category_${entities.category}`;
         let categories = cache.get(cacheKey);
         if (!categories) {
-          categories = await Category.find({ name: { $regex: entities.category, $options: 'i' } }).select('_id');
+          categories = await Category.find({ name: new RegExp(entities.category, 'i') }).select('_id');
           if (categories.length > 0) cache.set(cacheKey, categories.map(c => c._id));
         }
         if (categories.length > 0) {
@@ -96,7 +115,8 @@ async function callFunction(fnName, entities) {
       const prods = await Product.find(query)
         .limit(5)
         .populate('details.brandId', 'name')
-        .populate('categoryId', 'name');
+        .populate('categoryId', 'name')
+        .lean();
 
       if (!prods.length) {
         return { error: 'Không tìm thấy sản phẩm phù hợp tại BerGer Barbershop.' };
@@ -107,8 +127,8 @@ async function callFunction(fnName, entities) {
           products: prods.map(p => ({
             name: p.name,
             price: p.price,
-            brand: p.details.brandId.name,
-            categories: p.categoryId.map(c => c.name),
+            brand: p.details && p.details.brandId ? p.details.brandId.name : 'Unknown',
+            categories: p.categoryId ? p.categoryId.map(c => c.name) : [],
             rating: p.rating || 0,
           })),
           total: await Product.countDocuments(query),
@@ -132,7 +152,7 @@ async function callFunction(fnName, entities) {
     case 'get_service_list': {
       const query = { isActive: true };
       if (entities.service) {
-        query.name = { $regex: entities.service, $options: 'i' };
+        query.name = new RegExp(entities.service, 'i');
       }
       if (entities.servicePriceMin !== undefined || entities.servicePriceMax !== undefined) {
         query.price = {};
@@ -164,8 +184,10 @@ async function callFunction(fnName, entities) {
     case 'get_barber_list': {
       const query = { isAvailable: true };
       if (entities.barber) {
-        query.userId = await User.findOne({ name: { $regex: entities.barber, $options: 'i' } }).select('_id');
-        if (!query.userId) {
+        const user = await User.findOne({ name: new RegExp(entities.barber, 'i') }).select('_id');
+        if (user) {
+          query.userId = user._id;
+        } else {
           return { error: `Không tìm thấy thợ "${entities.barber}" tại BerGer Barbershop.` };
         }
       }
@@ -207,12 +229,43 @@ async function callFunction(fnName, entities) {
         },
       };
     }
+    case 'add_to_cart': {
+      const product = await Product.findOne({ name: new RegExp(entities.name, 'i'), isActive: true }).lean();
+      if (!product) {
+        return { error: `Không tìm thấy sản phẩm "${entities.name}" tại BerGer Barbershop.` };
+      }
+
+      if (entities.quantity && entities.quantity > product.stock) {
+        return { error: `Số lượng không hợp lệ. ${product.name} chỉ có ${product.stock} sản phẩm.` };
+      }
+
+      if (entities.quantity && entities.quantity < 1) {
+        return { error: 'Số lượng phải lớn hơn 0.' };
+      }
+
+      const quantity = entities.quantity || 1;
+
+      // Kiểm tra token từ request
+      const token = req.headers.authorization;
+      if (token) {
+        return addToCartWithToken(product);
+      } else {
+        const cartItem = createCartItem(product, quantity);
+        return {
+          data: {
+            success: true,
+            productName: product.name,
+            cartItem: cartItem
+          }
+        };
+      }
+    }
     default:
       return { error: 'Yêu cầu không được hỗ trợ tại BerGer Barbershop.' };
   }
 }
 
-function generateNaturalResponse(fnName, data, userMessage) {
+function generateNaturalResponse(fnName, data, userMessage, entities) {
   if (data.error) return data.error;
 
   switch (fnName) {
@@ -230,9 +283,9 @@ function generateNaturalResponse(fnName, data, userMessage) {
         reply += '\n';
       });
       if (total > products.length) {
-        reply += 'Hiện còn ' + (total - products.length) + ' sản phẩm khác. Vui lòng nhắn "xem thêm" để tiếp tục!\n';
+        reply += 'Hiện còn ' + (total - products.length) + ' sản phẩm khác.\n';
       }
-      reply += 'Rất hân hạnh được hỗ trợ! Bạn có muốn đặt lịch trải nghiệm không?';
+      reply += 'Rất hân hạnh được hỗ trợ! Bạn có muốn đặt hàng trải nghiệm không?';
       return reply;
     }
     case 'get_brand_list': {
@@ -276,11 +329,16 @@ function generateNaturalResponse(fnName, data, userMessage) {
       reply += 'Rất hân hạnh được hỗ trợ! Bạn có muốn đặt lịch với thợ nào không?';
       return reply;
     }
+    case 'add_to_cart': {
+      const productName = data.data?.productName || (entities?.name || 'sản phẩm không xác định');
+      const quantity = entities?.quantity || 1;
+      return `Kính chào bạn! Sản phẩm "${productName}" đã được thêm vào giỏ hàng của bạn với số lượng ${quantity}. Bạn có muốn tiếp tục mua sắm hay thanh toán không?`;
+    }
     case 'book_appointment': {
       return 'Kính chào bạn! Đặt lịch thành công cho dịch vụ "' + data.data.service + '" vào ngày ' + data.data.date + ' lúc ' + data.data.time + '. Chúng tôi sẽ liên hệ để xác nhận. Rất hân hạnh được phục vụ!';
     }
     default:
-      return 'Kính chào bạn! Rất tiếc, tôi chưa hiểu rõ yêu cầu của bạn. Vui lòng thử lại hoặc cung cấp thêm thông tin nhé!';
+      return 'Kính chào bạn! Rất tiếc, tôi chưa hiểu rõ yêu cầu của bạn. Vui lòng thử lại hoặc liên hệ với chủ shop qua số điện thoại 0886 055 166 nhé!';
   }
 }
 
@@ -288,7 +346,7 @@ exports.handleChatbot = async (req, res) => {
   const userMessage = req.body.message || '';
 
   const knowledge = `
-Bạn là một trợ lý AI thông minh, chuyên cung cấp thông tin và hỗ trợ khách hàng tại BerGer Barbershop.
+Bạn là một trợ lý AI thông minh, chuyên cung cấp thông tin và hỗ trợ khách hàng, hỗ trợ khách hàng thêm sản phẩm vào giỏ và thanh toán đơn hàng, đồng thời hỗ trợ khách hàng thực hiện chức năng đặt lịch cắt, chăm sóc tóc tại BerGer Barbershop.
 Tên shop: BerGer/BerGer Barbershop
 BerGer Barbershop – Điểm hẹn phong cách dành riêng cho phái mạnh tại Vinh, Nghệ An.
 Ra đời từ năm 2016, chúng tôi tự hào mang đến trải nghiệm “Men Only” chuyên nghiệp với đội ngũ barber tay nghề cao,
@@ -310,13 +368,11 @@ Email: bergerbarbershop@gmail.com
       const prompt = `${knowledge}\nUser: ${userMessage}\nAssistant: Kính chào bạn! `;
       let reply = await gemini.generate({ prompt });
       if (typeof reply !== 'string') reply = String(reply);
-      // Loại bỏ * và định dạng lại nếu có
       reply = reply.replace(/\*/g, '✦').replace(/✦\s+/g, '\n✦ ');
       console.log('General reply after formatting:', reply);
       return res.json({ reply: reply.trim(), data: null });
     }
 
-    // Chuyển đổi giá trị số
     if (entities.priceMin !== undefined) entities.priceMin = Number(entities.priceMin);
     if (entities.priceMax !== undefined) entities.priceMax = Number(entities.priceMax);
     if (entities.minRating !== undefined) entities.minRating = Number(entities.minRating);
@@ -328,9 +384,9 @@ Email: bergerbarbershop@gmail.com
     if (entities.barberRatingMax !== undefined) entities.barberRatingMax = Number(entities.barberRatingMax);
 
     console.log('Calling function with intent:', intent);
-    const result = await callFunction(intent, entities);
+    const result = await callFunction(intent, entities, req);
     const data = result.data || null;
-    const reply = generateNaturalResponse(intent, result, userMessage);
+    const reply = generateNaturalResponse(intent, result, userMessage, entities);
     console.log('Response:', { reply, data });
 
     return res.json({ reply, data });

@@ -35,16 +35,16 @@ const userSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-userSchema.pre('save', async function (next) {
-  if (!this.isModified('passwordHash')) return next();
+// userSchema.pre('save', async function (next) {
+//   if (!this.isModified('passwordHash')) return next();
 
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.passwordHash = await bcrypt.hash(this.passwordHash, salt);
-    next();
-  } catch (error) {
-    next(error);
-  }
-});
+//   try {
+//     const salt = await bcrypt.genSalt(10);
+//     this.passwordHash = await bcrypt.hash(this.passwordHash, salt);
+//     next();
+//   } catch (error) {
+//     next(error);
+//   }
+// });
 
 module.exports = mongoose.model('User', userSchema);
