@@ -32,18 +32,7 @@ import ManagingService from "./pages/ManagingService/ManagingService.jsx";
 import ManageFeedbackProduct from "./pages/ManageFeedbackProduct/ManageFeedbackProduct.jsx";
 import ManageFeedbackBarber from "./pages/ManageFeedbackBarber/ManageFeedbackBarber.jsx";
 import ManageDiscountProduct from "./pages/ManageDiscountProduct/ManageDiscountProduct.jsx";
-import Register from "./pages/auth/RegisterPage.jsx";
-import ProductDetail from "./components/product/ProductDetail.jsx";
-import ProductList from "./pages/home/prodductList.jsx";
-import ManagingService from './pages/ManagingService/ManagingService.jsx'
-import ForgotPasswordForm from "./components/auth/ForgotPasswordForm.jsx";
-import ResetPasswordForm from "./components/auth/ResetPasswordForm.jsx";
-import ServiceBooking from "./pages/ServiceBooking/ServiceBooking.jsx";
-import CustomerProfile from './components/profile/customerProfile.jsx';
-import Cart from './components/cart/Cart.jsx';
-import ManageFeedbackProduct from "./pages/ManageFeedbackProduct/ManageFeedbackProduct.jsx";
-import ManageFeedbackBarber from "./pages/ManageFeedbackBarber/ManageFeedbackBarber.jsx";
-import ManageDiscountProduct from "./pages/ManageDiscountProduct/ManageDiscountProduct.jsx";
+import RequireRole from "./middleware/RequireAuth.jsx";
 
 const publicRoutes = {
   element: <CommonLayout />,

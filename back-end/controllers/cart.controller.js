@@ -59,12 +59,6 @@ exports.updateItem = async (req, res) => {
 exports.removeItem = async (req, res) => {
   const userId = req.userId;
   const { id: productId } = req.params;
-  
-  console.log('Remove item request:', { userId, productId });
-
-  if (!mongoose.Types.ObjectId.isValid(productId)) {
-    return res.status(400).json({ message: 'Invalid product ID' });
-  }
 
   await Cart.updateOne(
     { userId },
@@ -72,7 +66,6 @@ exports.removeItem = async (req, res) => {
   );
 
   const cart = await Cart.findOne({ userId }).populate('items.productId');
-  console.log('Cart after removal:', cart);
   return res.json({ message: 'Item removed', data: cart });
 };
 

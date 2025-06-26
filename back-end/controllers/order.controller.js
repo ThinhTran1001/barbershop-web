@@ -95,10 +95,10 @@ exports.createOrder = async (req, res) => {
       items, 
       voucherId, 
       paymentMethod,
-      originalSubtotal, // Tổng giá gốc từ frontend
-      discountedSubtotal, // Tổng giá sau giảm sản phẩm từ frontend
-      voucherDiscount, // Số tiền giảm từ voucher từ frontend
-      totalAmount // Tổng cuối cùng từ frontend
+      originalSubtotal, 
+      discountedSubtotal, 
+      voucherDiscount, 
+      totalAmount 
     } = req.body;
 
     const finalCustomerName  = (customerName  || findUser.name);

@@ -34,6 +34,7 @@ const UserCartContent = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [updatingQuantity, setUpdatingQuantity] = useState({});
 
   const formatPrice = (price) =>
     new Intl.NumberFormat("vi-VN", {
@@ -43,11 +44,11 @@ const UserCartContent = () => {
 
   const calculateDiscountPrice = (price, discount) => {
     const priceNumber = parseFloat(price.toString().replace(/[^\d]/g, ""));
-    const result = priceNumber - (priceNumber * discount) / 100;
+    const result = priceNumber - (priceNumber * discount) / 100;                   
     return formatPrice(result);
-  };
+  };                     
 
-  const handleQuantityChange = (productId, newQuantity) => {
+  const handleQuantityChange = async (productId, newQuantity) => {
     if (newQuantity < 1) {
       notification.warning({
         message: "Số lượng không hợp lệ",
@@ -56,7 +57,22 @@ const UserCartContent = () => {
       });
       return;
     }
-    updateQuantity(productId, newQuantity);
+    setUpdatingQuantity((prev) => ({ ...prev, [productId]: true }));
+    try {
+      await updateQuantity(productId, newQuantity);
+      notification.success({
+        message: "Cập nhật số lượng thành công",
+        placement: "topRight",
+      });
+    } catch (err) {
+      notification.error({
+        message: "Cập nhật số lượng thất bại",
+        description: err?.message || "Vui lòng thử lại!",
+        placement: "topRight",
+      });
+    } finally {
+      setUpdatingQuantity((prev) => ({ ...prev, [productId]: false }));
+    }
   };
 
   const handleRemoveItem = (productId, productName) => {
@@ -239,6 +255,7 @@ const UserCartContent = () => {
                         onChange={(value) => handleQuantityChange(item.id, value)}
                         size="large"
                         style={{ width: '100%', marginTop: 8 }}
+                        disabled={!!updatingQuantity[item.id]}
                       />
                     </div>
                   </Col>

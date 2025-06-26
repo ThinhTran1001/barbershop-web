@@ -71,21 +71,18 @@ exports.getAllVoucherByUser = async(req,res) =>{
         const userId = req.user.id;
         const now = new Date();
         
-        // 1. Lấy tất cả voucherId đã được gán cho user khác (để loại trừ khỏi voucher chung)
         const assignedToOthers = await User_Voucher.distinct('voucherId', { 
             userId: { $ne: userId } // Không phải user hiện tại
         });
         
-        // 2. Lấy voucher chung (không được gán cho user khác)
         const publicVouchers = await Voucher.find({
-            _id: { $nin: assignedToOthers }, // Không được gán cho user khác
+            _id: { $nin: assignedToOthers }, 
             isActive: true,
             startDate: { $lte: now },
             endDate: { $gte: now },
             $expr: { $lt: ["$usedCount", "$usageLimit"] }
         });
 
-        // 3. Lấy voucher cá nhân của user này (chưa sử dụng)
         const userVouchers = await User_Voucher.find({ 
             userId: userId,
             isUsed: false // Chỉ lấy voucher chưa sử dụng
