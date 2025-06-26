@@ -12,11 +12,11 @@ producer.connect();
 
 exports.register = async (req, res) => {
     try {
-        const { name, email, phone,password } = req.body;
+        const { name, email, phone, password } = req.body;
         const existing = await User.findOne({ email });
         if (existing) return res.status(409).json({ message: 'Email already exists' });
 
-        const passwordHash = password;
+        const passwordHash = await bcrypt.hash(password, 10);
         const user = new User({ name, email, phone, passwordHash });
         await user.save();
 

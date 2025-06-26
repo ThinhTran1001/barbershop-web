@@ -3,8 +3,6 @@ const mongoose = require('mongoose');
 
 exports.createProduct = async (req, res) => {
   try {
-    console.log('Request body for createProduct:', req.body);
-  
     if (req.body.categoryId && typeof req.body.categoryId === 'string') {
       req.body.categoryId = req.body.categoryId.split(',').map(id => mongoose.Types.ObjectId(id.trim()));
     }
@@ -23,8 +21,11 @@ exports.createProduct = async (req, res) => {
 
 exports.getAllProducts = async (req, res) => {
   try {
-    const { name, brandId, categoryId, price } = req.query;
+    const { name, brandId, categoryId, price, isActive } = req.query;
     const query = {};
+    if (isActive !== undefined) {
+      query.isActive = isActive === 'true';
+    }
     if (name) query.name = { $regex: name, $options: 'i' };
     if (brandId) query['details.brandId'] = brandId;
     if (categoryId) query.categoryId = { $in: categoryId.split(',') };
@@ -36,7 +37,6 @@ exports.getAllProducts = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
 
 exports.getProductById = async (req, res) => {
   try {
@@ -50,7 +50,6 @@ exports.getProductById = async (req, res) => {
 
 exports.updateProduct = async (req, res) => {
   try {
-    
     if (req.body.categoryId && typeof req.body.categoryId === 'string') {
       req.body.categoryId = req.body.categoryId.split(',').map(id => mongoose.Types.ObjectId(id.trim()));
     }
@@ -58,7 +57,14 @@ exports.updateProduct = async (req, res) => {
     if (req.body.details && req.body.details.benefits && typeof req.body.details.benefits === 'string') {
       req.body.details.benefits = req.body.details.benefits.split(',').map(item => item.trim());
     }
-    const product = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    
+    // Ensure isActive can be updated
+    const updateData = {
+      ...req.body,
+      isActive: req.body.isActive !== undefined ? req.body.isActive : true
+    };
+    
+    const product = await Product.findByIdAndUpdate(req.params.id, updateData, { new: true, runValidators: true });
     if (!product) return res.status(404).json({ message: 'Product not found' });
     res.status(200).json(product);
   } catch (error) {
@@ -68,11 +74,14 @@ exports.updateProduct = async (req, res) => {
 
 exports.deleteProduct = async (req, res) => {
   try {
-    const product = await Product.findByIdAndDelete(req.params.id);
+    const product = await Product.findByIdAndUpdate(
+      req.params.id,
+      { isActive: false },
+      { new: true, runValidators: true }
+    );
     if (!product) return res.status(404).json({ message: 'Product not found' });
-    res.status(200).json({ message: 'Product deleted successfully' });
+    res.status(200).json({ message: 'Product deactivated successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-

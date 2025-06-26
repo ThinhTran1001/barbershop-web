@@ -13,6 +13,11 @@ const voucherRoutes = require('./routes/voucher.route');
 const orderRoutes = require('./routes/order.route');
 const userVoucherRoutes = require('./routes/user_voucher.route');
 const cartRoutes = require('./routes/cart.route')
+const chatbotAI = require('./routes/chatbot.route');
+const updaloadRoutes = require('./routes/upload.route');
+const reviewRoutes = require('./routes/productreview.route');
+const feedbackBarberRoutes = require('./routes/feedbackBarber.route');
+const discountRoutes = require('./routes/discounts.route');
 const cors = require('cors');
 const cookieParser = require("cookie-parser");
 const app = express();
@@ -41,11 +46,11 @@ app.use('/api/vouchers', voucherRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/user-vouchers', userVoucherRoutes);
 app.use('/api/carts', cartRoutes)
-
-
-
-
-
+app.use('/api/chatbot', chatbotAI);
+app.use('/api/upload', updaloadRoutes);
+app.use('/api/product-reviews', reviewRoutes);
+app.use('/api/feedback-barber', feedbackBarberRoutes);
+app.use('/api/discounts', discountRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

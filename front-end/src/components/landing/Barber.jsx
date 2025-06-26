@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
 import "../../css/landing/barber.css";
+import { getAllUser } from "../../services/api";
 
-// Import hình ảnh tĩnh
+// import ảnh tĩnh...
 import barber1 from "../../assets/images/barber1.jpg";
 import barber2 from "../../assets/images/barber2.jpg";
 import barber3 from "../../assets/images/barber3.jpg";
 
-// Map đường dẫn từ API đến hình ảnh đã import
 const imageMap = {
   "/assets/images/barber1.jpg": barber1,
   "/assets/images/barber2.jpg": barber2,
@@ -15,43 +15,43 @@ const imageMap = {
 
 export default function Barbers() {
   const [barbers, setBarbers] = useState([]);
+  const [users, setUsers]     = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError]     = useState(null);
 
   useEffect(() => {
-    const fetchBarbers = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch("http://localhost:3000/api/barbers");
-        if (!response.ok) {
-          throw new Error("Network response was not ok");
+        // 1. Lấy danh sách barbers (fetch API)
+        const barberRes = await fetch("http://localhost:3000/api/barbers");
+        if (!barberRes.ok) {
+          throw new Error(`Barbers API error: ${barberRes.status}`);
         }
-        const data = await response.json();
-        setBarbers(data);
+        const barbersData = await barberRes.json();
+
+        // 2. Lấy danh sách users (Axios)
+        const userRes = await getAllUser();
+        // Axios sẽ throw nếu status != 2xx, và kết quả nằm trong userRes.data
+        const usersData = userRes.data;
+
+        // 3. Đẩy vào state
+        setBarbers(barbersData);
+        setUsers(usersData);
+      } catch (err) {
+        console.error("Error fetching data:", err);
+        setError("Không thể tải dữ liệu. Vui lòng thử lại sau.");
+      } finally {
         setLoading(false);
-      } catch (error) {
-        setError("Không thể tải dữ liệu thợ cắt tóc. Vui lòng thử lại sau.");
-        setLoading(false);
-        console.error("Error fetching barbers:", error);
       }
     };
 
-    fetchBarbers();
+    fetchData();
   }, []);
 
-  // Hàm xử lý đường dẫn hình ảnh từ API
-  const getImage = (imagePath) => {
-    // Nếu có trong imageMap, sử dụng hình ảnh đã import
-    if (imageMap[imagePath]) {
-      return imageMap[imagePath];
-    }
-    
-    // Nếu đường dẫn bắt đầu bằng "/assets", chuyển sang đường dẫn tương đối
-    if (imagePath && imagePath.startsWith("/assets")) {
-      // Loại bỏ dấu "/" ở đầu để tạo đường dẫn tương đối
-      return imagePath.substring(1);
-    }
-    
-    return imagePath;
+  const getImage = (path) => {
+    if (imageMap[path]) return imageMap[path];
+    if (path?.startsWith("/assets")) return path.substring(1);
+    return path;
   };
 
   if (loading) {
@@ -89,25 +89,28 @@ export default function Barbers() {
           <h2 className="barbers-title">BARBERS</h2>
           <div className="title-divider"></div>
         </div>
-        
+
         <div className="barbers-grid">
-          {barbers.map((barber) => (
-            <div key={barber.id} className="barber-card">
-              <div className="barber-image-container">
-                <img 
-                  src={getImage(barber.image)}
-                  alt={barber.name} 
-                  className="barber-image"
-                  onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = "https://via.placeholder.com/300x400?text=Barber+Image";
-                  }}
-                />
+          {barbers.map((b) => {
+            const avatar = users.find(u => u._id === b.userId._id)?.avatarUrl;
+            return (
+              <div key={b.id} className="barber-card">
+                <div className="barber-image-container">
+                  <img
+                    src={avatar || getImage(b.image)}
+                    alt={b.name}
+                    className="barber-image"
+                    onError={e => {
+                      e.target.onerror = null;
+                      e.target.src = "https://via.placeholder.com/300x400?text=Barber+Image";
+                    }}
+                  />
+                </div>
+                <h3 className="barber-name">{b.userId.name}</h3>
+                <p className="barber-specialty">{b.specialties.join(", ")}</p>
               </div>
-              <h3 className="barber-name">{barber.name}</h3>
-              <p className="barber-specialty">{barber.specialty}</p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>
