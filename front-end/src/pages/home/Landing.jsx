@@ -28,7 +28,7 @@ export default function Landing() {
         <br></br>
         <Barbers />
         <BookingForm />
-        <ChatWidget />
+        {/* <ChatWidget /> */}
 
     </>
   );

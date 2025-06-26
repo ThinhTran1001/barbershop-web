@@ -1,9 +1,9 @@
-// src/components/ChatWidget.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import { Input } from 'antd';
 import { MessageOutlined, SendOutlined } from '@ant-design/icons';
 import { ChevronsDown } from 'lucide-react';
 import { sendChat } from '../../services/api';
+import { useCart } from '../../context/CartContext'; 
 import './ChatWidget.css';
 
 const ProductCard = ({ product }) => (
@@ -45,22 +45,30 @@ export default function ChatWidget() {
   const contentRef = useRef();
   const inputRef = useRef(null);
   const [showScroll, setShowScroll] = useState(false);
+  const { addToCart } = useCart();
+  const [context, setContext] = useState({ product: null, service: null, barber: null }); 
 
-  // Khi open = true, focus vào ô input
   useEffect(() => {
     if (open && inputRef.current) {
       inputRef.current.focus();
     }
   }, [open]);
 
-  // Sau mỗi lần msgs thay đổi, focus input
   useEffect(() => {
     if (open && inputRef.current) {
       inputRef.current.focus();
     }
-  }, [msgs]);
+    const lastMsg = msgs[msgs.length - 1];
+    if (lastMsg?.data) {
+      setContext(prev => ({
+        ...prev,
+        product: lastMsg.data.products?.[0] || prev.product,
+        service: lastMsg.data.services?.[0] || prev.service,
+        barber: lastMsg.data.barbers?.[0] || prev.barber
+      }));
+    }
+  }, [msgs, open]);
 
-  // Tự scroll xuống dưới mỗi khi có message mới
   useEffect(() => {
     if (open && contentRef.current) {
       contentRef.current.scrollTop = contentRef.current.scrollHeight;
@@ -83,9 +91,16 @@ export default function ChatWidget() {
     setLoading(true);
     try {
       console.log('Sending to API:', input);
-      const response = await sendChat(input);
+      const chatHistory = msgs.map(m => ({ sender: m.sender, text: m.text })).concat(userMsg);
+      const response = await sendChat(input, chatHistory); 
       console.log('API response:', response);
       const { reply = 'Không có phản hồi', data = null } = response;
+
+      if (data?.cartItem) {
+        addToCart(data.cartItem, data.cartItem.quantity);
+        console.log('Added to cart:', data.cartItem);
+      }
+
       setMsgs(m => [...m, { sender: 'bot', text: reply, data }]);
       console.log('Bot message added:', { text: reply, data });
     } catch (err) {
@@ -102,14 +117,9 @@ export default function ChatWidget() {
     }
   };
 
-  // Nút mở chat
   if (!open) {
     return (
-      <div
-        className="chat-toggle-btn"
-        onClick={() => setOpen(true)}
-        title="Mở chat"
-      >
+      <div className="chat-toggle-btn" onClick={() => setOpen(true)} title="Mở chat">
         <MessageOutlined />
       </div>
     );
@@ -117,25 +127,15 @@ export default function ChatWidget() {
 
   return (
     <div className="chat-widget">
-      {/* Header */}
       <div className="chat-header">
         <div className="chat-title">
           <span className="chat-icon">🤖</span> BarberBot
         </div>
         <div className="chat-close" onClick={() => setOpen(false)}>✕</div>
       </div>
-
-      {/* Messages */}
-      <div
-        className="chat-content"
-        ref={contentRef}
-        onScroll={onScroll}
-      >
+      <div className="chat-content" ref={contentRef} onScroll={onScroll}>
         {msgs.map((m, i) => (
-          <div
-            key={i}
-            className={`chat-bubble ${m.sender === 'user' ? 'user-bubble' : 'bot-bubble'}`}
-          >
+          <div key={i} className={`chat-bubble ${m.sender === 'user' ? 'user-bubble' : 'bot-bubble'}`}>
             {m.text && <div className="message-text">{m.text}</div>}
             {m.data?.products && m.data.products.map((p, idx) => (
               <ProductCard key={idx} product={p} />
@@ -149,15 +149,11 @@ export default function ChatWidget() {
           </div>
         ))}
       </div>
-
-      {/* Scroll-to-bottom */}
       {showScroll && (
         <div className="scroll-down-btn" onClick={scrollToBottom}>
           <ChevronsDown size={24} />
         </div>
       )}
-
-      {/* Input */}
       <div className="chat-footer">
         <Input
           ref={inputRef}
@@ -167,10 +163,7 @@ export default function ChatWidget() {
           onPressEnter={handleSend}
           placeholder="Nhập câu hỏi..."
           suffix={
-            <SendOutlined
-              className={`send-icon ${loading ? 'loading' : ''}`}
-              onClick={handleSend}
-            />
+            <SendOutlined className={`send-icon ${loading ? 'loading' : ''}`} onClick={handleSend} />
           }
           disabled={loading}
         />
