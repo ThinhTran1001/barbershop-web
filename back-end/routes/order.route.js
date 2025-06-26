@@ -10,7 +10,6 @@ router.post('/guest', orderController.createOrderGuest);
 
 router.get('/', authenticate, orderController.getAllOrders);
 
-// Lấy chi tiết một đơn hàng
 router.get('/:id', authenticate, orderController.getSingleOrder);
 
 // Cập nhật trạng thái đơn hàng (chỉ sửa status)

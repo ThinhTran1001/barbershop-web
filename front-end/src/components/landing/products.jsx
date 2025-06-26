@@ -24,7 +24,6 @@ export default function ShopItems() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
-  const { addToCart } = useCart();
   const { user } = useAuth();
 
   useEffect(() => {

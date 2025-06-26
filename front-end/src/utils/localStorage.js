@@ -52,7 +52,14 @@ export const localStorageUtils = {
       localStorage.removeItem(test);
       return true;
     } catch (error) {
-      return false;
+      return error.message;
     }
   }
-}; 
+};
+
+// Specialized cartStorage for cart data using localStorageUtils
+export const cartStorage = {
+  getCart: () => localStorageUtils.getItem('cart', { items: [] }),
+  setCart: (cart) => localStorageUtils.setItem('cart', cart),
+  clearCart: () => localStorageUtils.removeItem('cart')
+};

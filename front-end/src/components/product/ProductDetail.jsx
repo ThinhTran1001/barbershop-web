@@ -18,8 +18,9 @@ import {
 } from "@ant-design/icons";
 
 import "../../css/product/productdetail.css";
-import { useAuth } from '../../context/AuthContext';
-
+import { useAuth } from "../../context/AuthContext";
+import { useCart } from "../../context/CartContext";
+import { useUserCart } from "../../context/UserCartContext";
 
 import product1 from "../../assets/images/product1.jpg";
 import product2 from "../../assets/images/product2.jpg";
@@ -38,9 +39,9 @@ const { TabPane } = Tabs;
 const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { addToCart, isInCart, getProductQuantity } = useCartLoggedIn();
   const { user } = useAuth();
-  const { addToCart: useCartAddToCart } = useCart();
+  const { addToCart: addToGuestCart } = useCart();
+  const { addToCart: addToUserCart } = useUserCart();
   const [product, setProduct] = useState(null);
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -48,6 +49,20 @@ const ProductDetail = () => {
   const [mainImage, setMainImage] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [isFavorite, setIsFavorite] = useState(false);
+
+  
+  const addToCart = async (product, quantity) => {
+    try {
+      if (user) {
+        await addToUserCart(product, quantity);
+      } else {
+        addToGuestCart(product, quantity);
+      }
+      return true;
+    } catch (err) {
+      return false;
+    }
+  };
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -100,7 +115,7 @@ const ProductDetail = () => {
 
   const handleAddToCart = async () => {
     if (product) {
-      const success = await addToCart(product._id, quantity);
+      const success = await addToCart(product, quantity);
       if (success) {
         notification.success({
           message: "Đã thêm vào giỏ hàng",
@@ -108,18 +123,26 @@ const ProductDetail = () => {
           icon: <CheckCircleFilled style={{ color: "#52c41a" }} />,
           placement: "topRight",
         });
+      } else {
+        notification.error({
+          message: "Thêm vào giỏ hàng thất bại",
+          description: "Vui lòng thử lại hoặc kiểm tra đăng nhập.",
+          placement: "topRight",
+        });
       }
     }
   };
 
-  const handleBuyNow = () => {
-    if (product) {
-      useCartAddToCart(product, quantity);
-      if (user) {
-        navigate("/checkout", { state: { products: [{ productId: product._id, quantity, product }] } });
-      } else {
-        navigate("/checkout-guest");
-      }
+  const handleBuyNow = async () => {
+    const success = await addToCart(product, quantity);
+    if (success) {
+      navigate(user ? "/cart" : "/cart-guest");
+    } else {
+      notification.error({
+        message: "Mua ngay thất bại",
+        description: "Vui lòng thử lại hoặc kiểm tra đăng nhập.",
+        placement: "topRight",
+      });
     }
   };
 
@@ -146,8 +169,6 @@ const ProductDetail = () => {
   }
 
   const discountedPrice = calculateDiscountPrice(product.price, product.discount);
-  const productInCart = isInCart(product._id);
-  const cartQuantity = getProductQuantity(product._id);
 
   return (
     <div className="product-detail-container">
@@ -231,12 +252,6 @@ const ProductDetail = () => {
                 {product.stock > 0 ? `Còn hàng (${product.stock})` : "Hết hàng"}
               </span>
             </div>
-            {productInCart && (
-              <div className="attribute-row cart-status">
-                <span className="attribute-label">Trong giỏ hàng:</span>
-                <span className="attribute-value in-cart">{cartQuantity} sản phẩm</span>
-              </div>
-            )}
           </div>
 
           <div className="product-actions">
@@ -256,15 +271,13 @@ const ProductDetail = () => {
                 icon={<ShoppingCartOutlined />}
                 className="add-cart-btn"
                 onClick={handleAddToCart}
-                disabled={product.stock === 0}
               >
-                {productInCart ? "Cập nhật giỏ hàng" : "Thêm vào giỏ hàng"}
+                Thêm vào giỏ hàng
               </Button>
               <Button
                 type="default"
                 className="buy-now-btn"
                 onClick={handleBuyNow}
-                disabled={product.stock === 0}
               >
                 Mua ngay
               </Button>
@@ -308,9 +321,26 @@ const ProductDetail = () => {
               <p>{product.longDescription}</p>
             </div>
           </TabPane>
-          <TabPane tab="Đánh giá" key="2">
+          <TabPane tab="Hướng dẫn sử dụng" key="2">
             <div className="tab-content">
-              <p>Chức năng đánh giá đang được phát triển...</p>
+              <h3>Cách sử dụng</h3>
+              <pre className="usage-instructions">{product.howToUse}</pre>
+            </div>
+          </TabPane>
+          <TabPane tab="Thông số kỹ thuật" key="3">
+            <div className="tab-content">
+              <h3>Thông số sản phẩm</h3>
+              <table className="specifications-table">
+                <tbody>
+                  {product.specifications &&
+                    Object.entries(product.specifications).map(([key, val]) => (
+                      <tr key={key}>
+                        <td className="spec-name">{key}</td>
+                        <td className="spec-value">{val}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
             </div>
           </TabPane>
         </Tabs>

@@ -269,23 +269,6 @@ const VoucherManagement = () => {
                 );
             },
         },
-        // {
-        //     title: 'Status',
-        //     key: 'status',
-        //     render: (_, record) => {
-        //         const status = getDateStatus(record.startDate, record.endDate);
-        //         const statusConfig = {
-        //             upcoming: { color: 'orange', text: 'Upcoming' },
-        //             active: { color: 'green', text: 'Active' },
-        //             expired: { color: 'red', text: 'Expired' }
-        //         };
-        //         return (
-        //             <Tag color={statusConfig[status].color}>
-        //                 {statusConfig[status].text}
-        //             </Tag>
-        //         );
-        //     },
-        // },
         {
             title: 'Is Active',
             dataIndex: 'isActive',
@@ -461,7 +444,6 @@ const VoucherManagement = () => {
                         <Form.Item
                             name="minOrderAmount"
                             label="Min Order Amount"
-                            rules={[{ required: true, message: 'Please enter min order amount' }]}
                         >
                             <Input type='number' placeholder="Enter min order amount" min={0} />
                         </Form.Item>
@@ -566,8 +548,9 @@ const VoucherManagement = () => {
                                 {viewingVoucher.isActive ? 'Active' : 'Inactive'}
                             </Tag>
                         </Descriptions.Item>
-                        <Descriptions.Item label="Created At">{formatDate(viewingVoucher.createdAt)}</Descriptions.Item>
-                        <Descriptions.Item label="Updated At">{formatDate(viewingVoucher.updatedAt)}</Descriptions.Item>
+                        <Descriptions.Item label="Created At">{dayjs(viewingVoucher.createdAt).format('DD/MM/YYYY HH:mm')}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Updated At">{dayjs(viewingVoucher.updatedAt).format('DD/MM/YYYY HH:mm')}</Descriptions.Item>
                     </Descriptions>
                 )}
             </Modal>

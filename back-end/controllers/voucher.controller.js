@@ -68,9 +68,60 @@ exports.getAllVoucher = async(req,res) =>{
 
 exports.getAllVoucherByUser = async(req,res) =>{
     try {
-        const vouchers = await Voucher.find({isActive: true});
-        res.status(200).json({ data: vouchers });
+        const userId = req.user.id;
+        const now = new Date();
+        
+        // 1. Lấy tất cả voucherId đã được gán cho user khác (để loại trừ khỏi voucher chung)
+        const assignedToOthers = await User_Voucher.distinct('voucherId', { 
+            userId: { $ne: userId } // Không phải user hiện tại
+        });
+        
+        // 2. Lấy voucher chung (không được gán cho user khác)
+        const publicVouchers = await Voucher.find({
+            _id: { $nin: assignedToOthers }, // Không được gán cho user khác
+            isActive: true,
+            startDate: { $lte: now },
+            endDate: { $gte: now },
+            $expr: { $lt: ["$usedCount", "$usageLimit"] }
+        });
+
+        // 3. Lấy voucher cá nhân của user này (chưa sử dụng)
+        const userVouchers = await User_Voucher.find({ 
+            userId: userId,
+            isUsed: false // Chỉ lấy voucher chưa sử dụng
+        }).populate('voucherId');
+
+        const personalVouchers = userVouchers
+            .map(uv => uv.voucherId)
+            .filter(voucher => 
+                voucher && 
+                voucher.isActive && 
+                voucher.startDate <= now && 
+                voucher.endDate >= now &&
+                voucher.usedCount < voucher.usageLimit
+            );
+
+        // 4. Gộp 2 danh sách và loại bỏ trùng lặp
+        const allVouchers = [...publicVouchers];
+        
+        personalVouchers.forEach(personalVoucher => {
+            // Kiểm tra xem voucher cá nhân đã có trong danh sách chung chưa
+            const exists = allVouchers.some(v => v._id.toString() === personalVoucher._id.toString());
+            if (!exists) {
+                allVouchers.push(personalVoucher);
+            }
+        });
+
+        // 5. Sắp xếp theo thời gian tạo mới nhất
+        allVouchers.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+        res.status(200).json({ 
+            success: true,
+            data: allVouchers,
+            total: allVouchers.length
+        });
     } catch (error) {
+        console.error('getAllVoucherByUser error:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 }

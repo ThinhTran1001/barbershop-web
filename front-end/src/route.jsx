@@ -1,25 +1,29 @@
 import { createBrowserRouter } from "react-router-dom";
 
-// Layouts
+// Middleware & Layouts
+import RequireAuth from "./middleware/RequireAuth";
 import CommonLayout from "./pages/layout/CommonLayout.jsx";
 import AdminLayout from "./pages/layout/AdminLayout.jsx";
 import BarberLayout from "./pages/layout/BarberLayout.jsx";
-import RequireAuth from "./middleware/RequireAuth";
+import RoleBasedLayout from "./pages/layout/RoleBasedLayout.jsx";
 
 // Public pages
 import Landing from "./pages/home/Landing.jsx";
-import LoginPage from "./pages/auth/LoginPage.jsx";
-import RegisterPage from "./pages/auth/RegisterPage.jsx";
+import Login from "./pages/auth/LoginPage.jsx";
+import Register from "./pages/auth/RegisterPage.jsx";
 import ForgotPasswordForm from "./components/auth/ForgotPasswordForm.jsx";
 import ResetPasswordForm from "./components/auth/ResetPasswordForm.jsx";
 import ProductList from "./pages/home/prodductList.jsx";
 import ProductDetail from "./components/product/ProductDetail.jsx";
 import ServiceBooking from "./pages/ServiceBooking/ServiceBooking.jsx";
 import Checkout from "./pages/checkout/Checkout.jsx";
-import OrderSuccess from "./pages/checkout/OrderSuccess.jsx";
 import CheckoutGuest from "./pages/checkout/CheckoutGuest.jsx";
+import OrderSuccess from "./pages/checkout/OrderSuccess.jsx";
 
 // Customer pages
+import CustomerProfile from "./components/profile/customerProfile.jsx";
+import Cart from "./components/cart/Cart";
+import UserCart from "./components/cart/UserCart";
 import ListOfOrder from "./pages/order/ListOfOrder.jsx";
 import OrderDetail from "./pages/order/OrderDetail.jsx";
 
@@ -27,8 +31,8 @@ import OrderDetail from "./pages/order/OrderDetail.jsx";
 import ProductManagement from "./components/ProductManagement.jsx";
 import BrandManagement from "./components/BrandManagement.jsx";
 import CategoryManagement from "./components/CategoryManagement.jsx";
-import UserManagement from "./components/UserManagement.jsx";
 import BarberManagement from "./components/BarberManagement.jsx";
+import UserManagement from "./components/UserManagement.jsx";
 import VoucherManagement from "./components/VoucherManagemet.jsx";
 import UserVoucherManagement from "./components/UserVoucherManagement.jsx";
 import OrderManagement from "./components/OrderManagement.jsx";
@@ -37,22 +41,26 @@ import ManageFeedbackProduct from "./pages/ManageFeedbackProduct/ManageFeedbackP
 import ManageFeedbackBarber from "./pages/ManageFeedbackBarber/ManageFeedbackBarber.jsx";
 import ManageDiscountProduct from "./pages/ManageDiscountProduct/ManageDiscountProduct.jsx";
 
-// Routing
 const router = createBrowserRouter([
+  // Common layout with public and customer routes
   {
     element: <CommonLayout />,
     children: [
       { path: "/", element: <Landing /> },
-      { path: "/login", element: <LoginPage /> },
-      { path: "/register", element: <RegisterPage /> },
+      { path: "/login", element: <Login /> },
+      { path: "/register", element: <Register /> },
       { path: "/forgot-password", element: <ForgotPasswordForm /> },
       { path: "/reset-password/:token", element: <ResetPasswordForm /> },
       { path: "/products", element: <ProductList /> },
       { path: "/products/:id", element: <ProductDetail /> },
       { path: "/services", element: <ServiceBooking /> },
       { path: "/checkout", element: <Checkout /> },
-      { path: "/order-success", element: <OrderSuccess /> },
       { path: "/checkout-guest", element: <CheckoutGuest /> },
+      { path: "/order-success", element: <OrderSuccess /> },
+      { path: "/cart-guest", element: <Cart /> },
+      { path: "/cart", element: <UserCart /> },
+      { path: "/profile", element: <CustomerProfile /> },
+      { path: "/checkout-guest", element: <CheckoutGuest/>},
 
       // Customer protected routes
       {
@@ -100,13 +108,14 @@ const router = createBrowserRouter([
         element: <BarberLayout />,
         children: [
           { index: true, element: <ManagingService /> },
-          // bạn có thể thêm các route barber khác ở đây nếu cần
+          // thêm các route riêng cho barber ở đây nếu có
         ],
       },
     ],
   },
 
-  // Optional: Role-based layout page (nếu bạn có)
+  // Optional role-based layout
+  { path: "/dashboard", element: <RoleBasedLayout /> },
 ]);
 
 export default router;

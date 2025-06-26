@@ -323,7 +323,6 @@ const UserVoucherManagement = () => {
                         <Descriptions.Item label="User">{viewingUserVoucher.userId?.name}</Descriptions.Item>
                         <Descriptions.Item label="Email">{viewingUserVoucher.userId?.email}</Descriptions.Item>
                         <Descriptions.Item label="Voucher Code">{viewingUserVoucher.voucherId?.code}</Descriptions.Item>
-                        <Descriptions.Item label="Voucher Name">{viewingUserVoucher.voucherId?.name || 'N/A'}</Descriptions.Item>
                         <Descriptions.Item label="Status">
                             <Tag color={viewingUserVoucher.isUsed ? 'red' : 'green'}>{viewingUserVoucher.isUsed ? 'Used' : 'Available'}</Tag>
                         </Descriptions.Item>

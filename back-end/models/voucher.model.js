@@ -26,7 +26,7 @@ const voucherSchema = new mongoose.Schema({
   },
   minOrderAmount: {
     type: Number,
-    required: true
+    default: 0
   },
   totalOrderAmount: {
     type: Number,

@@ -9,5 +9,11 @@ router.get('/user', authenticate, voucherController.getAllVoucherByUser)
 router.get('/:id', authenticate, voucherController.getSingerVoucher)
 router.put('/:id', authenticate, voucherController.updateVoucher)
 router.delete('/:id', authenticate, voucherController.deleteVoucher)
+// router.post('/', voucherController.createVoucher)
+// router.get('/', voucherController.getAllVoucher)
+// router.get('/user', voucherController.getAllVoucherByUser)
+// router.get('/:id',  voucherController.getSingerVoucher)
+// router.put('/:id', voucherController.updateVoucher)
+// router.delete('/:id',voucherController.deleteVoucher)
 
 module.exports = router;

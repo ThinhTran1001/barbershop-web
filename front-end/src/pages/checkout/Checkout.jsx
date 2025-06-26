@@ -1,272 +1,365 @@
-import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { 
-  Button, 
-  Form, 
-  Input, 
-  Select, 
-  Card, 
-  Divider, 
+import React, { useState, useEffect, useMemo } from "react";
+import {
+  Button,
+  Form,
+  Input,
+  Card,
+  Divider,
   notification,
-  Spin,
-  Empty
-} from 'antd';
-import { 
-  ShoppingCartOutlined, 
-  UserOutlined, 
-  PhoneOutlined, 
-  EnvironmentOutlined,
-  CreditCardOutlined,
-  ArrowLeftOutlined
-} from '@ant-design/icons';
-import { useAuth } from '../../context/AuthContext';
-import '../../css/checkout/checkout.css';
-import { getAllVoucherByUser, createOrder } from '../../services/api';
+  Empty,
+  Select,
+} from "antd";
+import { ShoppingCartOutlined } from "@ant-design/icons";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useUserCart } from "../../context/UserCartContext";
+import {
+  createOrder,
+  getVoucherByUser,
+  getProfile,
+} from "../../services/api";
+import "../../css/checkout/checkout.css";
+import { useAuth } from "../../context/AuthContext";
 
-
-const { Option } = Select;
 const { TextArea } = Input;
+const { Option } = Select;
 
 const Checkout = () => {
-  const location = useLocation();
-  const navigate = useNavigate();
+  /* --------------------------- App Contexts & Hooks --------------------------- */
+  const { cart, clearCart } = useUserCart();
   const { user } = useAuth();
-  const { cart, getCartTotal, clearCart } = useCartLoggedIn();
   const [form] = Form.useForm();
+  const navigate = useNavigate();
+  const location = useLocation();
 
+  /* --------------------------------- States --------------------------------- */
   const [loading, setLoading] = useState(false);
-  const [checkoutItems, setCheckoutItems] = useState([]);
-  const [totalAmount, setTotalAmount] = useState(0);
-  const [discountAmount, setDiscountAmount] = useState(0);
-  const [finalAmount, setFinalAmount] = useState(0);
-
-  const [voucherList, setVoucherList] = useState([]);
+  const [orderSuccess, setOrderSuccess] = useState(false);
+  const [vouchers, setVouchers] = useState([]);
   const [selectedVoucher, setSelectedVoucher] = useState(null);
 
-  // Tính tổng tiền đơn hàng
-  const calculateBaseTotal = (items) => {
-    return items.reduce((sum, item) => {
-      const price = parseFloat(item.product.price);
-      const discountedPrice = item.product.discount > 0
-        ? price - (price * item.product.discount / 100)
-        : price;
-      return sum + (discountedPrice * item.quantity);
-    }, 0);
-  };
+  /* ----------------------------- Derived values ------------------------------ */
+  const buyNowItems = location.state?.products;
+  const itemsToCheckout = buyNowItems?.length ? buyNowItems : cart.items;
 
-  // Tính giảm giá từ voucher
-  const calculateDiscount = (baseTotal, voucher) => {
-    if (!voucher) return 0;
-    return voucher.type === 'percent'
-      ? (baseTotal * voucher.value) / 100
-      : voucher.value;
-  };
+  const subtotal = useMemo(
+    () =>
+      itemsToCheckout.reduce((sum, item) => {
+        const raw = item.price || item.product?.price || 0;
+        const discount = item.discount || item.product?.discount || 0;
+        const price = discount > 0 ? raw * (1 - discount / 100) : raw;
+        return sum + price * item.quantity;
+      }, 0),
+    [itemsToCheckout]
+  );
 
-  // Format tiền
+  const voucherDiscount = useMemo(() => {
+    if (!selectedVoucher) return 0;
+    
+    // Kiểm tra điều kiện áp dụng voucher
+    if (selectedVoucher.minOrderAmount && subtotal < selectedVoucher.minOrderAmount) {
+      return 0;
+    }
+    
+    // Kiểm tra giới hạn sử dụng
+    if (selectedVoucher.usageLimit && selectedVoucher.usedCount >= selectedVoucher.usageLimit) {
+      return 0;
+    }
+    
+    // Tính giảm giá
+    const discount = selectedVoucher.type === "percent"
+      ? (subtotal * selectedVoucher.value) / 100
+      : selectedVoucher.value;
+    
+    // Đảm bảo không giảm quá subtotal
+    return Math.min(discount, subtotal);
+  }, [selectedVoucher, subtotal]);
+
+  const grandTotal = Math.max(0, subtotal - voucherDiscount);
+
   const formatPrice = (price) =>
     new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: "VND",
     }).format(price);
 
-  // Khi mount
-  useEffect(() => {
-    let items = [];
-
-    if (location.state?.products) {
-      items = location.state.products;
-    } else if (cart.items.length > 0) {
-      items = cart.items.map(item => ({
-        productId: item.productId._id,
-        quantity: item.quantity,
-        product: item.productId
-      }));
-    } else {
-      notification.warning({
-        message: 'Giỏ hàng trống',
-        description: 'Vui lòng thêm sản phẩm trước khi thanh toán',
-        placement: 'topRight',
-      });
-      navigate('/products');
-      return;
-    }
-
-    setCheckoutItems(items);
-    const baseTotal = calculateBaseTotal(items);
-    setTotalAmount(baseTotal);
-    setFinalAmount(baseTotal); // default ban đầu chưa có giảm giá
-
-    if (user) {
-      form.setFieldsValue({
-        customerName: user.name || '',
-        customerEmail: user.email || '',
-        customerPhone: user.phone || '',
-      });
-      fetchVouchers();
-    }
-  }, [location.state, cart, user, form, navigate]);
-
-  const fetchVouchers = async () => {
-    try {
-      const res = await getAllVoucherByUser();
-      const vouchers = res.data.data || [];
-      setVoucherList(vouchers);
-    } catch (err) {
-      console.error("Lỗi lấy voucher:", err);
-      setVoucherList([]);
-    }
-  };
-
-  const handleVoucherChange = (voucherId) => {
-    const found = voucherList.find(v => v._id === voucherId);
-    setSelectedVoucher(found || null);
-
-    const base = calculateBaseTotal(checkoutItems);
-    const discount = calculateDiscount(base, found);
-    const final = Math.max(0, base - discount);
-    setTotalAmount(base);
-    setDiscountAmount(discount);
-    setFinalAmount(final);
-  };
-
   const handleSubmit = async (values) => {
-    if (!user) {
-      notification.error({
-        message: 'Vui lòng đăng nhập',
-        description: 'Bạn cần đăng nhập để thanh toán',
-        placement: 'topRight',
+    if (itemsToCheckout.length === 0) {
+      notification.warning({
+        message: "Giỏ hàng trống",
+        description: "Vui lòng thêm sản phẩm trước khi thanh toán",
+        placement: "topRight",
       });
-      navigate('/login');
       return;
     }
-
+  
     setLoading(true);
+  
     try {
-      const orderData = {
-        customerName: values.customerName,
-        customerEmail: values.customerEmail,
-        customerPhone: values.customerPhone,
-        shippingAddress: values.address,
-        voucherId: selectedVoucher?._id || undefined,
-        paymentMethod: values.paymentMethod,
-        items: checkoutItems.map(item => ({
-          productId: item.productId,
-          quantity: item.quantity
-        }))
-      };
+      // Tính toán lại để đảm bảo chính xác
+      const originalSubtotal = itemsToCheckout.reduce((sum, item) => {
+        const rawPrice = item.price || item.product?.price || 0;
+        return sum + rawPrice * item.quantity;
+      }, 0);
 
-      const res = await createOrder(orderData);
-      if (!location.state?.products) {
-        await clearCart();
+      const discountedSubtotal = itemsToCheckout.reduce((sum, item) => {
+        const rawPrice = item.price || item.product?.price || 0;
+        const discount = item.discount || item.product?.discount || 0;
+        const finalPrice = discount > 0 ? rawPrice * (1 - discount / 100) : rawPrice;
+        return sum + finalPrice * item.quantity;
+      }, 0);
+
+      // Tính voucher discount dựa trên giá sau khi giảm sản phẩm
+      let finalVoucherDiscount = 0;
+      if (selectedVoucher) {
+        if (selectedVoucher.minOrderAmount && discountedSubtotal < selectedVoucher.minOrderAmount) {
+          notification.warning({
+            message: "Voucher không hợp lệ",
+            description: `Đơn hàng tối thiểu phải ${formatPrice(selectedVoucher.minOrderAmount)} để sử dụng voucher này`,
+            placement: "topRight",
+          });
+          setLoading(false);
+          return;
+        }
+        
+        if (selectedVoucher.usageLimit && selectedVoucher.usedCount >= selectedVoucher.usageLimit) {
+          notification.warning({
+            message: "Voucher đã hết lượt sử dụng",
+            description: "Voucher này đã được sử dụng hết số lượt cho phép",
+            placement: "topRight",
+          });
+          setLoading(false);
+          return;
+        }
+
+        finalVoucherDiscount = selectedVoucher.type === "percent"
+          ? (discountedSubtotal * selectedVoucher.value) / 100
+          : selectedVoucher.value;
+        
+        finalVoucherDiscount = Math.min(finalVoucherDiscount, discountedSubtotal);
       }
 
+      const finalTotal = Math.max(0, discountedSubtotal - finalVoucherDiscount);
+
+      const orderItems = itemsToCheckout.map((item) => {
+        const rawPrice = item.price || item.product?.price || 0;
+        const discount = item.discount || item.product?.discount || 0;
+        const finalPrice = discount > 0 ? rawPrice * (1 - discount / 100) : rawPrice;
+  
+        return {
+          productId: item.productId || item.id || item._id || item.product?._id,
+          quantity: item.quantity,
+          price: finalPrice, // Giá sau khi giảm sản phẩm
+          originalPrice: rawPrice, // Giá gốc để backend có thể tính toán
+        };
+      });
+  
+      const orderData = {
+        customerName: values.name,
+        customerEmail: values.email,
+        customerPhone: values.phone,
+        shippingAddress: values.address,
+        paymentMethod: values.paymentMethod,
+        items: orderItems,
+        voucherId: selectedVoucher ? selectedVoucher._id || selectedVoucher.id : undefined,
+        originalSubtotal, // Tổng giá gốc
+        discountedSubtotal, // Tổng giá sau giảm sản phẩm
+        voucherDiscount: finalVoucherDiscount, // Số tiền giảm từ voucher
+        totalAmount: finalTotal, // Tổng cuối cùng
+      };
+  
+      await createOrder(orderData);
+  
+      // Xóa giỏ hàng khi đặt hàng thành công (nếu không phải mua ngay)
+      if (!buyNowItems?.length) clearCart();
+  
+      setOrderSuccess(true);
       notification.success({
-        message: 'Đặt hàng thành công!',
-        description: 'Cảm ơn bạn đã mua hàng.',
-        placement: 'topRight',
+        message: "Đặt hàng thành công!",
+        description: "Cảm ơn bạn đã mua hàng. Chúng tôi sẽ liên hệ sớm.",
+        placement: "topRight",
       });
     } catch (error) {
       console.error(error);
       notification.error({
-        message: 'Lỗi đặt hàng',
-        description: error.response?.data?.message || 'Thử lại sau!',
+        message: "Lỗi đặt hàng",
+        description: error.response?.data?.message || "Vui lòng thử lại sau!",
+        placement: "topRight",
       });
     } finally {
       setLoading(false);
     }
   };
 
-  if (checkoutItems.length === 0) {
+  /* ----------------------------- Fetch user/vc ------------------------------ */
+  useEffect(() => {
+    const initData = async () => {
+      if (!user) return;
+
+      /* ---- Điền sẵn thông tin ---- */
+      const ui = { name: user.name || "", email: user.email || "", phone: user.phone || "" };
+      if (!ui.name || !ui.phone) {
+        try {
+          const profileRes = await getProfile();
+          const p = profileRes.data?.data || profileRes.data;
+          ui.name = p.name || ui.name;
+          ui.email = p.email || ui.email;
+          ui.phone = p.phone || ui.phone;
+        } catch (e) {
+          console.error("Err profile", e);
+        }
+      }
+      form.setFieldsValue(ui);
+
+      /* ---- Lấy voucher ---- */
+      try {
+        const res = await getVoucherByUser();
+        setVouchers(res.data?.data || []);
+      } catch (e) {
+        console.error("Err vouchers", e);
+        setVouchers([]);
+      }
+    };
+
+    initData();
+  }, [user, form]);
+
+  /* ------------------------------ Empty / Success --------------------------- */
+  if (orderSuccess) {
     return (
       <div className="checkout-empty">
         <Empty
-          image={<ShoppingCartOutlined style={{ fontSize: 64, color: '#d9d9d9' }} />}
-          description="Không có sản phẩm để thanh toán"
+          image={<ShoppingCartOutlined style={{ fontSize: 64, color: "#d9d9d9" }} />}
+          description="Đặt hàng thành công!"
         >
-          <Button type="primary" onClick={() => navigate('/products')}>
-            Tiếp tục mua sắm
-          </Button>
+          <Button type="primary" onClick={() => navigate("/")}>Về trang chủ</Button>
         </Empty>
       </div>
     );
   }
 
+  if (!itemsToCheckout.length) {
+    return (
+      <div className="checkout-empty">
+        <Empty
+          image={<ShoppingCartOutlined style={{ fontSize: 64, color: "#d9d9d9" }} />}
+          description="Không có sản phẩm để thanh toán"
+        >
+          <Button type="primary" onClick={() => navigate("/products")}>Tiếp tục mua sắm</Button>
+        </Empty>
+      </div>
+    );
+  }
+
+  /* --------------------------------- Render --------------------------------- */
   return (
     <div className="checkout-container">
+      {/* --------------------------- HEADER --------------------------- */}
       <div className="checkout-header">
-        <Button
-          type="text"
-          icon={<ArrowLeftOutlined />}
-          onClick={() => navigate(-1)}
-          className="back-button"
-        >
-          Quay lại
-        </Button>
-        <h1>Thanh toán</h1>
+        <h1>Thanh toán (Khách)</h1>
       </div>
 
       <div className="checkout-content">
+        {/* ================= FORM ================= */}
         <div className="checkout-form-section">
           <Card title="Thông tin giao hàng" className="checkout-card">
             <Form form={form} layout="vertical" onFinish={handleSubmit}>
-                <Form.Item
-                  name='customerName'
-                  label='Tên khách hàng'
-                  rules={[{ required: true, message: 'Vui lòng nhập tên khách hàng!' },
-                    {type: 'name', message: 'Tên khách hàng không hợp lệ'}
-                  ]}
-                >
-                  <Input placeholder='Nhập tên khách hàng' />
-                </Form.Item>
-                <Form.Item
-                  name='customerEmail'
-                  label='Địa chỉ email'
-                  rules={[
-                    { required: true, message: 'Vui lòng nhập email' },
-                    { type: 'email', message: 'Email không hợp lệ' }
-                  ]}
-                >
-                  <Input placeholder='Nhập email' />
-                </Form.Item>
-                <Form.Item
-                  name='customerPhone'
-                  label='Số điện thoại nhận hàng'
-                  rules={[
-                    { required: true, message: 'Vui lòng nhập số điện thoại' },
-                    { pattern: /^[0-9]{10}$/, message: 'Số điện thoại phải có 10 chữ số' }
-                  ]}
-                >
-                  <Input placeholder='Nhập số điện thoại' />
-                </Form.Item>
+              {/* Họ tên */}
+              <Form.Item
+                name="name"
+                label="Họ và tên"
+                rules={[{ required: true, message: "Vui lòng nhập họ tên!" }]}
+              >
+                <Input placeholder="Nhập họ và tên" />
+              </Form.Item>
+
+              {/* Điện thoại */}
+              <Form.Item
+                name="phone"
+                label="Số điện thoại"
+                rules={[
+                  { required: true, message: "Vui lòng nhập số điện thoại!" },
+                  { pattern: /^[0-9]{10}$/, message: "Số điện thoại phải đủ 10 chữ số" },
+                ]}
+              >
+                <Input placeholder="Nhập số điện thoại" />
+              </Form.Item>
+
+              {/* Email */}
+              <Form.Item
+                name="email"
+                label="Email"
+                rules={[
+                  { required: true, message: "Vui lòng nhập email!" },
+                  { type: "email", message: "Email không hợp lệ!" },
+                ]}
+              >
+                <Input placeholder="Nhập email" />
+              </Form.Item>
+
+              {/* Địa chỉ */}
               <Form.Item
                 name="address"
                 label="Địa chỉ giao hàng"
-                rules={[{ required: true, message: 'Vui lòng nhập địa chỉ!' }]}
+                rules={[{ required: true, message: "Vui lòng nhập địa chỉ!" }]}
               >
                 <TextArea placeholder="Nhập địa chỉ chi tiết" rows={3} />
               </Form.Item>
 
-              <Form.Item label="Chọn voucher">
+              {/* Voucher */}
+              <Form.Item name="voucher" label="Mã giảm giá (Voucher)">
                 <Select
-                  placeholder="Chọn voucher"
-                  onChange={handleVoucherChange}
+                  placeholder="Chọn voucher nếu có"
                   allowClear
-                  size="large"
+                  showSearch
+                  optionFilterProp="children"
+                  onChange={(code) => {
+                    const found = vouchers.find((v) => v.code === code) || null;
+                    setSelectedVoucher(found);
+                    
+                    // Thông báo nếu voucher không hợp lệ
+                    if (found) {
+                      if (found.minOrderAmount && subtotal < found.minOrderAmount) {
+                        notification.warning({
+                          message: "Voucher không hợp lệ",
+                          description: `Đơn hàng tối thiểu phải ${formatPrice(found.minOrderAmount)} để sử dụng voucher này`,
+                          placement: "topRight",
+                        });
+                      } else if (found.usageLimit && found.usedCount >= found.usageLimit) {
+                        notification.warning({
+                          message: "Voucher đã hết lượt sử dụng",
+                          description: "Voucher này đã được sử dụng hết số lượt cho phép",
+                          placement: "topRight",
+                        });
+                      }
+                    }
+                  }}
                 >
-                  {voucherList.map(v => (
-                    <Option key={v._id} value={v._id}>
-                      {v.code} - {v.name} - Giảm {v.type === 'percent' ? `${v.value}%` : formatPrice(v.value)}
+                  {vouchers.length === 0 ? (
+                    <Option value="__none__" disabled>
+                      Không có voucher khả dụng
                     </Option>
-                  ))}
+                  ) : (
+                    vouchers.map((v) => {
+                      const isValid = (!v.minOrderAmount || subtotal >= v.minOrderAmount) && 
+                                     (!v.usageLimit || !v.usedCount || v.usedCount < v.usageLimit);
+                      return (
+                        <Option key={v._id || v.id} value={v.code} disabled={!isValid}>
+                          {v.code} - {v.type === "percent" ? `${v.value}%` : `${v.value.toLocaleString("vi-VN")} VND`}
+                          {!isValid && " (Không khả dụng)"}
+                        </Option>
+                      );
+                    })
+                  )}
                 </Select>
               </Form.Item>
 
+              {/* Payment */}
               <Form.Item
                 name="paymentMethod"
                 label="Phương thức thanh toán"
-                rules={[{ required: true, message: 'Chọn phương thức thanh toán!' }]}
+                rules={[{ required: true, message: "Vui lòng chọn phương thức!" }]}
               >
-                <Select placeholder="Chọn phương thức" size="large">
+                <Select placeholder="Chọn phương thức">
                   <Option value="cash">Thanh toán khi nhận hàng</Option>
                   <Option value="bank">Chuyển khoản ngân hàng</Option>
                   <Option value="momo">Ví MoMo</Option>
@@ -274,13 +367,7 @@ const Checkout = () => {
               </Form.Item>
 
               <Form.Item>
-                <Button
-                  type="primary"
-                  htmlType="submit"
-                  size="large"
-                  loading={loading}
-                  block
-                >
+                <Button type="primary" htmlType="submit" size="large" loading={loading} block>
                   Đặt hàng ngay
                 </Button>
               </Form.Item>
@@ -288,8 +375,10 @@ const Checkout = () => {
           </Card>
         </div>
 
+        {/* ================= SUMMARY ================= */}
         <div className="checkout-summary-section">
           <Card title="Đơn hàng của bạn" className="checkout-card">
+            {/* Danh sách sản phẩm */}
             <div className="checkout-products-list">
               <div className="checkout-products-header">
                 <div>Ảnh</div>
@@ -297,48 +386,63 @@ const Checkout = () => {
                 <div>Số lượng</div>
                 <div>Giá</div>
               </div>
-              {checkoutItems.map((item, index) => (
-                <div key={index} className="checkout-product-row">
-                  <div className="checkout-product-image">
-                    <img src={item.product.image} alt={item.product.name} />
+
+              {itemsToCheckout.map((item, idx) => {
+                const rawPrice = item.price || item.product?.price || 0;
+                const discount = item.discount || item.product?.discount || 0;
+                const finalPrice = discount > 0 ? rawPrice * (1 - discount / 100) : rawPrice;
+                return (
+                  <div key={idx} className="checkout-product-row">
+                    <div className="checkout-product-image">
+                      <img src={item.image || item.product?.image} alt={item.name || item.product?.name} />
+                    </div>
+                    <div className="checkout-product-name">{item.name || item.product?.name}</div>
+                    <div className="checkout-product-quantity">x{item.quantity}</div>
+                    <div className="checkout-product-price">
+                      {discount > 0 ? (
+                        <>
+                          <span className="original-price">{formatPrice(rawPrice)}</span>
+                          <span className="discounted-price">{formatPrice(finalPrice)}</span>
+                        </>
+                      ) : (
+                        <span className="current-price">{formatPrice(rawPrice)}</span>
+                      )}
+                    </div>
                   </div>
-                  <div className="checkout-product-name">{item.product.name}</div>
-                  <div className="checkout-product-quantity">x{item.quantity}</div>
-                  <div className="checkout-product-price">
-                    {item.product.discount > 0 ? (
-                      <>
-                        <span className="original-price">{formatPrice(item.product.price)}</span>
-                        <span className="discounted-price">
-                          {formatPrice(item.product.price * (1 - item.product.discount / 100))}
-                        </span>
-                      </>
-                    ) : (
-                      <span className="current-price">{formatPrice(item.product.price)}</span>
-                    )}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <Divider />
 
-            {/* Tổng kết */}
             <div className="order-summary">
               <div className="summary-row">
                 <span>Tạm tính:</span>
-                <span>{formatPrice(totalAmount)}</span>
+                <span>{formatPrice(subtotal)}</span>
               </div>
-              <div className="summary-row">
-                <span>Giảm giá:</span>
-                <span>- {formatPrice(discountAmount)}</span>
-              </div>
+
+              {selectedVoucher && voucherDiscount > 0 && (
+                <div className="summary-row">
+                  <span>Voucher ({selectedVoucher.code}):</span>
+                  <span>-{formatPrice(voucherDiscount)}</span>
+                </div>
+              )}
+              
+              {selectedVoucher && voucherDiscount === 0 && (
+                <div className="summary-row">
+                  <span>Voucher ({selectedVoucher.code}):</span>
+                  <span style={{ color: '#ff4d4f' }}>Không áp dụng được</span>
+                </div>
+              )}
+
               <div className="summary-row">
                 <span>Phí vận chuyển:</span>
                 <span>Miễn phí</span>
               </div>
+
               <div className="summary-row total">
                 <strong>Tổng cộng:</strong>
-                <strong>{formatPrice(finalAmount)}</strong>
+                <strong>{formatPrice(grandTotal)}</strong>
               </div>
             </div>
           </Card>

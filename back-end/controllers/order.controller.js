@@ -87,7 +87,19 @@ exports.createOrder = async (req, res) => {
     const findUser = await User.findById(req.user.id);
     if (!findUser) return res.status(404).json({ success: false, message: 'User not found' });
 
-    const {customerName,customerEmail,customerPhone,shippingAddress, items, voucherId, paymentMethod } = req.body;
+    const {
+      customerName,
+      customerEmail,
+      customerPhone,
+      shippingAddress, 
+      items, 
+      voucherId, 
+      paymentMethod,
+      originalSubtotal, // Tổng giá gốc từ frontend
+      discountedSubtotal, // Tổng giá sau giảm sản phẩm từ frontend
+      voucherDiscount, // Số tiền giảm từ voucher từ frontend
+      totalAmount // Tổng cuối cùng từ frontend
+    } = req.body;
 
     const finalCustomerName  = (customerName  || findUser.name);
     const finalCustomerEmail = (customerEmail || findUser.email)
@@ -104,34 +116,63 @@ exports.createOrder = async (req, res) => {
       voucherId: voucherId || null,
     });
 
+    // Sử dụng giá từ frontend nếu có, nếu không thì tính lại
+    let finalOriginalTotal = originalSubtotal || 0;
+    let finalDiscountedSubtotal = discountedSubtotal || 0;
+    let finalVoucherDiscount = voucherDiscount || 0;
+    let finalTotalAmount = totalAmount || 0;
 
-    let originalTotal = 0;
-    let discountAmount = 0;
     const orderItems = [];
 
-    for (const item of items) {
-      const product = await Product.findById(item.productId);
-      if (!product || product.stock < item.quantity) {
-        return res.status(400).json({ message: `Sản phẩm ${product?.name || 'này'} không khả dụng hoặc không đủ hàng` });
+    // Nếu frontend không gửi giá, tính lại từ đầu
+    if (!originalSubtotal) {
+      for (const item of items) {
+        const product = await Product.findById(item.productId);
+        if (!product || product.stock < item.quantity) {
+          return res.status(400).json({ message: `Sản phẩm ${product?.name || 'này'} không khả dụng hoặc không đủ hàng` });
+        }
+
+        product.stock -= item.quantity;
+        await product.save();
+
+        const subtotal = product.price * item.quantity;
+        finalOriginalTotal += subtotal;
+
+        orderItems.push({
+          orderId: order._id,
+          customerName: finalCustomerName,
+          customerEmail: finalCustomerEmail,
+          customerPhone: finalCustomerPhone,
+          productId: product._id,
+          productName: product.name,
+          quantity: item.quantity,
+          unitPrice: product.price,
+          productImage: product.image,
+        });
       }
+    } else {
+      // Sử dụng giá từ frontend
+      for (const item of items) {
+        const product = await Product.findById(item.productId);
+        if (!product || product.stock < item.quantity) {
+          return res.status(400).json({ message: `Sản phẩm ${product?.name || 'này'} không khả dụng hoặc không đủ hàng` });
+        }
 
-      product.stock -= item.quantity;
-      await product.save();
+        product.stock -= item.quantity;
+        await product.save();
 
-      const subtotal = product.price * item.quantity;
-      originalTotal += subtotal;
-
-      orderItems.push({
-        orderId: order._id,
-        customerName: finalCustomerName,
-        customerEmail: finalCustomerEmail,
-        customerPhone: finalCustomerPhone,
-        productId: product._id,
-        productName: product.name,
-        quantity: item.quantity,
-        unitPrice: product.price,
-        productImage: product.image,
-      });
+        orderItems.push({
+          orderId: order._id,
+          customerName: finalCustomerName,
+          customerEmail: finalCustomerEmail,
+          customerPhone: finalCustomerPhone,
+          productId: product._id,
+          productName: product.name,
+          quantity: item.quantity,
+          unitPrice: item.price || product.price, // Sử dụng giá từ frontend
+          productImage: product.image,
+        });
+      }
     }
 
     let userVoucher = null;
@@ -163,7 +204,9 @@ exports.createOrder = async (req, res) => {
         }
       }
 
-      if (voucher.minOrderAmount && originalTotal < voucher.minOrderAmount) {
+      // Sử dụng giá sau giảm sản phẩm để kiểm tra minOrderAmount
+      const checkAmount = finalDiscountedSubtotal || finalOriginalTotal;
+      if (voucher.minOrderAmount && checkAmount < voucher.minOrderAmount) {
         return res.status(400).json({
           message: `Đơn hàng cần tối thiểu ${voucher.minOrderAmount} để áp dụng voucher`,
         });
@@ -191,16 +234,22 @@ exports.createOrder = async (req, res) => {
         }
       }
 
-      const value = parseFloat(voucher.value);
-      discountAmount = voucher.type === 'percent'
-        ? originalTotal * (value / 100)
-        : value;
+      // Nếu frontend không gửi voucher discount, tính lại
+      if (!finalVoucherDiscount) {
+        const value = parseFloat(voucher.value);
+        finalVoucherDiscount = voucher.type === 'percent'
+          ? (finalDiscountedSubtotal || finalOriginalTotal) * (value / 100)
+          : value;
 
-      if (discountAmount > originalTotal) discountAmount = originalTotal;
+        if (finalVoucherDiscount > (finalDiscountedSubtotal || finalOriginalTotal)) {
+          finalVoucherDiscount = finalDiscountedSubtotal || finalOriginalTotal;
+        }
+      }
     }
 
-    order.totalAmount = Number((originalTotal - discountAmount).toFixed(2));
-    order.discountAmount = Number(discountAmount.toFixed(2));
+    // Sử dụng giá từ frontend hoặc tính lại
+    order.totalAmount = Number(finalTotalAmount || (finalDiscountedSubtotal - finalVoucherDiscount)).toFixed(2);
+    order.discountAmount = Number(finalVoucherDiscount.toFixed(2));
 
     const savedOrder = await order.save();
     await Order_Item.insertMany(orderItems);
@@ -233,7 +282,6 @@ exports.createOrder = async (req, res) => {
       success: true,
       message: 'Tạo đơn hàng thành công',
       data: savedOrder,
-      message: findUser,
     });
   } catch (error) {
     console.error('Lỗi tạo đơn hàng:', error);

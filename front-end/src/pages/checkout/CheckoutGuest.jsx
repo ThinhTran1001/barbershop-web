@@ -1,52 +1,98 @@
+// src/pages/checkout/CheckoutGuest.jsx
 import React, { useState } from 'react';
-import { Button, Form, Input, Card, Divider, notification, Empty, Select } from 'antd';
+import {
+  Button,
+  Form,
+  Input,
+  Card,
+  Divider,
+  notification,
+  Empty,
+  Select
+} from 'antd';
 import { ShoppingCartOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useCart } from '../../context/CartContext';
+import { createOrderGuest } from '../../services/api';   // ✅ dùng chung API
+import '../../css/checkout/checkout.css';
 
 const { TextArea } = Input;
+const { Option } = Select;
 
-const CheckoutGuest = () => {
-  const { cart, clearCart, getCartTotal } = useCart();
+export default function CheckoutGuest() {
+  const { cart, clearCart } = useCart();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+
+  /* ------------------ Lấy danh sách sản phẩm cần thanh toán ------------------ */
   const buyNowItems = location.state?.products;
-  const itemsToCheckout = buyNowItems && buyNowItems.length > 0 ? buyNowItems : cart.items;
+  const itemsToCheckout = buyNowItems?.length ? buyNowItems : cart.items;
 
-  const formatPrice = (price) =>
-    new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
+  /* ------------------ Helper ------------------ */
+  const formatPrice = (p) =>
+    new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
 
+  const getTotal = () =>
+    itemsToCheckout.reduce((sum, item) => {
+      const raw = item.price ?? item.product?.price ?? 0;
+      const disc = item.discount ?? item.product?.discount ?? 0;
+      const price = disc ? raw * (1 - disc / 100) : raw;
+      return sum + price * item.quantity;
+    }, 0);
+
+  /* ------------------ Submit ------------------ */
   const handleSubmit = async (values) => {
+    if (!itemsToCheckout.length) {
+      notification.warning({
+        message: 'Giỏ hàng trống',
+        description: 'Vui lòng thêm sản phẩm trước khi thanh toán',
+        placement: 'topRight'
+      });
+      return;
+    }
+
     setLoading(true);
     try {
-      // Ở đây bạn có thể gửi dữ liệu lên backend nếu muốn
-      // Hiện tại chỉ hiển thị thông báo thành công và xóa cart local
+      const orderItems = itemsToCheckout.map((i) => ({
+        productId: i.productId || i.id || i._id || i.product?._id,
+        quantity: i.quantity
+      }));
+
+      const orderData = {
+        // Thông tin khách (login rồi thì backend sẽ tự lấy userId trong token)
+        customerName: values.name,
+        customerEmail: values.email,
+        customerPhone: values.phone,
+        shippingAddress: values.address,
+        paymentMethod: values.paymentMethod,
+        items: orderItems
+      };
+
+      await createOrderGuest(orderData);               // ✅ gọi chung API
+
+      if (!buyNowItems?.length) clearCart();      // Xoá cart local khi thanh toán từ giỏ
       setOrderSuccess(true);
-      clearCart();
+
       notification.success({
         message: 'Đặt hàng thành công!',
         description: 'Cảm ơn bạn đã mua hàng. Chúng tôi sẽ liên hệ sớm.',
-        placement: 'topRight',
+        placement: 'topRight'
       });
-    } catch (error) {
+    } catch (err) {
       notification.error({
         message: 'Lỗi đặt hàng',
-        description: 'Vui lòng thử lại sau!',
+        description: err.response?.data?.message || 'Vui lòng thử lại sau!',
+        placement: 'topRight'
       });
     } finally {
       setLoading(false);
     }
   };
 
-  const getTotal = () => {
-    return itemsToCheckout.reduce((sum, item) => {
-      const price = item.discount > 0 ? item.price * (1 - item.discount / 100) : item.price;
-      return sum + price * item.quantity;
-    }, 0);
-  };
-
+  /* ------------------ UI khi thành công ------------------ */
   if (orderSuccess) {
     return (
       <div className="checkout-empty">
@@ -54,61 +100,108 @@ const CheckoutGuest = () => {
           image={<ShoppingCartOutlined style={{ fontSize: 64, color: '#d9d9d9' }} />}
           description="Đặt hàng thành công!"
         >
-          <Button type="primary" onClick={() => navigate('/')}>Về trang chủ</Button>
+          <Button type="primary" onClick={() => navigate('/')}>
+            Về trang chủ
+          </Button>
         </Empty>
       </div>
     );
   }
 
-  if (!itemsToCheckout || itemsToCheckout.length === 0) {
+  /* ------------------ UI khi không có sản phẩm ------------------ */
+  if (!itemsToCheckout.length) {
     return (
       <div className="checkout-empty">
         <Empty
           image={<ShoppingCartOutlined style={{ fontSize: 64, color: '#d9d9d9' }} />}
           description="Không có sản phẩm để thanh toán"
         >
-          <Button type="primary" onClick={() => navigate('/products')}>Tiếp tục mua sắm</Button>
+          <Button type="primary" onClick={() => navigate('/products')}>
+            Tiếp tục mua sắm
+          </Button>
         </Empty>
       </div>
     );
   }
 
+  /* ------------------ Giao diện chính ------------------ */
   return (
     <div className="checkout-container">
       <div className="checkout-header">
-        <h1>Thanh toán (Không cần đăng nhập)</h1>
+        <h1>Thanh toán (khách không đăng nhập)</h1>
       </div>
+
       <div className="checkout-content">
+        {/* FORM THÔNG TIN KHÁCH */}
         <div className="checkout-form-section">
           <Card title="Thông tin giao hàng" className="checkout-card">
             <Form form={form} layout="vertical" onFinish={handleSubmit}>
-              <Form.Item name="name" label="Họ và tên" rules={[{ required: true, message: 'Vui lòng nhập họ tên!' }]}>
+              <Form.Item
+                name="name"
+                label="Họ và tên"
+                rules={[{ required: true, message: 'Vui lòng nhập họ tên!' }]}
+              >
                 <Input placeholder="Nhập họ và tên" />
               </Form.Item>
-              <Form.Item name="phone" label="Số điện thoại" rules={[{ required: true, message: 'Vui lòng nhập số điện thoại!' }]}>
+
+              <Form.Item
+                name="phone"
+                label="Số điện thoại"
+                rules={[
+                  { required: true, message: 'Vui lòng nhập số điện thoại!' },
+                  { pattern: /^[0-9]{10}$/, message: 'Số điện thoại phải đủ 10 chữ số' }
+                ]}
+              >
                 <Input placeholder="Nhập số điện thoại" />
               </Form.Item>
-              <Form.Item name="email" label="Email" rules={[{ required: true, type: 'email', message: 'Vui lòng nhập email hợp lệ!' }]}>
+
+              <Form.Item
+                name="email"
+                label="Email"
+                rules={[
+                  { required: true, message: 'Vui lòng nhập email!' },
+                  { type: 'email', message: 'Email không hợp lệ!' }
+                ]}
+              >
                 <Input placeholder="Nhập email" />
               </Form.Item>
-              <Form.Item name="address" label="Địa chỉ giao hàng" rules={[{ required: true, message: 'Vui lòng nhập địa chỉ!' }]}>
+
+              <Form.Item
+                name="address"
+                label="Địa chỉ giao hàng"
+                rules={[{ required: true, message: 'Vui lòng nhập địa chỉ!' }]}
+              >
                 <TextArea placeholder="Nhập địa chỉ chi tiết" rows={3} />
               </Form.Item>
-              <Form.Item name="paymentMethod" label="Phương thức thanh toán" rules={[{ required: true, message: 'Vui lòng chọn phương thức thanh toán!' }]}>
+
+              <Form.Item
+                name="paymentMethod"
+                label="Phương thức thanh toán"
+                rules={[{ required: true, message: 'Vui lòng chọn phương thức!' }]}
+              >
                 <Select placeholder="Chọn phương thức">
-                  <Select.Option value="cash">Thanh toán khi nhận hàng</Select.Option>
-                  <Select.Option value="bank">Chuyển khoản ngân hàng</Select.Option>
-                  <Select.Option value="momo">Ví MoMo</Select.Option>
+                  <Option value="cash">Thanh toán khi nhận hàng</Option>
+                  <Option value="bank">Chuyển khoản ngân hàng</Option>
+                  <Option value="momo">Ví MoMo</Option>
                 </Select>
               </Form.Item>
+
               <Form.Item>
-                <Button type="primary" htmlType="submit" size="large" loading={loading} block>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  size="large"
+                  loading={loading}
+                  block
+                >
                   Đặt hàng ngay
                 </Button>
               </Form.Item>
             </Form>
           </Card>
         </div>
+
+        {/* TÓM TẮT ĐƠN HÀNG */}
         <div className="checkout-summary-section">
           <Card title="Đơn hàng của bạn" className="checkout-card">
             <div className="checkout-products-list">
@@ -118,8 +211,9 @@ const CheckoutGuest = () => {
                 <div>Số lượng</div>
                 <div>Giá</div>
               </div>
-              {itemsToCheckout.map((item, index) => (
-                <div key={index} className="checkout-product-row">
+
+              {itemsToCheckout.map((item, idx) => (
+                <div key={idx} className="checkout-product-row">
                   <div className="checkout-product-image">
                     <img src={item.image} alt={item.name} />
                   </div>
@@ -140,7 +234,9 @@ const CheckoutGuest = () => {
                 </div>
               ))}
             </div>
+
             <Divider />
+
             <div className="order-summary">
               <div className="summary-row">
                 <span>Tạm tính:</span>
@@ -160,6 +256,4 @@ const CheckoutGuest = () => {
       </div>
     </div>
   );
-};
-
-export default CheckoutGuest; 
+}

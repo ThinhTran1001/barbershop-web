@@ -12,6 +12,7 @@ const barberRoutes = require('./routes/barber.route');
 const voucherRoutes = require('./routes/voucher.route');
 const orderRoutes = require('./routes/order.route');
 const userVoucherRoutes = require('./routes/user_voucher.route');
+const cartRoutes = require('./routes/cart.route')
 const cors = require('cors');
 const cookieParser = require("cookie-parser");
 const app = express();
@@ -39,6 +40,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/vouchers', voucherRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/user-vouchers', userVoucherRoutes);
+app.use('/api/carts', cartRoutes)
 
 
 

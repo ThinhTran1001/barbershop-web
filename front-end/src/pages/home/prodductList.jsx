@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { Input, Select, Breadcrumb } from "antd";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from '../../context/AuthContext';
+import { Breadcrumb, Input, Select } from "antd";
+import { useAuth } from "../../context/AuthContext";
+import { useCart } from "../../context/CartContext";
+import { useUserCart } from "../../context/UserCartContext";
 import "../../css/landing/products.css";
 
 import product1 from "../../assets/images/product1.jpg";
@@ -31,7 +33,17 @@ export default function ProductList() {
   const productsPerPage = 12;
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { addToCart } = useCart();
+  const { addToCart: addToGuestCart } = useCart();
+  const { addToCart: addToUserCart } = useUserCart();
+
+  // Dùng cart function theo trạng thái đăng nhập
+  const addToCart = (product, quantity) => {
+    if (user) {
+      addToUserCart(product, quantity);
+    } else {
+      addToGuestCart(product, quantity);
+    }
+  };
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -57,11 +69,7 @@ export default function ProductList() {
 
   const handleBuyNow = (product) => {
     addToCart(product, 1);
-    if (user) {
-      navigate("/checkout", { state: { products: [{ productId: product._id, quantity: 1, product }] } });
-    } else {
-      navigate("/checkout-guest");
-    }
+    navigate(user ? "/cart" : "/cart-guest");
   };
 
   const goToProductDetail = (productId) => {
@@ -190,13 +198,7 @@ export default function ProductList() {
                   {product.price.toLocaleString("vi-VN")} VND
                 </p>
                 <div className="item-buttons">
-                  <button 
-                    className="purchase-button" 
-                    onClick={() => handleBuyNow(product)}
-                    disabled={product.stock === 0}
-                  >
-                    {product.stock === 0 ? "Hết hàng" : "Mua hàng"}
-                  </button>
+                  <button className="purchase-button" onClick={() => handleBuyNow(product)}>Mua hàng</button>
                   <button className="detail-button" onClick={() => goToProductDetail(product._id)}>
                     Chi tiết
                   </button>
