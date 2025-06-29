@@ -54,3 +54,28 @@ exports.deleteService = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// Gợi ý dịch vụ dựa trên loại tóc hoặc lịch sử đặt lịch
+exports.suggestServices = async (req, res) => {
+  try {
+    const { hairType, userId } = req.query;
+    let suggestions = [];
+    if (hairType) {
+      // Gợi ý dựa trên loại tóc
+      suggestions = await Service.find({ suggestedFor: hairType });
+    } else if (userId) {
+      // Gợi ý dựa trên lịch sử đặt lịch
+      const Booking = require("../models/booking.model");
+      const bookings = await Booking.find({ customerId: userId }).select("serviceId");
+      const bookedServiceIds = bookings.map(b => b.serviceId);
+      // Gợi ý các dịch vụ chưa từng đặt
+      suggestions = await Service.find({ _id: { $nin: bookedServiceIds } });
+    } else {
+      // Nếu không có thông tin, trả về tất cả dịch vụ
+      suggestions = await Service.find();
+    }
+    res.json(suggestions);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
