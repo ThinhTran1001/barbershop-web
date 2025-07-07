@@ -1,4 +1,5 @@
 const Barber = require('../models/barber.model');
+const Booking = require('../models/booking.model');
 
 exports.createBarber = async (req, res) => {
   try {
@@ -71,6 +72,48 @@ exports.deleteBarber = async (req, res) => {
     if (!deleted) return res.status(404).json({ message: 'Không tìm thấy hồ sơ barber' });
 
     res.json({ message: 'Đã xoá hồ sơ barber thành công' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Lấy barber giỏi nhất theo dịch vụ/specialty
+exports.getBarbersBySpecialty = async (req, res) => {
+  try {
+    const { specialty } = req.query;
+    if (!specialty) {
+      return res.status(400).json({ message: 'Missing specialty parameter' });
+    }
+    // Tìm các barber có specialty phù hợp, sắp xếp theo rating giảm dần
+    const barbers = await Barber.find({ specialties: specialty })
+      .populate('userId', 'name email')
+      .sort({ rating: -1 });
+    res.json(barbers);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getBarberBookings = async (req, res) => {
+  try {
+    const barberId = req.params.barberId;
+    const { date, status } = req.query;
+    const query = { barberId };
+    if (date) {
+      // Lọc theo ngày (YYYY-MM-DD)
+      const start = new Date(date);
+      const end = new Date(date);
+      end.setHours(23, 59, 59, 999);
+      query.bookingDate = { $gte: start, $lte: end };
+    }
+    if (status) {
+      query.status = status;
+    }
+    const bookings = await Booking.find(query)
+      .populate('customerId', 'name email')
+      .populate('serviceId', 'name')
+      .sort({ bookingDate: 1 });
+    res.json(bookings);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

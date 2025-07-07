@@ -18,6 +18,7 @@ const updaloadRoutes = require('./routes/upload.route');
 const reviewRoutes = require('./routes/productreview.route');
 const feedbackBarberRoutes = require('./routes/feedbackBarber.route');
 const discountRoutes = require('./routes/discounts.route');
+const bookingRoutes = require('./routes/booking.route');
 const cors = require('cors');
 const cookieParser = require("cookie-parser");
 const app = express();
@@ -32,8 +33,6 @@ app.use(cors({
 connectDB();
 const kafkaConsumer = require('./services/kafka-consumer.service');
 kafkaConsumer().then(() => console.log('Kafka consumer running'));
-
-
 
 app.use('/api/products', productRoutes);
 app.use('/api/categories', categoryRoutes);
@@ -51,6 +50,7 @@ app.use('/api/upload', updaloadRoutes);
 app.use('/api/product-reviews', reviewRoutes);
 app.use('/api/feedback-barber', feedbackBarberRoutes);
 app.use('/api/discounts', discountRoutes);
+app.use('/api/bookings', bookingRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

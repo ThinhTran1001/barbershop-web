@@ -33,6 +33,13 @@ import ManageFeedbackProduct from "./pages/ManageFeedbackProduct/ManageFeedbackP
 import ManageFeedbackBarber from "./pages/ManageFeedbackBarber/ManageFeedbackBarber.jsx";
 import ManageDiscountProduct from "./pages/ManageDiscountProduct/ManageDiscountProduct.jsx";
 import RequireRole from "./middleware/RequireAuth.jsx";
+import ServiceListPage from "./pages/ServiceBooking/ServiceListPage.jsx";
+import BarberSelectionPage from "./pages/ServiceBooking/BarberSelectionPage.jsx";
+import TimeSlotPickerPage from "./pages/ServiceBooking/TimeSlotPickerPage.jsx";
+import BookingPage from "./pages/barber/BookingPage.jsx";
+import BookingInfoPage from "./pages/ServiceBooking/BookingInfoPage.jsx";
+import MyBookingsPage from "./pages/ServiceBooking/MyBookingsPage.jsx";
+import BarberBookingPage from "./pages/barber/BarberBookingPage.jsx";
 
 const publicRoutes = {
   element: <CommonLayout />,
@@ -48,6 +55,10 @@ const publicRoutes = {
     { path: "/reset-password", element: <ResetPasswordForm /> },
     { path: "/profile", element: <CustomerProfile /> },
     { path: "/cart", element: <Cart /> },
+    { path: "/browse-services", element: <ServiceListPage /> },
+    { path: "/choose-barber", element: <BarberSelectionPage /> },
+    { path: "/choose-time-slot", element: <TimeSlotPickerPage /> },
+    { path: "/booking-info", element: <BookingPage /> },
   ],
 };
 
@@ -104,6 +115,11 @@ const router = createBrowserRouter([
       { path: "/cart", element: <UserCart /> },
       { path: "/profile", element: <CustomerProfile /> },
       { path: "/checkout-guest", element: <CheckoutGuest/>},
+      { path: "/browse-services", element: <ServiceListPage /> },
+      { path: "/choose-barber", element: <BarberSelectionPage /> },
+      { path: "/choose-time-slot", element: <TimeSlotPickerPage /> },
+      { path: "/booking-info", element: <BookingInfoPage /> },
+      { path: "/my-booking", element: <MyBookingsPage /> },
 
       // Customer protected routes
       {
@@ -151,6 +167,7 @@ const router = createBrowserRouter([
         element: <BarberLayout />,
         children: [
           { index: true, element: <ManagingService /> },
+          { path: "/barbers/:barberId/bookings", element: <BarberBookingPage /> },
           // thêm các route riêng cho barber ở đây nếu có
         ],
       },
