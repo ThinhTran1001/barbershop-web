@@ -46,7 +46,7 @@ export default function ChatWidget() {
   const inputRef = useRef(null);
   const [showScroll, setShowScroll] = useState(false);
   const { addToCart } = useCart();
-  const [context, setContext] = useState({ product: null, service: null, barber: null }); 
+  const [context, setContext] = useState({ products: [], services: [], barbers: [] });
 
   useEffect(() => {
     if (open && inputRef.current) {
@@ -62,9 +62,9 @@ export default function ChatWidget() {
     if (lastMsg?.data) {
       setContext(prev => ({
         ...prev,
-        product: lastMsg.data.products?.[0] || prev.product,
-        service: lastMsg.data.services?.[0] || prev.service,
-        barber: lastMsg.data.barbers?.[0] || prev.barber
+        products: lastMsg.data.products || prev.products,
+        services: lastMsg.data.services || prev.services,
+        barbers: lastMsg.data.barbers || prev.barbers
       }));
     }
   }, [msgs, open]);
@@ -92,13 +92,13 @@ export default function ChatWidget() {
     try {
       console.log('Sending to API:', input);
       const chatHistory = msgs.map(m => ({ sender: m.sender, text: m.text })).concat(userMsg);
-      const response = await sendChat(input, chatHistory); 
+      const response = await sendChat(input, chatHistory);
       console.log('API response:', response);
       const { reply = 'Không có phản hồi', data = null } = response;
 
-      if (data?.cartItem) {
-        addToCart(data.cartItem, data.cartItem.quantity);
-        console.log('Added to cart:', data.cartItem);
+      if (data?.cartItems) {
+        data.cartItems.forEach(item => addToCart(item, item.quantity || 1));
+        console.log('Added multiple items to cart:', data.cartItems);
       }
 
       setMsgs(m => [...m, { sender: 'bot', text: reply, data }]);
