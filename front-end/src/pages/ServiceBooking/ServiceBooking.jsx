@@ -1,7 +1,6 @@
-// src/pages/ServiceBooking.jsx
-
 import React, { useEffect, useState } from 'react';
 import { message } from 'antd';
+import { Link } from 'react-router-dom';
 import ServiceList from '../../components/ServiceList';
 import ImageSlider from '../../components/ImageSlider';
 import { getAllServices } from '../../services/api';
@@ -93,25 +92,40 @@ const ServiceBooking = () => {
   };
 
   return (
-    <div className="service-booking-wrapper container mt-5">
+    <>
+    <div className='service-breadcrumb'>
+      <nav aria-label="breadcrumb">
+        <ol className="breadcrumb">
+          <li className="breadcrumb-item">
+            <Link to="/" style={{ color: 'blue', textDecoration: 'none' }}>
+              Trang chủ
+            </Link>
+          </li>
+          <li className="breadcrumb-item active" aria-current="page" style={{ color: '#000' }}>
+            Dịch vụ
+          </li>
+        </ol>
+      </nav>
+      </div>
+    <div className="service-booking-wrapper container mt-5">  
       <div className="row">
         <div className="col-md-6">
           <ServiceList
-          services={filteredServices}
+            services={filteredServices}
             tabs={tabs}
             activeTab={activeTab}
             handleTabClick={handleTabClick}
           />
         </div>
         <div className="col-md-6">
-        
           <ImageSlider images={images} />
         </div>
-        <div>
+        {/* <div>
           <ShopItems/>
-        </div>
+        </div> */}
       </div>
     </div>
+    </>
   );
 };
 

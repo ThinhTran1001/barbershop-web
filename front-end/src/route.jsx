@@ -40,6 +40,9 @@ import BookingPage from "./pages/barber/BookingPage.jsx";
 import BookingInfoPage from "./pages/ServiceBooking/BookingInfoPage.jsx";
 import MyBookingsPage from "./pages/ServiceBooking/MyBookingsPage.jsx";
 import BarberBookingPage from "./pages/barber/BarberBookingPage.jsx";
+import About from "./components/landing/about/About.jsx";
+import ContactPage from "./components/landing/contact/ContactPage.jsx";
+import BlogPage from "./components/landing/blog/BlogPage.jsx";
 
 const publicRoutes = {
   element: <CommonLayout />,
@@ -59,6 +62,7 @@ const publicRoutes = {
     { path: "/choose-barber", element: <BarberSelectionPage /> },
     { path: "/choose-time-slot", element: <TimeSlotPickerPage /> },
     { path: "/booking-info", element: <BookingPage /> },
+    
   ],
 };
 
@@ -120,6 +124,9 @@ const router = createBrowserRouter([
       { path: "/choose-time-slot", element: <TimeSlotPickerPage /> },
       { path: "/booking-info", element: <BookingInfoPage /> },
       { path: "/my-booking", element: <MyBookingsPage /> },
+      {path: "/about", element: <About/>},
+      {path: "/news", element: <BlogPage/>},
+      {path: "contact", element: <ContactPage/>},
 
       // Customer protected routes
       {

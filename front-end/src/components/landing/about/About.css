@@ -1,0 +1,332 @@
+.berger-about {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: #f9f9f9;
+  box-sizing: border-box;
+}
+
+.berger-about__breadcrumb {
+
+  padding: 15px 24px;
+  border-bottom: 1px solid #e8e8e8;
+  margin-top: 70px;
+}
+
+.berger-about__breadcrumb-link {
+  /* color: #d4a449; */
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.berger-about__breadcrumb-link:hover {
+  color: #c68a3a;
+  text-decoration: underline;
+}
+
+.berger-about__content {
+  background: #fff;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.berger-about__header {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  color: #fff;
+  padding: 50px 30px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.berger-about__header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+  opacity: 0.25;
+  z-index: 0;
+}
+
+.berger-about__title {
+  font-size: 2.8rem;
+  font-weight: 800;
+  color: #fff;
+  margin: 0 0 15px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.4);
+  position: relative;
+  z-index: 1;
+  
+}
+
+.berger-about__quote {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 15px;
+}
+
+.berger-about__quote-text {
+  font-size: 1.2rem;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 10px;
+  text-align: center;
+  font-style: italic;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+  
+}
+
+.berger-about__description {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.8);
+  text-align: center;
+  margin: 0;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+
+}
+
+.berger-about__image-section {
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  background-color: rgb(245, 245, 245);
+}
+
+.berger-about__main-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  margin-top: 20px;
+  border-radius: 10px;
+  border: none;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.berger-about__section {
+  padding: 40px 30px;
+  background: #f9f9f9;
+  border-bottom: 1px solid #e8e8e8;
+  position: relative;
+}
+
+.berger-about__section:nth-child(even) {
+  background: #fff;
+}
+
+.berger-about__section-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0 0 20px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding-left: 15px;
+  position: relative;
+}
+
+.berger-about__section-title::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: #d4a449;
+}
+
+.berger-about__text {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: #404040;
+  margin: 0 0 15px;
+  text-align: justify;
+  columns: 2;
+  column-gap: 30px;
+  column-rule: 1px solid #e8e8e8;
+}
+
+.berger-about__wills-grid {
+  margin: 30px 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 15px;
+}
+
+.berger-about__wills-card {
+  background: #fff;
+  padding: 20px;
+  border: 1px solid #e8e8e8;
+  text-align: center;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.berger-about__wills-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.berger-about__wills-letter {
+  font-size: 3rem;
+  font-weight: 900;
+  color: #d4a449;
+  margin-bottom: 10px;
+  text-shadow: 1px 1px 3px rgba(212, 164, 73, 0.2);
+}
+
+.berger-about__wills-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+
+.berger-about__wills-description {
+  font-size: 0.9rem;
+  color: #666;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.berger-about__final {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  color: #fff;
+  padding: 60px 30px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  margin: 40px 0;
+}
+
+.berger-about__final::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain2" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain2)"/></svg>');
+  opacity: 0.2;
+}
+
+.berger-about__final .berger-about__section-title {
+  font-size: 2.2rem;
+  margin: 0 0 30px;
+  color: #fff;
+  text-align: left;
+}
+
+.berger-about__final .berger-about__section-title::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 2px;
+  background: #d4a449;
+}
+
+.berger-about__final-text {
+  font-size: 1.1rem;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.6;
+  margin: 0;
+  text-align: left;
+}
+
+.berger-about__additional-content {
+  background: #f9f9f9;
+  padding: 30px;
+  border-top: 1px solid #e8e8e8;
+}
+
+@media (max-width: 768px) {
+  .berger-about__header {
+    padding: 30px 20px;
+  }
+  .berger-about__title {
+    font-size: 2rem;
+  }
+  .berger-about__quote-text {
+    font-size: 1.1rem;
+  }
+  .berger-about__description {
+    font-size: 0.95rem;
+  }
+  .berger-about__main-image {
+    height: 200px;
+  }
+  .berger-about__section {
+    padding: 30px 20px;
+  }
+  .berger-about__section-title {
+    font-size: 1.6rem;
+  }
+  .berger-about__text {
+    columns: 1;
+    column-gap: 0;
+    column-rule: none;
+  }
+  .berger-about__wills-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+  .berger-about__wills-letter {
+    font-size: 2.5rem;
+  }
+  .berger-about__final {
+    padding: 40px 20px;
+  }
+  .berger-about__final .berger-about__section-title {
+    font-size: 1.8rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .berger-about__header {
+    padding: 20px 15px;
+  }
+  .berger-about__title {
+    font-size: 1.6rem;
+  }
+  .berger-about__quote-text {
+    font-size: 1rem;
+  }
+  .berger-about__description {
+    font-size: 0.9rem;
+  }
+  .berger-about__main-image {
+    height: 150px;
+  }
+  .berger-about__section {
+    padding: 20px 15px;
+  }
+  .berger-about__section-title {
+    font-size: 1.4rem;
+  }
+  .berger-about__wills-letter {
+    font-size: 2rem;
+  }
+  .berger-about__wills-grid {
+    grid-template-columns: 1fr;
+  }
+  .berger-about__final {
+    padding: 30px 15px;
+  }
+  .berger-about__final .berger-about__section-title {
+    font-size: 1.5rem;
+  }
+  .berger-about__final-text {
+    font-size: 1rem;
+  }
+}
