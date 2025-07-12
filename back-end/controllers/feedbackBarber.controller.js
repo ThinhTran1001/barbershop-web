@@ -32,8 +32,6 @@ exports.getAllFeedbacks = async (req, res) => {
 
     const total = await FeedbackBarber.countDocuments(query);
 
-    console.log('Fetched feedbacks:', feedbacks);
-
     const transformedFeedbacks = feedbacks.map(fb => ({
       ...fb.toObject(),
       reviewer: fb.customerId?.name || fb.customerId?.email || 'Unknown',

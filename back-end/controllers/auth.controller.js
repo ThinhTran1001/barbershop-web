@@ -6,6 +6,7 @@ const crypto = require('crypto');
 
 const User = require('../models/user.model');
 const PasswordReset = require('../models/password-reset.model');
+const authService = require('../services/auth.service');
 
 const producer = kafka.producer();
 producer.connect();
@@ -71,8 +72,20 @@ exports.login = async (req, res) => {
             return res.status(400).json({ message: 'Email invalid' });
         }
 
-        if(!user.isVerified) {
-            return res.status(400).json({message: 'Account is not verified'});
+        if (!user.isVerified) {
+            return res.status(400).json({ message: 'Account is not verified' });
+        }
+
+        if (user.oauthProvider) {
+            return res.status(400).json({
+                message: `Tài khoản này sử dụng ${user.oauthProvider}. Vui lòng đăng nhập bằng ${user.oauthProvider}.`
+            });
+        }
+
+        if (!user.passwordHash) {
+            return res.status(400).json({
+                message: 'Tài khoản không có mật khẩu. Vui lòng sử dụng quên mật khẩu để đặt mật khẩu mới.'
+            });
         }
 
         const validPassword = await bcrypt.compare(password, user.passwordHash);
@@ -96,9 +109,7 @@ exports.login = async (req, res) => {
             maxAge: 24 * 60 * 60 * 1000,
         });
 
-        return res.json({ message: "Login successfully!",
-            token: accessToken,
-         });
+        return res.json({ message: "Login successfully!", token: accessToken });
     } catch (err) {
         console.error(err);
         return res.status(500).json({ message: "Internal Error Server" });
@@ -227,7 +238,91 @@ exports.resetPassword = async (req, res) => {
     }
 };
 
+exports.googleOauthHandler = async (req, res) => {
+    try {
+        const code = req.query.code;
+        if (!code) {
+            return res.redirect(
+                `${process.env.CORS_ORIGIN}/login?error=${encodeURIComponent('No code provided')}`
+            );
+        }
 
+        const { id_token, access_token } = await authService.getGoogleTokens({ code });
+        const googleUser = await authService.getGoogleUser({ id_token, access_token });
 
+        console.log('Google User Data:', googleUser); 
 
+        const { id, email, name, picture, verified_email } = googleUser;
 
+        if (!email || !name) {
+            return res.redirect(
+                `${process.env.CORS_ORIGIN}/login?error=${encodeURIComponent('Invalid Google user data: email or name is missing')}`
+            );
+        }
+
+        let user = await User.findOne({ email });
+
+        if (user) {
+            if (user.status !== 'active') {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Tài khoản của bạn đã bị khóa',
+                });
+            }
+
+            if (!user.oauthId) {
+                user.oauthId = id;
+                user.oauthProvider = 'GOOGLE';
+                await user.save();
+            }
+        } else {
+            user = new User({
+            name: name,
+            email: email,
+            oauthId: id,
+            role: 'customer',
+            oauthProvider: 'GOOGLE',
+            avatarUrl: picture || '',      
+            phone: '' ,                    
+            isVerified: true,
+            status: 'active',
+            });
+            try {
+                await user.save();
+                console.log('New user created:', user._id); 
+            } catch (validationError) {
+                console.error('Validation Error:', validationError); 
+                return res.redirect(
+                    `${process.env.CORS_ORIGIN}/login?error=${encodeURIComponent('Document failed validation: ' + validationError.message)}`
+                );
+            }
+        }
+
+        const payload = { id: user._id, email: user.email, role: user.role, name: user.name, phone: user.phone };
+        const accessToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '15m' });
+        const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, { expiresIn: '1d' });
+
+        await redis.set(`refreshToken:${user._id}`, refreshToken, 'EX', 7 * 24 * 60 * 60);
+
+        res.cookie('accessToken', accessToken, {
+            httpOnly: true,
+            sameSite: 'Strict',
+            maxAge: 15 * 60 * 1000,
+        });
+
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,
+            sameSite: 'Strict',
+            maxAge: 24 * 60 * 60 * 1000,
+        });
+
+        return res.redirect(
+            `${process.env.CORS_ORIGIN}/oauth-success?accessToken=${encodeURIComponent(accessToken)}`
+        );
+    } catch (error) {
+        console.error('Google OAuth error:', error);
+        res.redirect(
+            `${process.env.CORS_ORIGIN}/login?error=${encodeURIComponent(error.message)}`
+        );
+    }
+};

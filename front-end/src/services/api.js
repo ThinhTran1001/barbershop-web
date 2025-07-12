@@ -73,6 +73,11 @@ export const updateProfile = (formData) =>  api.patch(`/users/profile/me`, formD
 export const forgotPassword = (data) => api.post('/auth/forgot-password', data);
 export const resetPassword = (data) => api.post('/auth/reset-password', data);
 
+export const initiateGoogleLogin = () => {
+  const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=703568250378-bookqj2l9dv38j3m24kf5737dja1arbj.apps.googleusercontent.com&redirect_uri=${encodeURIComponent('http://localhost:3000/api/auth/google')}&response_type=code&scope=email%20profile`;
+  window.location.href = googleAuthUrl;
+};
+
 export const sendChat = async (message, chatHistory = []) => {
   try {
     const response = await api.post(`/chatbot`, { message, chatHistory }, {
@@ -93,6 +98,7 @@ export const uploadImage = (file) => {
     headers: { "Content-Type": "multipart/form-data" },
   });
 };
+
 export const getFeedbacksByProduct = (productId) => api.get(`/product-reviews/product/${productId}`);
 export const getAllFeedbacks = (params) => api.get('/product-reviews', { params });
 export const createFeedback = (data) => api.post('/product-reviews', data);
