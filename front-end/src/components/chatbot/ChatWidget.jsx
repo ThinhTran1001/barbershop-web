@@ -10,7 +10,7 @@ const ProductCard = ({ product }) => (
   <div className="card product-card">
     <h3>{product.name}</h3>
     <p>Thương hiệu: {product.brand}</p>
-    <p>Giá: ${product.price}</p>
+    <p>Giá: {product.price} VNĐ</p>
     <p>Đánh giá: {product.rating}/5</p>
     <p>Danh mục: {product.categories.join(', ')}</p>
   </div>
