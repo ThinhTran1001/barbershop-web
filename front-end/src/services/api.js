@@ -118,4 +118,8 @@ export const toggleDiscountStatus = (id) => api.patch(`/discounts/${id}/toggle-s
 export const getDiscountStats = () => api.get('/discounts/stats');
 export const cleanupExpiredDiscounts = () => api.post('/discounts/cleanup-expired');
 
+export const createFeedbackOrder = (data) => api.post('/feedback-orders', data);
+export const updateFeedbackOrder = (orderId, data) => api.put(`/feedback-orders/${orderId}`, data);
+export const getFeedbackOrderByOrderId = (orderId) => api.get(`/feedback-orders/${orderId}`);
+
 export default api;

@@ -1,3 +1,4 @@
+// server.js
 const express = require('express');
 const dotenv = require('dotenv');
 dotenv.config();
@@ -12,13 +13,15 @@ const barberRoutes = require('./routes/barber.route');
 const voucherRoutes = require('./routes/voucher.route');
 const orderRoutes = require('./routes/order.route');
 const userVoucherRoutes = require('./routes/user_voucher.route');
-const cartRoutes = require('./routes/cart.route')
+const cartRoutes = require('./routes/cart.route');
 const chatbotAI = require('./routes/chatbot.route');
 const updaloadRoutes = require('./routes/upload.route');
 const reviewRoutes = require('./routes/productreview.route');
 const feedbackBarberRoutes = require('./routes/feedbackBarber.route');
 const discountRoutes = require('./routes/discounts.route');
 const bookingRoutes = require('./routes/booking.route');
+const feedbackOrderRoutes = require('./routes/feedbackOrder.route'); 
+
 const cors = require('cors');
 const cookieParser = require("cookie-parser");
 const app = express();
@@ -39,18 +42,19 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/brands', brandRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/auth', authRoutes);
-app.use('/api/barbers',barberRoutes)
+app.use('/api/barbers', barberRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/vouchers', voucherRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/user-vouchers', userVoucherRoutes);
-app.use('/api/carts', cartRoutes)
+app.use('/api/carts', cartRoutes);
 app.use('/api/chatbot', chatbotAI);
 app.use('/api/upload', updaloadRoutes);
 app.use('/api/product-reviews', reviewRoutes);
 app.use('/api/feedback-barber', feedbackBarberRoutes);
 app.use('/api/discounts', discountRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/feedback-orders', feedbackOrderRoutes); 
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
