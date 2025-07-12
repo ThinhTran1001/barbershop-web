@@ -3,6 +3,7 @@ import { Form, Button } from "react-bootstrap";
 import ToastNotify from "../contact/ToastNotifyContact";
 import emailjs from "emailjs-com";
 
+// EmailJS config
 const SERVICE_ID = "service_b5z5ow3";
 const TEMPLATE_ID = "template_vhsdj7n";
 const PUBLIC_KEY = "_yNtuCDbHtnDUgmvw";
@@ -14,12 +15,14 @@ const ContactForm = () => {
     email: "",
     message: "",
   });
+
   const [showToast, setShowToast] = useState(false);
 
   const handleChange = (e) => {
+    const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [e.target.name]: e.target.value,
+      [name]: value,
     }));
   };
 
