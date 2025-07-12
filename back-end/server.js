@@ -21,6 +21,7 @@ const feedbackBarberRoutes = require('./routes/feedbackBarber.route');
 const discountRoutes = require('./routes/discounts.route');
 const bookingRoutes = require('./routes/booking.route');
 const feedbackOrderRoutes = require('./routes/feedbackOrder.route'); 
+const feedbackBookingRoutes = require('./routes/feedbackBooking.route');
 
 const cors = require('cors');
 const cookieParser = require("cookie-parser");
@@ -55,6 +56,7 @@ app.use('/api/feedback-barber', feedbackBarberRoutes);
 app.use('/api/discounts', discountRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/feedback-orders', feedbackOrderRoutes); 
+app.use('/api/feedback-bookings', feedbackBookingRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

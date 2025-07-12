@@ -1,4 +1,5 @@
 const FeedbackBarber = require('../models/feedbackBarber.model');
+const FeedbackBooking = require('../models/feedbackBooking.model');
 const mongoose = require('mongoose');
 
 exports.getAllFeedbacks = async (req, res) => {
@@ -99,6 +100,11 @@ exports.createBarberFeedback = async (req, res) => {
       return res.status(400).json({ message: 'Điểm đánh giá phải từ 1 đến 5' });
     }
 
+    const existingFeedback = await FeedbackBooking.findOne({ bookingId, userId: customerId });
+    if (existingFeedback && existingFeedback.status) {
+      return res.status(400).json({ message: 'Bạn đã đánh giá booking này rồi' });
+    }
+
     const feedback = new FeedbackBarber({
       bookingId,
       barberId,
@@ -110,6 +116,12 @@ exports.createBarberFeedback = async (req, res) => {
     });
 
     await feedback.save();
+
+    if (!existingFeedback) {
+      await FeedbackBooking.create({ bookingId, userId: customerId });
+    } else {
+      await FeedbackBooking.findOneAndUpdate({ bookingId, userId: customerId }, { status: true });
+    }
 
     const populatedFeedback = await FeedbackBarber.findById(feedback._id)
       .populate('barberId', 'name email')

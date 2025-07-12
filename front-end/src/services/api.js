@@ -122,4 +122,8 @@ export const createFeedbackOrder = (data) => api.post('/feedback-orders', data);
 export const updateFeedbackOrder = (orderId, data) => api.put(`/feedback-orders/${orderId}`, data);
 export const getFeedbackOrderByOrderId = (orderId) => api.get(`/feedback-orders/${orderId}`);
 
+export const createFeedbackBooking = (data) => api.post('/feedback-bookings', data);
+export const updateFeedbackBooking = (bookingId, data) => api.put(`/feedback-bookings/${bookingId}`, data);
+export const getFeedbackBookingByBookingId = (bookingId) => api.get(`/feedback-bookings/${bookingId}`);
+
 export default api;
