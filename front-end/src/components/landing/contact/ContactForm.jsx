@@ -1,6 +1,11 @@
 import React, { useState } from "react";
 import { Form, Button } from "react-bootstrap";
-import ToastNotify from "../contact/ToastNotifyContact"; 
+import ToastNotify from "../contact/ToastNotifyContact";
+import emailjs from "emailjs-com";
+
+const SERVICE_ID = "service_b5z5ow3";
+const TEMPLATE_ID = "template_vhsdj7n";
+const PUBLIC_KEY = "_yNtuCDbHtnDUgmvw";
 
 const ContactForm = () => {
   const [formData, setFormData] = useState({
@@ -20,14 +25,31 @@ const ContactForm = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log("Form data:", formData);
-    setShowToast(true); 
-    setFormData({
-      fullname: "",
-      phone: "",
-      email: "",
-      message: "",
-    });
+
+    const templateParams = {
+      fullname: formData.fullname,
+      phone: formData.phone,
+      email: formData.email,
+      message: formData.message,
+      time: new Date().toLocaleString("vi-VN"),
+    };
+
+    emailjs
+      .send(SERVICE_ID, TEMPLATE_ID, templateParams, PUBLIC_KEY)
+      .then((result) => {
+        console.log("Email sent:", result.text);
+        setShowToast(true);
+        setFormData({
+          fullname: "",
+          phone: "",
+          email: "",
+          message: "",
+        });
+      })
+      .catch((error) => {
+        console.error("Email error:", error.text);
+        alert("Đã xảy ra lỗi khi gửi email. Vui lòng thử lại sau.");
+      });
   };
 
   return (
@@ -65,6 +87,7 @@ const ContactForm = () => {
             value={formData.email}
             onChange={handleChange}
             placeholder="Nhập địa chỉ email của bạn"
+            required
           />
         </Form.Group>
 
@@ -89,7 +112,7 @@ const ContactForm = () => {
       <ToastNotify
         show={showToast}
         onClose={() => setShowToast(false)}
-        message="Thông tin của bạn đã được gửi."
+        message="Thông tin của bạn đã được gửi thành công. Vui lòng kiểm tra email."
       />
     </>
   );
