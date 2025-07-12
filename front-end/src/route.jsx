@@ -42,6 +42,9 @@ import MyBookingsPage from "./pages/ServiceBooking/MyBookingsPage.jsx";
 import BarberBookingPage from "./pages/barber/BarberBookingPage.jsx";
 import FeedbackProduct from "./pages/FeedbackProduct/FeedbackProduct.jsx";
 import OauthSuccess from "./pages/auth/OauthSuccess.jsx";
+import AboutPage from "./components/landing/about/About.jsx"
+import BlogPage from "./components/landing/blog/BlogPage.jsx"
+import ContactPage from "./components/landing/contact/ContactPage.jsx"
 
 const publicRoutes = {
   element: <CommonLayout />,
@@ -124,7 +127,7 @@ const router = createBrowserRouter([
       { path: "/choose-time-slot", element: <TimeSlotPickerPage /> },
       { path: "/booking-info", element: <BookingInfoPage /> },
       { path: "/my-booking", element: <MyBookingsPage /> },
-      {path: "/about", element: <About/>},
+      {path: "/about", element: <AboutPage/>},
       {path: "/news", element: <BlogPage/>},
       {path: "/contact", element: <ContactPage/>},
 
