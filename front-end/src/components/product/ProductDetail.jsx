@@ -49,6 +49,7 @@ const ProductDetail = () => {
   const [mainImage, setMainImage] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [brandName, setBrandName] = useState("");
 
   
   const addToCart = async (product, quantity) => {
@@ -75,14 +76,16 @@ const ProductDetail = () => {
         setProduct(productData);
         setMainImage(productData.image);
 
-        if (productData.relatedProducts?.length) {
-          const ids = productData.relatedProducts.map((id) => `id=${id}`).join("&");
-          const relRes = await fetch(`http://localhost:9999/products?${ids}`);
-          if (relRes.ok) {
-            const relData = await relRes.json();
-            setRelatedProducts(relData);
+       
+        if (productData.details?.brandId) {
+          const brandRes = await fetch(`http://localhost:3000/api/brands/${productData.details.brandId}`);
+          if (brandRes.ok) {
+            const brandData = await brandRes.json();
+            setBrandName(brandData.name || "");
           }
         }
+
+  
         setLoading(false);
       } catch (err) {
         console.error(err);
@@ -97,7 +100,7 @@ const ProductDetail = () => {
 
   const getImage = (path) => {
     if (imageMap[path]) return imageMap[path];
-    if (path?.startsWith("/assets")) return path.substring(1);
+if (path?.startsWith("/assets")) return path.substring(1);
     return path;
   };
 
@@ -192,7 +195,7 @@ const ProductDetail = () => {
               alt={product.name}
               className="main-product-image"
               onError={(e) => {
-                e.target.onerror = null;
+e.target.onerror = null;
                 e.target.src = "";
               }}
             />
@@ -238,12 +241,18 @@ const ProductDetail = () => {
           <div className="product-attributes">
             <div className="attribute-row">
               <span className="attribute-label">Thương hiệu:</span>
-              <span className="attribute-value">{product.details?.brandId}</span>
+              <span className="attribute-value">{brandName || product.details?.brandId}</span>
             </div>
             {product.details?.volume && (
               <div className="attribute-row">
                 <span className="attribute-label">Dung tích:</span>
                 <span className="attribute-value">{product.details.volume}</span>
+              </div>
+            )}
+            {product.details?.ingredients && (
+              <div className="attribute-row">
+                <span className="attribute-label">Thành phần:</span>
+                <span className="attribute-value">{product.details.ingredients}</span>
               </div>
             )}
             <div className="attribute-row stock-status">
@@ -256,7 +265,7 @@ const ProductDetail = () => {
 
           <div className="product-actions">
             <div className="quantity-selector">
-              <span className="quantity-label">Số lượng:</span>
+<span className="quantity-label">Số lượng:</span>
               <InputNumber
                 min={1}
                 max={product.stock}
@@ -304,7 +313,7 @@ const ProductDetail = () => {
               <ul className="benefits-list">
                 {product.details.benefits.map((b, i) => (
                   <li key={i}>
-                    <CheckCircleFilled /> {b}
+                    <CheckCircleFilled /> {b.replace(/"/g, "")}
                   </li>
                 ))}
               </ul>
@@ -318,13 +327,13 @@ const ProductDetail = () => {
           <TabPane tab="Mô tả chi tiết" key="1">
             <div className="tab-content">
               <h3>Thông tin sản phẩm</h3>
-              <p>{product.longDescription}</p>
+              <p>{product.description}</p>
             </div>
           </TabPane>
           <TabPane tab="Hướng dẫn sử dụng" key="2">
             <div className="tab-content">
               <h3>Cách sử dụng</h3>
-              <pre className="usage-instructions">{product.howToUse}</pre>
+              <pre className="usage-instructions">{product.details?.usage}</pre>
             </div>
           </TabPane>
           <TabPane tab="Thông số kỹ thuật" key="3">
@@ -332,13 +341,22 @@ const ProductDetail = () => {
               <h3>Thông số sản phẩm</h3>
               <table className="specifications-table">
                 <tbody>
-                  {product.specifications &&
-                    Object.entries(product.specifications).map(([key, val]) => (
-                      <tr key={key}>
-                        <td className="spec-name">{key}</td>
-                        <td className="spec-value">{val}</td>
-                      </tr>
-                    ))}
+                  <tr>
+                    <td className="spec-name">Thương hiệu</td>
+                    <td className="spec-value">{brandName || product.details?.brandId}</td>
+                  </tr>
+                  {product.details?.volume && (
+                    <tr>
+                      <td className="spec-name">Dung tích</td>
+                      <td className="spec-value">{product.details.volume}</td>
+                    </tr>
+)}
+                  {product.details?.ingredients && (
+                    <tr>
+                      <td className="spec-name">Thành phần</td>
+                      <td className="spec-value">{product.details.ingredients}</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
