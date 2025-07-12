@@ -31,13 +31,18 @@ export default function ProductList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const productsPerPage = 4;
+  const productsPerPage = 12;
   const navigate = useNavigate();
   const { user } = useAuth();
   const { addToCart: addToGuestCart } = useCart();
   const { addToCart: addToUserCart } = useUserCart();
+  const [brands, setBrands] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [brandFilter, setBrandFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [stockFilter, setStockFilter] = useState("all");
 
-  // Dùng cart function theo trạng thái đăng nhập
+  
   const addToCart = (product, quantity) => {
     if (user) {
       addToUserCart(product, quantity);
@@ -53,7 +58,7 @@ export default function ProductList() {
         setProducts(response.data);
         setFilteredProducts(response.data);
         setLoading(false);
-      // eslint-disable-next-line no-unused-vars
+    
       } catch (error) {
         setError("Không thể tải dữ liệu sản phẩm. Vui lòng thử lại sau.");
         setLoading(false);
@@ -61,6 +66,16 @@ export default function ProductList() {
     };
 
     fetchProducts();
+  
+    fetch("http://localhost:3000/api/brands")
+      .then(res => res.json())
+      .then(data => setBrands(data))
+      .catch(() => setBrands([]));
+  
+    fetch("http://localhost:3000/api/categories")
+      .then(res => res.json())
+      .then(data => setCategories(data))
+      .catch(() => setCategories([]));
   }, []);
 
   const getImage = (imagePath) => {
@@ -71,7 +86,7 @@ export default function ProductList() {
 
   const handleBuyNow = (product) => {
     addToCart(product, 1);
-    navigate(user ? "/cart" : "/cart-guest");
+navigate(user ? "/cart" : "/cart-guest");
   };
 
   const goToProductDetail = (productId) => {
@@ -80,17 +95,33 @@ export default function ProductList() {
 
   const handleSearch = (value) => {
     setSearchTerm(value);
-    applyFilters(value, priceFilter);
+    applyFilters(value, priceFilter, brandFilter, categoryFilter, stockFilter);
     setCurrentPage(1);
   };
 
   const handlePriceFilter = (value) => {
     setPriceFilter(value);
-    applyFilters(searchTerm, value);
+    applyFilters(searchTerm, value, brandFilter, categoryFilter, stockFilter);
     setCurrentPage(1);
   };
 
-  const applyFilters = (searchValue, priceValue) => {
+  const handleBrandFilter = (value) => {
+    setBrandFilter(value);
+    applyFilters(searchTerm, priceFilter, value, categoryFilter, stockFilter);
+    setCurrentPage(1);
+  };
+  const handleCategoryFilter = (value) => {
+    setCategoryFilter(value);
+    applyFilters(searchTerm, priceFilter, brandFilter, value, stockFilter);
+    setCurrentPage(1);
+  };
+  const handleStockFilter = (value) => {
+    setStockFilter(value);
+    applyFilters(searchTerm, priceFilter, brandFilter, categoryFilter, value);
+    setCurrentPage(1);
+  };
+
+  const applyFilters = (searchValue, priceValue, brandValue = brandFilter, categoryValue = categoryFilter, stockValue = stockFilter) => {
     let filtered = [...products];
 
     if (searchValue) {
@@ -107,6 +138,17 @@ export default function ProductList() {
         if (priceValue === ">1000") return price > 1000000;
         return true;
       });
+    }
+
+    if (brandValue !== "all") {
+      filtered = filtered.filter((p) => p.details?.brandId === brandValue);
+    }
+    if (categoryValue !== "all") {
+      filtered = filtered.filter((p) => p.categoryId?.includes(categoryValue));
+    }
+    if (stockValue !== "all") {
+      if (stockValue === "in") filtered = filtered.filter((p) => p.stock > 0);
+      if (stockValue === "out") filtered = filtered.filter((p) => !p.stock || p.stock <= 0);
     }
 
     setFilteredProducts(filtered);
@@ -134,7 +176,7 @@ export default function ProductList() {
   if (loading || error) {
     return (
       <section className="shop-section">
-        <div className="shop-container">
+<div className="shop-container">
           <div className="shop-header">
             <h2 className="shop-title">TẤT CẢ SẢN PHẨM</h2>
             <div className="shop-divider"></div>
@@ -165,17 +207,39 @@ export default function ProductList() {
 
         {/* Search and Filter */}
         <div className="d-flex justify-content-between flex-wrap mb-4 gap-2">
-          <Search
+          <Input
             placeholder="Tìm kiếm sản phẩm..."
-            onSearch={handleSearch}
+            value={searchTerm}
+            onChange={e => {
+              setSearchTerm(e.target.value);
+              applyFilters(e.target.value, priceFilter, brandFilter, categoryFilter, stockFilter);
+              setCurrentPage(1);
+            }}
             allowClear
-            style={{ width: 300 }}
+            style={{ width: 220 }}
           />
-          <Select defaultValue="all" style={{ width: 200 }} onChange={handlePriceFilter}>
+          <Select defaultValue="all" style={{ width: 160 }} onChange={handlePriceFilter}>
             <Option value="all">Tất cả mức giá</Option>
             <Option value="<500">Dưới 500.000đ</Option>
             <Option value="500-1000">500.000đ - 1.000.000đ</Option>
             <Option value=">1000">Trên 1.000.000đ</Option>
+          </Select>
+          <Select defaultValue="all" style={{ width: 160 }} onChange={handleBrandFilter}>
+            <Option value="all">Tất cả thương hiệu</Option>
+            {brands.map(b => (
+              <Option key={b._id} value={b._id}>{b.name}</Option>
+            ))}
+          </Select>
+          <Select defaultValue="all" style={{ width: 160 }} onChange={handleCategoryFilter}>
+            <Option value="all">Tất cả danh mục</Option>
+            {categories.map(c => (
+              <Option key={c._id} value={c._id}>{c.name}</Option>
+            ))}
+          </Select>
+          <Select defaultValue="all" style={{ width: 160 }} onChange={handleStockFilter}>
+            <Option value="all">Tất cả tình trạng</Option>
+            <Option value="in">Còn hàng</Option>
+            <Option value="out">Hết hàng</Option>
           </Select>
         </div>
 
@@ -185,7 +249,7 @@ export default function ProductList() {
             <div key={product._id} className="shop-item">
               <div className="item-image-wrapper">
                 <img
-                  src={getImage(product.image)}
+src={getImage(product.image)}
                   alt={product.name}
                   className="item-image"
                   onError={(e) => {
