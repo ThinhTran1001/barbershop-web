@@ -73,6 +73,11 @@ export const updateProfile = (formData) =>  api.patch(`/users/profile/me`, formD
 export const forgotPassword = (data) => api.post('/auth/forgot-password', data);
 export const resetPassword = (data) => api.post('/auth/reset-password', data);
 
+export const initiateGoogleLogin = () => {
+  const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=703568250378-bookqj2l9dv38j3m24kf5737dja1arbj.apps.googleusercontent.com&redirect_uri=${encodeURIComponent('http://localhost:3000/api/auth/google')}&response_type=code&scope=email%20profile`;
+  window.location.href = googleAuthUrl;
+};
+
 export const sendChat = async (message, chatHistory = []) => {
   try {
     const response = await api.post(`/chatbot`, { message, chatHistory }, {
@@ -93,6 +98,7 @@ export const uploadImage = (file) => {
     headers: { "Content-Type": "multipart/form-data" },
   });
 };
+
 export const getFeedbacksByProduct = (productId) => api.get(`/product-reviews/product/${productId}`);
 export const getAllFeedbacks = (params) => api.get('/product-reviews', { params });
 export const createFeedback = (data) => api.post('/product-reviews', data);
@@ -117,5 +123,13 @@ export const getProductDiscounts = (productId) => api.get(`/discounts/product/${
 export const toggleDiscountStatus = (id) => api.patch(`/discounts/${id}/toggle-status`);
 export const getDiscountStats = () => api.get('/discounts/stats');
 export const cleanupExpiredDiscounts = () => api.post('/discounts/cleanup-expired');
+
+export const createFeedbackOrder = (data) => api.post('/feedback-orders', data);
+export const updateFeedbackOrder = (orderId, data) => api.put(`/feedback-orders/${orderId}`, data);
+export const getFeedbackOrderByOrderId = (orderId) => api.get(`/feedback-orders/${orderId}`);
+
+export const createFeedbackBooking = (data) => api.post('/feedback-bookings', data);
+export const updateFeedbackBooking = (bookingId, data) => api.put(`/feedback-bookings/${bookingId}`, data);
+export const getFeedbackBookingByBookingId = (bookingId) => api.get(`/feedback-bookings/${bookingId}`);
 
 export default api;

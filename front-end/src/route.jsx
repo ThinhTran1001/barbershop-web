@@ -40,6 +40,8 @@ import BookingPage from "./pages/barber/BookingPage.jsx";
 import BookingInfoPage from "./pages/ServiceBooking/BookingInfoPage.jsx";
 import MyBookingsPage from "./pages/ServiceBooking/MyBookingsPage.jsx";
 import BarberBookingPage from "./pages/barber/BarberBookingPage.jsx";
+import FeedbackProduct from "./pages/FeedbackProduct/FeedbackProduct.jsx";
+import OauthSuccess from "./pages/auth/OauthSuccess.jsx";
 
 const publicRoutes = {
   element: <CommonLayout />,
@@ -105,6 +107,7 @@ const router = createBrowserRouter([
       { path: "/register", element: <Register /> },
       { path: "/forgot-password", element: <ForgotPasswordForm /> },
       { path: "/reset-password/:token", element: <ResetPasswordForm /> },
+      { path: "/oauth-success", element: <OauthSuccess /> },
       { path: "/products", element: <ProductList /> },
       { path: "/products/:id", element: <ProductDetail /> },
       { path: "/services", element: <ServiceBooking /> },
@@ -127,6 +130,12 @@ const router = createBrowserRouter([
         children: [
           { path: "/my-orders", element: <ListOfOrder /> },
           { path: "/my-orders/:id", element: <OrderDetail /> },
+        ],
+      },
+      {
+        element: <RequireAuth allowedRoles={["customer"]} />,
+        children: [
+          { path: "feedback/:orderId", element: <FeedbackProduct/> },
         ],
       },
     ],
