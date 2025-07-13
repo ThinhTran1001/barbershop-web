@@ -1,5 +1,7 @@
 const Barber = require('../models/barber.model');
 const Booking = require('../models/booking.model');
+const BarberSchedule = require('../models/barber-schedule.model');
+const BarberAbsence = require('../models/barber-absence.model');
 
 exports.createBarber = async (req, res) => {
   try {
@@ -27,8 +29,70 @@ exports.createBarber = async (req, res) => {
 
 exports.getAllBarbers = async (req, res) => {
   try {
-    const barbers = await Barber.find().populate('userId', 'name email');
-    res.json(barbers);
+    const {
+      expertiseTags,
+      hairTypeExpertise,
+      styleExpertise,
+      minRating,
+      minExperience,
+      isAvailable = true,
+      autoAssignmentEligible,
+      sortBy = 'averageRating',
+      sortOrder = 'desc',
+      page = 1,
+      limit = 20
+    } = req.query;
+
+    // Build filter object
+    const filter = { isAvailable };
+
+    if (expertiseTags) {
+      filter.expertiseTags = { $in: Array.isArray(expertiseTags) ? expertiseTags : [expertiseTags] };
+    }
+
+    if (hairTypeExpertise) {
+      filter.hairTypeExpertise = { $in: Array.isArray(hairTypeExpertise) ? hairTypeExpertise : [hairTypeExpertise] };
+    }
+
+    if (styleExpertise) {
+      filter.styleExpertise = { $in: Array.isArray(styleExpertise) ? styleExpertise : [styleExpertise] };
+    }
+
+    if (minRating) {
+      filter.averageRating = { $gte: Number(minRating) };
+    }
+
+    if (minExperience) {
+      filter.experienceYears = { $gte: Number(minExperience) };
+    }
+
+    if (autoAssignmentEligible !== undefined) {
+      filter.autoAssignmentEligible = autoAssignmentEligible === 'true';
+    }
+
+    // Build sort object
+    const sort = {};
+    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+    // Execute query with pagination
+    const skip = (page - 1) * limit;
+    const barbers = await Barber.find(filter)
+      .populate('userId', 'name email phone avatarUrl')
+      .sort(sort)
+      .skip(skip)
+      .limit(Number(limit));
+
+    const total = await Barber.countDocuments(filter);
+
+    res.json({
+      barbers,
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -114,6 +178,216 @@ exports.getBarberBookings = async (req, res) => {
       .populate('serviceId', 'name')
       .sort({ bookingDate: 1 });
     res.json(bookings);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Auto-assign barber based on service requirements and availability
+exports.autoAssignBarber = async (req, res) => {
+  try {
+    const { serviceId, bookingDate, customerPreferences = {} } = req.body;
+
+    if (!serviceId || !bookingDate) {
+      return res.status(400).json({ message: 'Service ID and booking date are required' });
+    }
+
+    const Service = require('../models/service.model');
+    const service = await Service.findById(serviceId);
+
+    if (!service) {
+      return res.status(404).json({ message: 'Service not found' });
+    }
+
+    // Build filter for eligible barbers
+    const filter = {
+      isAvailable: true,
+      autoAssignmentEligible: true
+    };
+
+    // Filter by service expertise requirements
+    if (service.expertiseRequired && service.expertiseRequired.length > 0) {
+      filter.expertiseTags = { $in: service.expertiseRequired };
+    }
+
+    // Filter by hair type expertise if provided
+    if (customerPreferences.hairType) {
+      filter.hairTypeExpertise = customerPreferences.hairType;
+    }
+
+    // Filter by style expertise if provided
+    if (customerPreferences.stylePreference) {
+      filter.styleExpertise = customerPreferences.stylePreference;
+    }
+
+    // Get eligible barbers
+    let eligibleBarbers = await Barber.find(filter)
+      .populate('userId', 'name email')
+      .sort({ averageRating: -1, totalBookings: -1 });
+
+    if (eligibleBarbers.length === 0) {
+      // Fallback: get any available barber
+      eligibleBarbers = await Barber.find({
+        isAvailable: true,
+        autoAssignmentEligible: true
+      })
+      .populate('userId', 'name email')
+      .sort({ averageRating: -1 });
+    }
+
+    if (eligibleBarbers.length === 0) {
+      return res.status(404).json({ message: 'No available barbers found' });
+    }
+
+    // Check availability for the requested date
+    const bookingDateObj = new Date(bookingDate);
+    const dateStr = bookingDateObj.toISOString().split('T')[0];
+
+    const availableBarbers = [];
+
+    for (const barber of eligibleBarbers) {
+      // Check if barber is absent
+      const isAbsent = await BarberAbsence.isBarberAbsent(barber._id, bookingDateObj);
+      if (isAbsent) continue;
+
+      // Check daily booking limit
+      const dailyBookings = await Booking.countDocuments({
+        barberId: barber._id,
+        bookingDate: {
+          $gte: new Date(dateStr + 'T00:00:00.000Z'),
+          $lt: new Date(dateStr + 'T23:59:59.999Z')
+        },
+        status: { $in: ['pending', 'confirmed'] }
+      });
+
+      if (dailyBookings < barber.maxDailyBookings) {
+        availableBarbers.push({
+          ...barber.toObject(),
+          currentBookings: dailyBookings,
+          availabilityScore: (barber.averageRating * 0.6) +
+                           ((barber.maxDailyBookings - dailyBookings) / barber.maxDailyBookings * 0.4)
+        });
+      }
+    }
+
+    if (availableBarbers.length === 0) {
+      return res.status(404).json({ message: 'No barbers available for the selected date' });
+    }
+
+    // Sort by availability score (combination of rating and current workload)
+    availableBarbers.sort((a, b) => b.availabilityScore - a.availabilityScore);
+
+    const assignedBarber = availableBarbers[0];
+
+    res.json({
+      assignedBarber: {
+        id: assignedBarber._id,
+        name: assignedBarber.userId.name,
+        email: assignedBarber.userId.email,
+        averageRating: assignedBarber.averageRating,
+        experienceYears: assignedBarber.experienceYears,
+        specialties: assignedBarber.specialties,
+        expertiseTags: assignedBarber.expertiseTags,
+        currentBookings: assignedBarber.currentBookings,
+        availabilityScore: assignedBarber.availabilityScore
+      },
+      alternativeBarbers: availableBarbers.slice(1, 4).map(barber => ({
+        id: barber._id,
+        name: barber.userId.name,
+        averageRating: barber.averageRating,
+        currentBookings: barber.currentBookings
+      })),
+      assignmentReason: 'Auto-assigned based on service requirements, rating, and availability'
+    });
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Get barber availability for a specific date range
+exports.getBarberAvailability = async (req, res) => {
+  try {
+    const { barberId, startDate, endDate } = req.query;
+
+    if (!barberId || !startDate || !endDate) {
+      return res.status(400).json({ message: 'Barber ID, start date, and end date are required' });
+    }
+
+    const barber = await Barber.findById(barberId);
+    if (!barber) {
+      return res.status(404).json({ message: 'Barber not found' });
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    // Get barber absences in the date range
+    const absences = await BarberAbsence.getBarberAbsences(barberId, start, end);
+
+    // Get existing bookings in the date range
+    const bookings = await Booking.find({
+      barberId,
+      bookingDate: { $gte: start, $lte: end },
+      status: { $in: ['pending', 'confirmed'] }
+    }).select('bookingDate durationMinutes');
+
+    // Generate availability calendar
+    const availability = [];
+    const currentDate = new Date(start);
+
+    while (currentDate <= end) {
+      const dateStr = currentDate.toISOString().split('T')[0];
+
+      // Check if barber is absent
+      const isAbsent = absences.some(absence =>
+        currentDate >= absence.startDate && currentDate <= absence.endDate
+      );
+
+      if (isAbsent) {
+        availability.push({
+          date: dateStr,
+          available: false,
+          reason: 'Barber is absent'
+        });
+      } else {
+        // Count bookings for this date
+        const dayBookings = bookings.filter(booking =>
+          booking.bookingDate.toISOString().split('T')[0] === dateStr
+        );
+
+        const totalBookedMinutes = dayBookings.reduce((sum, booking) =>
+          sum + booking.durationMinutes, 0
+        );
+
+        const maxWorkingMinutes = 8 * 60; // 8 hours
+        const availableMinutes = maxWorkingMinutes - totalBookedMinutes;
+
+        availability.push({
+          date: dateStr,
+          available: dayBookings.length < barber.maxDailyBookings && availableMinutes > 0,
+          bookingsCount: dayBookings.length,
+          maxBookings: barber.maxDailyBookings,
+          bookedMinutes: totalBookedMinutes,
+          availableMinutes: Math.max(0, availableMinutes)
+        });
+      }
+
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    res.json({
+      barberId,
+      barberName: barber.userId?.name || 'Unknown',
+      dateRange: { startDate, endDate },
+      availability,
+      absences: absences.map(absence => ({
+        startDate: absence.startDate,
+        endDate: absence.endDate,
+        reason: absence.reason
+      }))
+    });
+
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

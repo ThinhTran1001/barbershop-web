@@ -22,6 +22,24 @@ const barberSchema = new mongoose.Schema({
     required: true
   },
 
+  expertiseTags: {
+    type: [String],
+    default: []
+    // Tags like: ["fade", "coloring", "beard", "long_hair", "curly_hair", "wedding_styles"]
+  },
+
+  hairTypeExpertise: {
+    type: [String],
+    default: []
+    // Hair types: ["straight", "wavy", "curly", "coily"]
+  },
+
+  styleExpertise: {
+    type: [String],
+    default: []
+    // Styles: ["short", "medium", "long", "beard", "mustache"]
+  },
+
   averageRating: {
     type: Number,
     required: true,
@@ -49,7 +67,37 @@ const barberSchema = new mongoose.Schema({
   workingSince: {
     type: Date,
     required: true
+  },
+
+  autoAssignmentEligible: {
+    type: Boolean,
+    default: true
+  },
+
+  maxDailyBookings: {
+    type: Number,
+    default: 12
+  },
+
+  preferredWorkingHours: {
+    start: { type: String, default: "09:00" }, // "HH:MM" format
+    end: { type: String, default: "18:00" }
+  },
+
+  profileImageUrl: String,
+
+  certifications: [String],
+
+  languages: {
+    type: [String],
+    default: ["Vietnamese"]
   }
 
-}, { timestamps: true }); 
+}, { timestamps: true });
+
+// Indexes for efficient filtering
+barberSchema.index({ expertiseTags: 1, isAvailable: 1 });
+barberSchema.index({ hairTypeExpertise: 1, styleExpertise: 1 });
+barberSchema.index({ averageRating: -1, totalBookings: -1 });
+
 module.exports = mongoose.model('Barber', barberSchema);

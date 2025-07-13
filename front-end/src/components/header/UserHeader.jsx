@@ -1,6 +1,6 @@
 import React from "react";
 import { Layout, Menu, Button, Dropdown, Badge } from "antd";
-import { ShoppingCartOutlined, UserOutlined } from "@ant-design/icons";
+import { ShoppingCartOutlined, UserOutlined, CalendarOutlined, StarOutlined } from "@ant-design/icons";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
 import { useUserCart } from "../../context/UserCartContext";
@@ -45,6 +45,21 @@ export default function UserHeader() {
       key: "orders",
       label: "Lịch sử đơn hàng",
       onClick: () => navigate("/my-orders"),
+    },
+    {
+      key: "bookings",
+      icon: <CalendarOutlined />,
+      label: "Lịch hẹn của tôi",
+      onClick: () => navigate("/my-booking"),
+    },
+    {
+      key: "feedback",
+      icon: <StarOutlined />,
+      label: "Đánh giá của tôi",
+      onClick: () => navigate("/my-feedback"),
+    },
+    {
+      type: "divider",
     },
     {
       key: "logout",
