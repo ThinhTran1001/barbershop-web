@@ -20,7 +20,10 @@ const reviewRoutes = require('./routes/productreview.route');
 const feedbackBarberRoutes = require('./routes/feedbackBarber.route');
 const discountRoutes = require('./routes/discounts.route');
 const bookingRoutes = require('./routes/booking.route');
-const feedbackOrderRoutes = require('./routes/feedbackOrder.route'); 
+const feedbackOrderRoutes = require('./routes/feedbackOrder.route');
+const barberAbsenceRoutes = require('./routes/barber-absence.route');
+const barberScheduleRoutes = require('./routes/barberSchedule.route');
+const bookingFeedbackRoutes = require('./routes/booking-feedback.route');
 const feedbackBookingRoutes = require('./routes/feedbackBooking.route');
 const blogRoutes = require('./routes/blog.route')
 const contactRoutes = require('./routes/contact.route')
@@ -59,7 +62,10 @@ app.use('/api/product-reviews', reviewRoutes);
 app.use('/api/feedback-barber', feedbackBarberRoutes);
 app.use('/api/discounts', discountRoutes);
 app.use('/api/bookings', bookingRoutes);
-app.use('/api/feedback-orders', feedbackOrderRoutes); 
+app.use('/api/feedback-orders', feedbackOrderRoutes);
+app.use('/api/barber-absences', barberAbsenceRoutes);
+app.use('/api/barber-schedule', barberScheduleRoutes);
+app.use('/api/booking-feedback', bookingFeedbackRoutes);
 app.use('/api/feedback-bookings', feedbackBookingRoutes);
 app.use('/api/news', blogRoutes);
 app.use('/api/contact', contactRoutes)

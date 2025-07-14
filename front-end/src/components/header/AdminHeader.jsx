@@ -36,6 +36,8 @@ const AdminHeader = () => {
       ? "feedback-product"
       : location.pathname.includes("feedback-barber")
       ? "feedback-barber"
+      : location.pathname.includes("barber-schedule")
+      ? "barber-schedule"
       : "user";
 
   return (
@@ -74,6 +76,7 @@ const AdminHeader = () => {
         <Menu.Item key="order" onClick={() => navigate("/admin/order")}>Order</Menu.Item>
         <Menu.Item key="feedback-product" onClick={() => navigate("/admin/feedback-product")}>Feedback Product</Menu.Item>
         <Menu.Item key="feedback-barber" onClick={() => navigate("/admin/feedback-barber")}>Feedback Barber</Menu.Item>
+        <Menu.Item key="barber-schedule" onClick={() => navigate("/admin/barber-schedule")}>Barber Schedule</Menu.Item>
       </Menu>
 
       {/* User info + logout */}

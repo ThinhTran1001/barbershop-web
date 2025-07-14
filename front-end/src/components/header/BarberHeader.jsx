@@ -1,29 +1,168 @@
 // src/components/Header/BarberHeader.jsx
-import { Layout, Button } from "antd";
+import { Layout, Button, Menu, Space, Avatar, Dropdown } from "antd";
+import {
+  DashboardOutlined,
+  CalendarOutlined,
+  BookOutlined,
+  UserOutlined,
+  StarOutlined,
+  BarChartOutlined,
+  LogoutOutlined,
+  SettingOutlined
+} from "@ant-design/icons";
 import { useAuth } from "../../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 const { Header } = Layout;
 
 const BarberHeader = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = () => {
     logout();
     navigate("/login");
   };
 
+  const handleMenuClick = ({ key }) => {
+    navigate(key);
+  };
+
+  // Get current selected menu key based on pathname
+  const getSelectedKey = () => {
+    const path = location.pathname;
+    if (path === '/barber' || path === '/barber/dashboard') return '/barber/dashboard';
+    if (path.includes('/calendar')) return '/barber/calendar';
+    if (path.includes('/bookings')) return '/barber/bookings';
+    if (path.includes('/customers')) return '/barber/customers';
+    if (path.includes('/feedback')) return '/barber/feedback';
+    if (path.includes('/performance')) return '/barber/performance';
+    return '/barber/dashboard';
+  };
+
+  const menuItems = [
+    {
+      key: '/barber/dashboard',
+      icon: <DashboardOutlined />,
+      label: 'Dashboard',
+    },
+    {
+      key: '/barber/calendar',
+      icon: <CalendarOutlined />,
+      label: 'Lịch làm việc',
+    },
+    {
+      key: '/barber/bookings',
+      icon: <BookOutlined />,
+      label: 'Quản lý lịch hẹn',
+    },
+    {
+      key: '/barber/customers',
+      icon: <UserOutlined />,
+      label: 'Khách hàng',
+    },
+    {
+      key: '/barber/feedback',
+      icon: <StarOutlined />,
+      label: 'Đánh giá',
+    },
+    {
+      key: '/barber/performance',
+      icon: <BarChartOutlined />,
+      label: 'Báo cáo',
+    },
+  ];
+
+  const userMenuItems = [
+    {
+      key: 'profile',
+      icon: <UserOutlined />,
+      label: 'Hồ sơ cá nhân',
+    },
+    {
+      key: 'settings',
+      icon: <SettingOutlined />,
+      label: 'Cài đặt',
+    },
+    {
+      type: 'divider',
+    },
+    {
+      key: 'logout',
+      icon: <LogoutOutlined />,
+      label: 'Đăng xuất',
+      onClick: handleLogout,
+    },
+  ];
+
+  const handleUserMenuClick = ({ key }) => {
+    if (key === 'logout') {
+      handleLogout();
+    } else if (key === 'profile') {
+      navigate('/barber/profile');
+    } else if (key === 'settings') {
+      navigate('/barber/settings');
+    }
+  };
+
   return (
-    <Header className="d-flex justify-content-between align-items-center bg-white px-4 shadow-sm">
-      <div>
-        <h4 className="mb-0">Barber Dashboard</h4>
+    <Header style={{
+      background: '#fff',
+      padding: '0 24px',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between'
+    }}>
+      {/* Logo and Navigation */}
+      <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+        <div style={{
+          fontSize: '20px',
+          fontWeight: 'bold',
+          marginRight: '32px',
+          color: '#1890ff'
+        }}>
+          💈 Barber Portal
+        </div>
+
+        <Menu
+          mode="horizontal"
+          selectedKeys={[getSelectedKey()]}
+          items={menuItems}
+          onClick={handleMenuClick}
+          style={{
+            border: 'none',
+            flex: 1,
+            justifyContent: 'flex-start'
+          }}
+        />
       </div>
 
-      <div className="d-flex align-items-center gap-3">
-        <span>{user?.name} ({user?.role})</span>
-        <Button type="primary" danger onClick={handleLogout}>Logout</Button>
-      </div>
+      {/* User Info and Actions */}
+      <Space>
+        <span style={{ color: '#666' }}>
+          Xin chào, <strong>{user?.name}</strong>
+        </span>
+
+        <Dropdown
+          menu={{
+            items: userMenuItems,
+            onClick: handleUserMenuClick,
+          }}
+          placement="bottomRight"
+          arrow
+        >
+          <Button type="text" style={{ padding: '4px 8px' }}>
+            <Avatar
+              size="small"
+              icon={<UserOutlined />}
+              style={{ marginRight: 8 }}
+            />
+            <span>{user?.name}</span>
+          </Button>
+        </Dropdown>
+      </Space>
     </Header>
   );
 };

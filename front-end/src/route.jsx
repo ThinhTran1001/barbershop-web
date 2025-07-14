@@ -42,6 +42,13 @@ import MyBookingsPage from "./pages/ServiceBooking/MyBookingsPage.jsx";
 import BarberBookingPage from "./pages/barber/BarberBookingPage.jsx";
 import FeedbackProduct from "./pages/FeedbackProduct/FeedbackProduct.jsx";
 import OauthSuccess from "./pages/auth/OauthSuccess.jsx";
+import BarberDashboard from "./pages/Barber/BarberDashboard.jsx";
+import BarberCalendarPage from "./pages/Barber/BarberCalendarPage.jsx";
+import BarberBookingManagement from "./pages/Barber/BarberBookingManagement.jsx";
+import BarberScheduleManagement from "./pages/Admin/BarberScheduleManagement.jsx";
+import BarberSetup from "./pages/Barber/BarberSetup.jsx";
+import BookingFeedbackPage from "./pages/Feedback/BookingFeedbackPage.jsx";
+import MyFeedbackPage from "./pages/Feedback/MyFeedbackPage.jsx";
 import AboutPage from "./components/landing/about/About.jsx"
 import BlogPage from "./components/landing/blog/BlogPage.jsx"
 import BlogDetail from "./components/landing/blog/BlogDetail.jsx";
@@ -134,6 +141,8 @@ const router = createBrowserRouter([
       { path: "/choose-time-slot", element: <TimeSlotPickerPage /> },
       { path: "/booking-info", element: <BookingInfoPage /> },
       { path: "/my-booking", element: <MyBookingsPage /> },
+      { path: "/feedback/:bookingId", element: <BookingFeedbackPage /> },
+      { path: "/my-feedback", element: <MyFeedbackPage /> },
       {path: "/about", element: <AboutPage/>},
       {path: "/news", element: <BlogPage/>},
       { path: "/news/:id", element: <BlogDetail /> },
@@ -177,6 +186,7 @@ const router = createBrowserRouter([
           { path: "feedback-product", element: <ManageFeedbackProduct /> },
           { path: "feedback-barber", element: <ManageFeedbackBarber /> },
           { path: "discount-product", element: <ManageDiscountProduct /> },
+          { path: "barber-schedule", element: <BarberScheduleManagement /> },
           { path: "statistics", element: <Statistics /> },
         ],
       },
@@ -191,9 +201,14 @@ const router = createBrowserRouter([
         path: "/barber",
         element: <BarberLayout />,
         children: [
-          { index: true, element: <ManagingService /> },
-          { path: "/barbers/:barberId/bookings", element: <BarberBookingPage /> },
-          // thêm các route riêng cho barber ở đây nếu có
+          { index: true, element: <BarberDashboard /> },
+          { path: "setup", element: <BarberSetup /> },
+          { path: "dashboard", element: <BarberDashboard /> },
+          { path: "calendar", element: <BarberCalendarPage /> },
+          { path: "bookings", element: <BarberBookingManagement /> },
+          { path: "customers", element: <BarberBookingManagement /> }, // Can be customized later
+          { path: "feedback", element: <BarberBookingManagement /> }, // Can be customized later
+          { path: "performance", element: <BarberBookingManagement /> }, // Can be customized later
         ],
       },
     ],
