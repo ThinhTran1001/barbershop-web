@@ -11,7 +11,7 @@ import ForgotPasswordForm from "./components/auth/ForgotPasswordForm.jsx";
 import ResetPasswordForm from "./components/auth/ResetPasswordForm.jsx";
 import ProductList from "./pages/home/prodductList.jsx";
 import ProductDetail from "./components/product/ProductDetail.jsx";
-import ServiceBooking from "./pages/ServiceBooking/ServiceBooking.jsx";
+// import ServiceBooking from "./pages/ServiceBooking/ServiceBooking.jsx";
 import Checkout from "./pages/checkout/Checkout.jsx";
 import CheckoutGuest from "./pages/checkout/CheckoutGuest.jsx";
 import OrderSuccess from "./pages/checkout/OrderSuccess.jsx";
@@ -49,6 +49,12 @@ import BarberScheduleManagement from "./pages/Admin/BarberScheduleManagement.jsx
 import BarberSetup from "./pages/Barber/BarberSetup.jsx";
 import BookingFeedbackPage from "./pages/Feedback/BookingFeedbackPage.jsx";
 import MyFeedbackPage from "./pages/Feedback/MyFeedbackPage.jsx";
+import AboutPage from "./components/landing/about/About.jsx"
+import BlogPage from "./components/landing/blog/BlogPage.jsx"
+import BlogDetail from "./components/landing/blog/BlogDetail.jsx";
+import ContactPage from "./components/landing/contact/ContactPage.jsx"
+import Statistics from "./pages/dashboard/statistics.jsx";
+import { element } from "prop-types";
 
 const publicRoutes = {
   element: <CommonLayout />,
@@ -59,7 +65,7 @@ const publicRoutes = {
     {path: "/register", element: <Register/>},
     {path: "/products", element: <ProductList/>},
     {path: "/forget", element: <ProductList/>},
-    {path: "/services", element: <ServiceBooking/>},
+    // {path: "/services", element: <ServiceBooking/>},
     { path: "/forgot-password", element: <ForgotPasswordForm /> },
     { path: "/reset-password", element: <ResetPasswordForm /> },
     { path: "/profile", element: <CustomerProfile /> },
@@ -68,6 +74,7 @@ const publicRoutes = {
     { path: "/choose-barber", element: <BarberSelectionPage /> },
     { path: "/choose-time-slot", element: <TimeSlotPickerPage /> },
     { path: "/booking-info", element: <BookingPage /> },
+    
   ],
 };
 
@@ -75,21 +82,25 @@ const adminRoutes = {
   element: <RequireRole allowedRoles={["admin"]} />,
   children: [
     {
-      path: "/admin",
-      element: <AdminLayout />,
-      children: [
-        { index: true, element: <ProductManagement /> },
-        { path: "product", element: <ProductManagement /> },
-        { path: "brand", element: <BrandManagement /> },
-        { path: "category", element: <CategoryManagement /> },
-        { path: "service", element: <ManagingService /> },
-        { path: "barber", element: <BarberManagement /> },
-        { path: "user", element: <UserManagement /> },
-        {path: "feedback-product", element:  <ManageFeedbackProduct/>},
-        {path: "feedback-barber", element: <ManageFeedbackBarber/>}, 
-        {path: "discount-product", element: <ManageDiscountProduct/>},
-      ],
-    },
+  path: "/admin",
+  element: <AdminLayout />,
+  children: [
+    { index: true, element: <ProductManagement /> },
+    { path: "product", element: <ProductManagement /> },
+    { path: "brand", element: <BrandManagement /> },
+    { path: "category", element: <CategoryManagement /> },
+    { path: "service", element: <ManagingService /> },
+    { path: "barber", element: <BarberManagement /> },
+    { path: "user", element: <UserManagement /> },
+    { path: "voucher", element: <VoucherManagement /> },
+    { path: "user-vouchers", element: <UserVoucherManagement /> },
+    { path: "order", element: <OrderManagement /> },
+    { path: "feedback-product", element: <ManageFeedbackProduct /> },
+    { path: "feedback-barber", element: <ManageFeedbackBarber /> },
+    { path: "discount-product", element: <ManageDiscountProduct /> },
+    { path: "statistics", element: <Statistics /> },  
+  ],
+}
   ],
 };
 
@@ -117,7 +128,7 @@ const router = createBrowserRouter([
       { path: "/oauth-success", element: <OauthSuccess /> },
       { path: "/products", element: <ProductList /> },
       { path: "/products/:id", element: <ProductDetail /> },
-      { path: "/services", element: <ServiceBooking /> },
+      // { path: "/services", element: <ServiceBooking /> },
       { path: "/checkout", element: <Checkout /> },
       { path: "/checkout-guest", element: <CheckoutGuest /> },
       { path: "/order-success", element: <OrderSuccess /> },
@@ -132,6 +143,10 @@ const router = createBrowserRouter([
       { path: "/my-booking", element: <MyBookingsPage /> },
       { path: "/feedback/:bookingId", element: <BookingFeedbackPage /> },
       { path: "/my-feedback", element: <MyFeedbackPage /> },
+      {path: "/about", element: <AboutPage/>},
+      {path: "/news", element: <BlogPage/>},
+      { path: "/news/:id", element: <BlogDetail /> },
+      {path: "/contact", element: <ContactPage/>},
 
       // Customer protected routes
       {
@@ -172,6 +187,7 @@ const router = createBrowserRouter([
           { path: "feedback-barber", element: <ManageFeedbackBarber /> },
           { path: "discount-product", element: <ManageDiscountProduct /> },
           { path: "barber-schedule", element: <BarberScheduleManagement /> },
+          { path: "statistics", element: <Statistics /> },
         ],
       },
     ],

@@ -132,4 +132,9 @@ export const createFeedbackBooking = (data) => api.post('/feedback-bookings', da
 export const updateFeedbackBooking = (bookingId, data) => api.put(`/feedback-bookings/${bookingId}`, data);
 export const getFeedbackBookingByBookingId = (bookingId) => api.get(`/feedback-bookings/${bookingId}`);
 
+// blogApi
+export const getAllBlogs = (params) => api.get('/news', { params });
+export const getBlogById = (id) => api.get(`/news/${id}`);
+
+
 export default api;

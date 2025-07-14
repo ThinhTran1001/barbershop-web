@@ -25,6 +25,10 @@ const barberAbsenceRoutes = require('./routes/barber-absence.route');
 const barberScheduleRoutes = require('./routes/barberSchedule.route');
 const bookingFeedbackRoutes = require('./routes/booking-feedback.route');
 const feedbackBookingRoutes = require('./routes/feedbackBooking.route');
+const blogRoutes = require('./routes/blog.route')
+const contactRoutes = require('./routes/contact.route')
+const statisticRoutes = require('./routes/statistic.route')
+
 
 const cors = require('cors');
 const cookieParser = require("cookie-parser");
@@ -63,6 +67,10 @@ app.use('/api/barber-absences', barberAbsenceRoutes);
 app.use('/api/barber-schedule', barberScheduleRoutes);
 app.use('/api/booking-feedback', bookingFeedbackRoutes);
 app.use('/api/feedback-bookings', feedbackBookingRoutes);
+app.use('/api/news', blogRoutes);
+app.use('/api/contact', contactRoutes)
+app.use('/api/statistics', statisticRoutes);
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

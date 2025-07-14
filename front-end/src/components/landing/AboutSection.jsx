@@ -1,10 +1,13 @@
 import React from "react";
 import { Button } from "antd";
+import { useNavigate } from "react-router-dom";
 import img1 from "../../assets/images/about1.jpg";
 import img2 from "../../assets/images/about2.jpg";
 import "../../css/landing/aboutsection.css";
 
 export default function AboutSection() {
+  const navigate = useNavigate();
+
   return (
     <section className="about-section">
       <div className="container">
@@ -32,7 +35,7 @@ export default function AboutSection() {
               Dịch vụ của chúng tôi bao gồm nhiều kỹ thuật và quy trình – từ cạo râu thẳng và tạo mẫu tóc đến chăm sóc râu và chải lông mày. Đến với chúng tôi, bạn có cơ hội được chăm sóc mái tóc quý giá của mình, nhâm nhi rượu whisky hảo hạng và nghe những bản nhạc hay.
             </p>
             
-            <Button className="about-button">
+            <Button className="about-button" onClick={() => navigate('/about')}>
               ➝ Xem thêm
             </Button>
           </div>

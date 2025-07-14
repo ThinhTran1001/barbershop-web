@@ -23,8 +23,6 @@ export default function UserHeader() {
   const { getCartCount: getGuestCartCount } = useCart();
   const { getCartCount: getUserCartCount } = useUserCart();
   const navigate = useNavigate();
-
-  // Dùng cart count theo trạng thái đăng nhập
   const getCartCount = () => {
     return user ? getUserCartCount() : getGuestCartCount();
   };
@@ -32,6 +30,30 @@ export default function UserHeader() {
   const handleLogout = async () => {
     await logout();
     navigate("/login");
+  };
+
+  const scrollToSection = (sectionId) => {
+    if (window.location.pathname !== '/') {
+      navigate('/');
+      setTimeout(() => {
+        scrollToElement(sectionId);
+      }, 100);
+    } else {
+      scrollToElement(sectionId);
+    }
+  };
+
+  const scrollToElement = (elementId) => {
+    const element = document.getElementById(elementId);
+    if (element) {
+      const headerHeight = 70; 
+      const elementPosition = element.offsetTop - headerHeight;
+      
+      window.scrollTo({
+        top: elementPosition,
+        behavior: 'smooth'
+      });
+    }
   };
 
   const userMenuItems = [
@@ -92,7 +114,11 @@ export default function UserHeader() {
           }}
           defaultSelectedKeys={["home"]}
           onClick={({ key }) => {
-            navigate(`/${key === "home" ? "" : key}`);
+            if (key === "services") {
+              scrollToSection("services");
+            } else {
+              navigate(`/${key === "home" ? "" : key}`);
+            }
           }}
         />
       </div>
