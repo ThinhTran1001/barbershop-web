@@ -1,12 +1,6 @@
 import React, { useState } from "react";
 import { Form, Button } from "react-bootstrap";
 import ToastNotify from "../contact/ToastNotifyContact";
-import emailjs from "emailjs-com";
-
-// EmailJS config
-const SERVICE_ID = "service_b5z5ow3";
-const TEMPLATE_ID = "template_vhsdj7n";
-const PUBLIC_KEY = "_yNtuCDbHtnDUgmvw";
 
 const ContactForm = () => {
   const [formData, setFormData] = useState({
@@ -26,21 +20,22 @@ const ContactForm = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-
-    const templateParams = {
-      fullname: formData.fullname,
-      phone: formData.phone,
-      email: formData.email,
-      message: formData.message,
-      time: new Date().toLocaleString("vi-VN"),
-    };
-
-    emailjs
-      .send(SERVICE_ID, TEMPLATE_ID, templateParams, PUBLIC_KEY)
-      .then((result) => {
-        console.log("Email sent:", result.text);
+  
+    try {
+      const response = await fetch("http://localhost:3000/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...formData,
+          time: new Date().toLocaleString("vi-VN"),
+        }),
+      });
+  
+      if (response.ok) {
         setShowToast(true);
         setFormData({
           fullname: "",
@@ -48,12 +43,15 @@ const ContactForm = () => {
           email: "",
           message: "",
         });
-      })
-      .catch((error) => {
-        console.error("Email error:", error.text);
-        alert("Đã xảy ra lỗi khi gửi email. Vui lòng thử lại sau.");
-      });
+      } else {
+        alert("Đã xảy ra lỗi khi gửi liên hệ.");
+      }
+    } catch (error) {
+      console.error("Lỗi gửi liên hệ:", error);
+      alert("Không thể kết nối đến máy chủ.");
+    }
   };
+  
 
   return (
     <>

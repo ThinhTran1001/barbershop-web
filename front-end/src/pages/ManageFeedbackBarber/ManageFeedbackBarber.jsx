@@ -57,7 +57,7 @@ const ManageFeedbackBarber = () => {
         page,
         limit,
         ...(statusFilter !== 'All' && { status: statusFilter.toLowerCase() }),
-        ...(ratingFilter !== 'All' && { rating: ratingFilter }),
+        ...(ratingFilter !== 'All' && { rating: parseInt(ratingFilter) }),
         ...(barberFilter !== 'All' && { barberId: barberFilter }),
         ...(bookingFilter !== 'All' && { bookingId: bookingFilter }),
         ...(searchKeyword?.trim() && { search: searchKeyword.trim() }),
@@ -69,7 +69,16 @@ const ManageFeedbackBarber = () => {
 
       const response = await getBarberFeedbacks(queryParams);
       const rawData = response.data;
-      const data = Array.isArray(rawData?.data) ? rawData.data : Array.isArray(rawData) ? rawData : [];
+      let data = Array.isArray(rawData?.data) ? rawData.data : Array.isArray(rawData) ? rawData : [];
+      
+      // Frontend filtering cho rating nếu backend không hỗ trợ
+      if (ratingFilter !== 'All') {
+        data = data.filter(fb => {
+          const rating = fb.rating || fb.stars || fb.score;
+          return rating && parseInt(rating) === parseInt(ratingFilter);
+        });
+      }
+      
       const total = rawData?.total || data.length;
 
       setFeedbacks(data);
@@ -206,7 +215,6 @@ const ManageFeedbackBarber = () => {
         feedback={selectedFeedback}
       />
 
-      {/* Modal xác nhận xóa */}
       <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>
         <Modal.Header closeButton>
           <Modal.Title>
@@ -223,7 +231,6 @@ const ManageFeedbackBarber = () => {
         </Modal.Footer>
       </Modal>
 
-      {/* Modal xác nhận duyệt/hủy duyệt */}
       <Modal show={showApproveModal} onHide={() => setShowApproveModal(false)} centered>
         <Modal.Header closeButton>
           <Modal.Title>
@@ -242,7 +249,6 @@ const ManageFeedbackBarber = () => {
         </Modal.Footer>
       </Modal>
 
-      {/* Bootstrap Toast thông báo */}
       <ToastContainer position="top-end" className="p-3">
         <Toast show={toast.show} bg={toast.variant} onClose={() => setToast({ ...toast, show: false })} delay={3000} autohide>
           <Toast.Body className="text-white">{toast.message}</Toast.Body>

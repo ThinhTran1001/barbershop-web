@@ -1,13 +1,13 @@
 import React from 'react';
 import { Row, Col, Select, DatePicker, Input } from 'antd';
-import { SearchOutlined, StarFilled, UserOutlined, FileTextOutlined, ScissorOutlined } from '@ant-design/icons';
+import { SearchOutlined, StarFilled, FileTextOutlined, ScissorOutlined } from '@ant-design/icons';
 
 const { RangePicker } = DatePicker;
 
-const FeedbackBarberFilters = ({ 
-  statusFilter, 
-  setStatusFilter, 
-  ratingFilter, 
+const FeedbackBarberFilters = ({
+  statusFilter,
+  setStatusFilter,
+  ratingFilter,
   setRatingFilter,
   barberFilter,
   setBarberFilter,
@@ -22,14 +22,17 @@ const FeedbackBarberFilters = ({
   // Rating options
   const ratingOptions = [
     { label: 'All Stars', value: 'All' },
-    ...Array.from({ length: 5 }, (_, i) => ({
-      label: (
-        <span>
-          <StarFilled style={{ color: '#faad14' }} /> {5 - i} Star{5 - i > 1 ? 's' : ''}
-        </span>
-      ),
-      value: 5 - i
-    }))
+    ...Array.from({ length: 5 }, (_, i) => {
+      const val = 5 - i;
+      return {
+        label: (
+          <span>
+            <StarFilled style={{ color: '#faad14' }} /> {val} Star{val > 1 ? 's' : ''}
+          </span>
+        ),
+        value: val
+      };
+    })
   ];
 
   // Barber options
@@ -71,7 +74,7 @@ const FeedbackBarberFilters = ({
           allowClear
         />
       </Col>
-      
+
       <Col xs={12} sm={6} md={4} lg={3}>
         <Select
           style={{ width: '100%' }}
@@ -84,7 +87,7 @@ const FeedbackBarberFilters = ({
           ]}
         />
       </Col>
-      
+
       <Col xs={12} sm={6} md={4} lg={3}>
         <Select
           style={{ width: '100%' }}
@@ -92,6 +95,7 @@ const FeedbackBarberFilters = ({
           onChange={setRatingFilter}
           placeholder="All Stars"
           options={ratingOptions}
+          optionLabelProp="label" // 👈 THÊM DÒNG NÀY ĐỂ FIX BUG
         />
       </Col>
 
@@ -122,7 +126,7 @@ const FeedbackBarberFilters = ({
           }
         />
       </Col>
-      
+
       <Col xs={24} sm={12} md={8} lg={4}>
         <RangePicker
           style={{ width: '100%' }}

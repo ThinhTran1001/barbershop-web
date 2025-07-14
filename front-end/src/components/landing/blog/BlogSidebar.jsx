@@ -1,17 +1,24 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Typography, List, Divider, Menu, Card } from 'antd';
 
 const { Title } = Typography;
 
 const BlogSidebar = ({ onCategorySelect }) => {
+  const [selectedKey, setSelectedKey] = useState(null);
+
   const popular = ['Kiểu tóc Side Part đẹp', 'Cách vuốt tóc đúng cách', 'Dưỡng da cho nam'];
 
+  const categoryMap = {
+    '1': 'Tóc đẹp mỗi ngày',
+    '2': 'Da đẹp mỗi ngày',
+  };
+
   const handleMenuClick = ({ key }) => {
-    const categoryMap = {
-      '1': 'Tóc đẹp mỗi ngày',
-      '2': 'Da đẹp mỗi ngày',
-    };
-    if (onCategorySelect) {
+    if (key === selectedKey) {
+      setSelectedKey(null);
+      onCategorySelect(null);
+    } else {
+      setSelectedKey(key);
       onCategorySelect(categoryMap[key]);
     }
   };
@@ -22,6 +29,7 @@ const BlogSidebar = ({ onCategorySelect }) => {
         <Title level={5}>Chuyên mục</Title>
         <Menu
           mode="vertical"
+          selectedKeys={selectedKey ? [selectedKey] : []}
           onClick={handleMenuClick}
           items={[
             { key: '1', label: 'Tóc đẹp mỗi ngày' },

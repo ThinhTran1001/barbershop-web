@@ -8,6 +8,7 @@ import BookingForm from "../../components/landing/Booking";
 import '../../css/landing/container.css'
 import ChatWidget from "../../components/chatbot/ChatWidget";
 import ShopItems from "../../components/landing/productlistd";
+import ServiceBooking from "../ServiceBooking/ServiceBooking";
 
 export default function Landing() {
   return (
@@ -17,6 +18,9 @@ export default function Landing() {
         <AboutSection />
 
         {/* <Services /> */}
+        <div id="services">
+          <ServiceBooking/>
+        </div>
         <br></br>   
         <br></br>
         <ShopItems />

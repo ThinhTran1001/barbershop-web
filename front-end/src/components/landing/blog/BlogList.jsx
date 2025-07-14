@@ -1,51 +1,54 @@
 import React, { useState, useEffect } from 'react';
-import { Pagination } from 'antd';
+import { Pagination, message } from 'antd';
+import { useNavigate } from 'react-router-dom';
 import BlogCard from './BlogCard';
-import { blogPosts } from './BlogData';
+import { getAllBlogs } from '../../../services/api';
 
 const POSTS_PER_PAGE = 5;
 
 const BlogList = ({ sort, category }) => {
   const [currentPage, setCurrentPage] = useState(1);
-  const [filteredPosts, setFilteredPosts] = useState([]);
+  const [posts, setPosts] = useState([]);
+  const [total, setTotal] = useState(0);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    let posts = [...blogPosts];
+    const fetchBlogs = async () => {
+      try {
+        const res = await getAllBlogs({
+          page: currentPage,
+          limit: POSTS_PER_PAGE,
+          sort,
+          category,
+        });
 
-   
-    if (category) {
-      posts = posts.filter(post => post.category === category);
-    }
+        setPosts(res.data?.data || []);
+        setTotal(res.data?.total || 0);
+      } catch {
+        message.error('Lỗi tải blog');
+      }
+    };
 
-
-    if (sort === 'date') {
-      posts.sort((a, b) => {
-        const dateA = new Date(a.date.split('/').reverse().join('/'));
-        const dateB = new Date(b.date.split('/').reverse().join('/'));
-        return dateB - dateA;
-      });
-    } else if (sort === 'views') {
-      posts.sort((a, b) => (b.views || 0) - (a.views || 0));
-    }
-
-    setFilteredPosts(posts);
-    setCurrentPage(1); 
-  }, [sort, category]);
-
-  const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
-  const currentPosts = filteredPosts.slice(startIndex, startIndex + POSTS_PER_PAGE);
+    fetchBlogs();
+  }, [sort, category, currentPage]);
 
   return (
     <>
-      {currentPosts.map(post => (
-        <BlogCard key={post.id} {...post} />
+      {posts.map((post) => (
+        <div
+          key={post._id}
+          onClick={() => navigate(`/news/${post._id}`)}
+          style={{ cursor: 'pointer' }}
+        >
+          <BlogCard {...post} />
+        </div>
       ))}
 
       <div style={{ textAlign: 'center', marginTop: 24 }}>
         <Pagination
           current={currentPage}
           pageSize={POSTS_PER_PAGE}
-          total={filteredPosts.length}
+          total={total}
           onChange={setCurrentPage}
         />
       </div>

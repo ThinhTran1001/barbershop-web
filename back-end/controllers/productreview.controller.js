@@ -1,12 +1,36 @@
-const ProductReview = require('../models/ProductReview.model'); // Fixed: Match exact file name casing
+const ProductReview = require('../models/ProductReview.model');
+const Product = require('../models/product.model'); 
+
+// Hàm tính toán và cập nhật rating của sản phẩm
+const updateProductRating = async (productId) => {
+  try {
+    const approvedReviews = await ProductReview.find({ productId, isApproved: true });
+    if (approvedReviews.length === 0) {
+      await Product.findByIdAndUpdate(productId, { rating: 0, feedbackCount: 0 });
+      return;
+    }
+
+    const totalRating = approvedReviews.reduce((sum, review) => sum + review.rating, 0);
+    const newRating = totalRating / approvedReviews.length;
+    const newFeedbackCount = approvedReviews.length;
+
+    await Product.findByIdAndUpdate(productId, {
+      rating: newRating,
+      feedbackCount: newFeedbackCount
+    });
+  } catch (error) {
+    console.error('Error updating product rating:', error);
+    throw error;
+  }
+};
 
 // GET - Lấy tất cả reviews
 const getAllReviews = async (req, res) => {
   try {
     const reviews = await ProductReview.find()
-      .populate('userId', 'name email') // Populate user info
-      .populate('productId', 'name') // Populate product info
-      .sort({ createdAt: -1 }); // Sắp xếp theo thời gian tạo mới nhất
+      .populate('userId', 'name email')
+      .populate('productId', 'name rating feedbackCount') // Thêm rating và feedbackCount
+      .sort({ createdAt: -1 });
     
     res.status(200).json({
       success: true,
@@ -28,7 +52,7 @@ const getReviewsByProduct = async (req, res) => {
     const { productId } = req.params;
     const reviews = await ProductReview.find({ productId })
       .populate('userId', 'name email')
-      .populate('productId', 'name')
+      .populate('productId', 'name rating feedbackCount')
       .sort({ createdAt: -1 });
     
     res.status(200).json({
@@ -50,7 +74,6 @@ const createReview = async (req, res) => {
   try {
     const { userId, productId, rating, comment, images } = req.body;
     
-    // Validate required fields
     if (!userId || !productId || !rating) {
       return res.status(400).json({
         success: false,
@@ -64,15 +87,14 @@ const createReview = async (req, res) => {
       rating,
       comment: comment || '',
       images: images || [],
-      isApproved: false // Mặc định chưa được duyệt
+      isApproved: false
     });
 
     const savedReview = await newReview.save();
     
-    // Populate để trả về đầy đủ thông tin
     const populatedReview = await ProductReview.findById(savedReview._id)
       .populate('userId', 'name email')
-      .populate('productId', 'name');
+      .populate('productId', 'name rating feedbackCount');
 
     res.status(201).json({
       success: true,
@@ -100,7 +122,7 @@ const approveReview = async (req, res) => {
       { new: true }
     )
     .populate('userId', 'name email')
-    .populate('productId', 'name');
+    .populate('productId', 'name rating feedbackCount');
 
     if (!updatedReview) {
       return res.status(404).json({
@@ -108,6 +130,9 @@ const approveReview = async (req, res) => {
         message: 'Review not found'
       });
     }
+
+    // Cập nhật rating của sản phẩm
+    await updateProductRating(updatedReview.productId);
 
     res.status(200).json({
       success: true,
@@ -124,7 +149,7 @@ const approveReview = async (req, res) => {
   }
 };
 
-// PATCH - Unapprove review (HỦY DUYỆT)
+// PATCH - Unapprove review
 const unapproveReview = async (req, res) => {
   try {
     const { id } = req.params;
@@ -135,7 +160,7 @@ const unapproveReview = async (req, res) => {
       { new: true }
     )
     .populate('userId', 'name email')
-    .populate('productId', 'name');
+    .populate('productId', 'name rating feedbackCount');
 
     if (!updatedReview) {
       return res.status(404).json({
@@ -143,6 +168,9 @@ const unapproveReview = async (req, res) => {
         message: 'Review not found'
       });
     }
+
+    // Cập nhật rating của sản phẩm
+    await updateProductRating(updatedReview.productId);
 
     res.status(200).json({
       success: true,
@@ -164,13 +192,19 @@ const deleteReview = async (req, res) => {
   try {
     const { id } = req.params;
     
-    const deletedReview = await ProductReview.findByIdAndDelete(id);
-
+    const deletedReview = await ProductReview.findById(id);
     if (!deletedReview) {
       return res.status(404).json({
         success: false,
         message: 'Review not found'
       });
+    }
+
+    await deletedReview.remove();
+
+    // Cập nhật rating của sản phẩm nếu review đã approve
+    if (deletedReview.isApproved) {
+      await updateProductRating(deletedReview.productId);
     }
 
     res.status(200).json({
@@ -192,6 +226,6 @@ module.exports = {
   getReviewsByProduct,
   createReview,
   approveReview,
-  unapproveReview, 
+  unapproveReview,
   deleteReview
 };
