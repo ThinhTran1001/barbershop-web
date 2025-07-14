@@ -27,15 +27,15 @@ const FeedbackProductModal = ({ visible, onCancel, feedback }) => {
           </Col>
           <Col span={12}>
             <Text strong>Product:</Text>
-            <div className="feedback-modal-data">{feedback.productId?.name || 'N/A'}</div>
+            <div className="feedback-modal-data">{feedback.productId?.name || 'Unknown Product'}</div>
           </Col>
         </Row>
 
         <div className="feedback-modal-section">
           <Text strong>Rating:</Text>
           <div className="feedback-modal-rating">
-            <Rate disabled value={feedback.rating} />
-            <Text strong className="feedback-modal-rating-text">{feedback.rating}/5</Text>
+            <Rate disabled value={feedback.rating || 0} />
+            <Text strong className="feedback-modal-rating-text">{feedback.rating || 0}/5</Text>
           </div>
         </div>
 
@@ -79,7 +79,7 @@ const FeedbackProductModal = ({ visible, onCancel, feedback }) => {
           <Col span={12}>
             <Text strong>Created At:</Text>
             <div className="feedback-modal-date-container">
-              {new Date(feedback.createdAt).toLocaleString()}
+              {feedback.createdAt ? new Date(feedback.createdAt).toLocaleString() : 'N/A'}
             </div>
           </Col>
         </Row>

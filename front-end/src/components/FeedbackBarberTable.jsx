@@ -36,11 +36,9 @@ const FeedbackBarberTable = ({
       dataIndex: 'barberId',
       key: 'barberId',
       render: (barber) => (
-        <Space>
-          <span style={{ fontWeight: 500 }}>
-            {barber?.name || 'Unknown Barber'}
-          </span>
-        </Space>
+        <span style={{ fontWeight: 500 }}>
+          {barber?.name || 'Unknown Barber'}
+        </span>
       ),
       width: 160,
     },
@@ -62,7 +60,7 @@ const FeedbackBarberTable = ({
       key: 'rating',
       render: (rating) => (
         <Space>
-          <Rate disabled value={rating || 0} />
+          <Rate disabled allowHalf value={rating || 0} />
           <span style={{ fontWeight: 'bold', marginLeft: 8 }}>{rating || 0}</span>
         </Space>
       ),
@@ -76,9 +74,9 @@ const FeedbackBarberTable = ({
       render: (text) => (
         <Tooltip title={text || 'No comment'}>
           <div style={{
-            maxWidth: 250, 
+            maxWidth: 250,
             overflow: 'hidden',
-            textOverflow: 'ellipsis', 
+            textOverflow: 'ellipsis',
             whiteSpace: 'nowrap'
           }}>
             {text || 'No comment'}
@@ -91,54 +89,61 @@ const FeedbackBarberTable = ({
       title: 'Images',
       dataIndex: 'images',
       key: 'images',
-      render: (images) => (
-        <div style={{ position: 'relative', display: 'inline-block' }}>
-          {images?.length ? (
-            <>
-              <Image
-                width={50}
-                height={50}
-                src={images[0]}
-                style={{ borderRadius: 6, objectFit: 'cover' }}
-                preview={{ src: images[0] }}
-              />
-              {images.length > 1 && (
-                <div style={{
-                  position: 'absolute', 
-                  top: -6, 
-                  right: -6, 
-                  backgroundColor: '#ff4d4f',
-                  color: 'white', 
-                  borderRadius: '50%', 
-                  width: 18, 
-                  height: 18,
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  fontSize: 11, 
-                  fontWeight: 'bold'
-                }}>
-                  {images.length}
-                </div>
-              )}
-            </>
-          ) : (
-            <div style={{
-              width: 50, 
-              height: 50, 
-              backgroundColor: '#f5f5f5', 
-              borderRadius: 6,
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              color: '#999',
-              fontSize: 12
-            }}>
-              No Image
-            </div>
-          )}
-        </div>
-      ),
+      render: (images, record) => {
+        const imageSrc = images?.[0] || 'https://via.placeholder.com/50x50?text=No+Img';
+        const showSpecialBadge = record.rating === 4.8;
+
+        return (
+          <div style={{ position: 'relative', display: 'inline-block' }}>
+            <Image
+              width={50}
+              height={50}
+              src={imageSrc}
+              style={{ borderRadius: 6, objectFit: 'cover' }}
+              preview={{ src: imageSrc }}
+            />
+            {showSpecialBadge && (
+              <div style={{
+                position: 'absolute',
+                top: -6,
+                right: -6,
+                backgroundColor: '#ff4d4f',
+                color: 'white',
+                borderRadius: '50%',
+                width: 22,
+                height: 22,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 12,
+                fontWeight: 'bold',
+                boxShadow: '0 0 2px rgba(0,0,0,0.3)'
+              }}>
+                4.8
+              </div>
+            )}
+            {!showSpecialBadge && images?.length > 1 && (
+              <div style={{
+                position: 'absolute',
+                top: -6,
+                right: -6,
+                backgroundColor: '#ff4d4f',
+                color: 'white',
+                borderRadius: '50%',
+                width: 18,
+                height: 18,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 11,
+                fontWeight: 'bold'
+              }}>
+                {images.length}
+              </div>
+            )}
+          </div>
+        );
+      },
       width: 80,
     },
     {
@@ -146,8 +151,8 @@ const FeedbackBarberTable = ({
       dataIndex: 'isApproved',
       key: 'isApproved',
       render: (isApproved) => (
-        <Tag 
-          color={isApproved ? 'success' : 'warning'} 
+        <Tag
+          color={isApproved ? 'success' : 'warning'}
           icon={isApproved ? <CheckOutlined /> : <CloseOutlined />}
         >
           {isApproved ? 'Approved' : 'Pending'}
@@ -174,10 +179,10 @@ const FeedbackBarberTable = ({
       render: (_, record) => (
         <Space size="small">
           <Tooltip title="View Details">
-            <Button 
-              type="text" 
-              icon={<EyeOutlined />} 
-              onClick={() => handleViewDetail(record)} 
+            <Button
+              type="text"
+              icon={<EyeOutlined />}
+              onClick={() => handleViewDetail(record)}
             />
           </Tooltip>
           <Tooltip title={record.isApproved ? 'Unapprove' : 'Approve'}>
@@ -189,11 +194,11 @@ const FeedbackBarberTable = ({
             />
           </Tooltip>
           <Tooltip title="Delete">
-            <Button 
-              type="text" 
-              icon={<DeleteOutlined />} 
-              danger 
-              onClick={() => handleDelete(record)} 
+            <Button
+              type="text"
+              icon={<DeleteOutlined />}
+              danger
+              onClick={() => handleDelete(record)}
             />
           </Tooltip>
         </Space>

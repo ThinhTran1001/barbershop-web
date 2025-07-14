@@ -22,7 +22,10 @@ const discountRoutes = require('./routes/discounts.route');
 const bookingRoutes = require('./routes/booking.route');
 const feedbackOrderRoutes = require('./routes/feedbackOrder.route'); 
 const feedbackBookingRoutes = require('./routes/feedbackBooking.route');
+const blogRoutes = require('./routes/blog.route')
+const contactRoutes = require('./routes/contact.route')
 const statisticRoutes = require('./routes/statistic.route')
+
 
 const cors = require('cors');
 const cookieParser = require("cookie-parser");
@@ -58,7 +61,10 @@ app.use('/api/discounts', discountRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/feedback-orders', feedbackOrderRoutes); 
 app.use('/api/feedback-bookings', feedbackBookingRoutes);
+app.use('/api/news', blogRoutes);
+app.use('/api/contact', contactRoutes)
 app.use('/api/statistics', statisticRoutes);
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

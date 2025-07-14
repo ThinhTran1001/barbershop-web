@@ -161,7 +161,12 @@ const ManagingService = () => {
     { title: "Service Name", dataIndex: "name", key: "name" },
     { title: "Price", dataIndex: "price", key: "price", render: (text) => `${text} VND` },
     { title: "Description", dataIndex: "description", key: "description" },
-    { title: "Steps", dataIndex: "steps", key: "steps" },
+    {
+      title: "Steps",
+      dataIndex: "steps",
+      key: "steps",
+      render: (steps) => Array.isArray(steps) ? steps.join(", ") : steps || "N/A",
+    },
     { title: "Duration (minutes)", dataIndex: "durationMinutes", key: "durationMinutes" },
     {
       title: "Suggested For",
@@ -215,6 +220,7 @@ const ManagingService = () => {
 
   return (
     <div className="managing-service-container">
+      {/* Search & Filter */}
       <div style={{ marginBottom: 16, display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "space-between" }}>
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap", flex: 1 }}>
           <Input
@@ -257,11 +263,10 @@ const ManagingService = () => {
             <Option value="inactive">Inactive</Option>
           </Select>
         </div>
-        <Button type="primary" onClick={() => showModal()}>
-          Add Service
-        </Button>
+        <Button type="primary" onClick={() => showModal()}>Add Service</Button>
       </div>
 
+      {/* Table */}
       <Table
         rowKey="_id"
         dataSource={filteredServices}
@@ -279,20 +284,13 @@ const ManagingService = () => {
         }}
       />
 
-      <div
-        className={`modal fade ${isModalVisible ? "show d-block" : ""}`}
-        tabIndex="-1"
-        style={{ backgroundColor: isModalVisible ? "rgba(0,0,0,0.5)" : "transparent" }}
-      >
+      {/* Modal Form */}
+      <div className={`modal fade ${isModalVisible ? "show d-block" : ""}`} tabIndex="-1" style={{ backgroundColor: isModalVisible ? "rgba(0,0,0,0.5)" : "transparent" }}>
         <div className="modal-dialog modal-lg">
           <div className="modal-content">
             <div className="modal-header">
               <h5 className="modal-title">{editingService ? "Edit Service" : "Add Service"}</h5>
-              <button
-                type="button"
-                className="btn-close"
-                onClick={handleCancel}
-              ></button>
+              <button type="button" className="btn-close" onClick={handleCancel}></button>
             </div>
             <div className="modal-body">
               <Form form={form} layout="vertical">
@@ -300,31 +298,20 @@ const ManagingService = () => {
               </Form>
             </div>
             <div className="modal-footer">
-              <button type="button" className="btn btn-secondary" onClick={handleCancel}>
-                Cancel
-              </button>
-              <button type="button" className="btn btn-primary" onClick={handleSave}>
-                Save
-              </button>
+              <button type="button" className="btn btn-secondary" onClick={handleCancel}>Cancel</button>
+              <button type="button" className="btn btn-primary" onClick={handleSave}>Save</button>
             </div>
           </div>
         </div>
       </div>
 
-      <div
-        className={`modal fade ${isViewModalVisible ? "show d-block" : ""}`}
-        tabIndex="-1"
-        style={{ backgroundColor: isViewModalVisible ? "rgba(0,0,0,0.5)" : "transparent" }}
-      >
+      {/* View Modal */}
+      <div className={`modal fade ${isViewModalVisible ? "show d-block" : ""}`} tabIndex="-1" style={{ backgroundColor: isViewModalVisible ? "rgba(0,0,0,0.5)" : "transparent" }}>
         <div className="modal-dialog">
           <div className="modal-content">
             <div className="modal-header">
               <h5 className="modal-title">View Service Details</h5>
-              <button
-                type="button"
-                className="btn-close"
-                onClick={handleViewCancel}
-              ></button>
+              <button type="button" className="btn-close" onClick={handleViewCancel}></button>
             </div>
             <div className="modal-body">
               {viewingService && (
@@ -332,7 +319,7 @@ const ManagingService = () => {
                   <p><strong>Service Name:</strong> {viewingService.name}</p>
                   <p><strong>Price:</strong> {viewingService.price} VND</p>
                   <p><strong>Description:</strong> {viewingService.description}</p>
-                  <p><strong>Steps:</strong> {viewingService.steps}</p>
+                  <p><strong>Steps:</strong> {(viewingService.steps || []).join(", ")}</p>
                   <p><strong>Duration (minutes):</strong> {viewingService.durationMinutes}</p>
                   <p><strong>Suggested For:</strong> {(viewingService.suggestedFor || []).join(", ")}</p>
                   <p><strong>Status:</strong> {viewingService.isActive ? "Active" : "Inactive"}</p>
@@ -340,104 +327,56 @@ const ManagingService = () => {
               )}
             </div>
             <div className="modal-footer">
-              <button type="button" className="btn btn-secondary" onClick={handleViewCancel}>
-                Close
-              </button>
+              <button type="button" className="btn btn-secondary" onClick={handleViewCancel}>Close</button>
             </div>
           </div>
         </div>
       </div>
 
-      <div
-        className={`modal fade ${showConfirmModal ? "show d-block" : ""}`}
-        tabIndex="-1"
-        style={{ backgroundColor: showConfirmModal ? "rgba(0,0,0,0.5)" : "transparent" }}
-      >
+      {/* Confirm Modal */}
+      <div className={`modal fade ${showConfirmModal ? "show d-block" : ""}`} tabIndex="-1" style={{ backgroundColor: showConfirmModal ? "rgba(0,0,0,0.5)" : "transparent" }}>
         <div className="modal-dialog">
           <div className="modal-content">
             <div className="modal-header">
               <h5 className="modal-title">Confirm {modalAction === "edit" ? "Edit" : "Add"} Service</h5>
-              <button
-                type="button"
-                className="btn-close"
-                onClick={() => setShowConfirmModal(false)}
-              ></button>
+              <button type="button" className="btn-close" onClick={() => setShowConfirmModal(false)}></button>
             </div>
             <div className="modal-body">
               <p>Are you sure you want to {modalAction === "edit" ? "edit" : "add"} this service?</p>
             </div>
             <div className="modal-footer">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setShowConfirmModal(false)}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={confirmSave}
-              >
-                Confirm
-              </button>
+              <button type="button" className="btn btn-secondary" onClick={() => setShowConfirmModal(false)}>Cancel</button>
+              <button type="button" className="btn btn-primary" onClick={confirmSave}>Confirm</button>
             </div>
           </div>
         </div>
       </div>
 
-      <div
-        className={`modal fade ${showDeleteConfirmModal ? "show d-block" : ""}`}
-        tabIndex="-1"
-        style={{ backgroundColor: showDeleteConfirmModal ? "rgba(0,0,0,0.5)" : "transparent" }}
-      >
+      {/* Delete Modal */}
+      <div className={`modal fade ${showDeleteConfirmModal ? "show d-block" : ""}`} tabIndex="-1" style={{ backgroundColor: showDeleteConfirmModal ? "rgba(0,0,0,0.5)" : "transparent" }}>
         <div className="modal-dialog">
           <div className="modal-content">
             <div className="modal-header">
               <h5 className="modal-title">Confirm Deactivation</h5>
-              <button
-                type="button"
-                className="btn-close"
-                onClick={() => setShowDeleteConfirmModal(false)}
-              ></button>
+              <button type="button" className="btn-close" onClick={() => setShowDeleteConfirmModal(false)}></button>
             </div>
             <div className="modal-body">
               <p>Are you sure you want to deactivate this service?</p>
             </div>
             <div className="modal-footer">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setShowDeleteConfirmModal(false)}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn btn-danger"
-                onClick={confirmDelete}
-              >
-                Deactivate
-              </button>
+              <button type="button" className="btn btn-secondary" onClick={() => setShowDeleteConfirmModal(false)}>Cancel</button>
+              <button type="button" className="btn btn-danger" onClick={confirmDelete}>Deactivate</button>
             </div>
           </div>
         </div>
       </div>
 
+      {/* Toast Notification */}
       <div className="position-fixed top-0 end-0 p-3" style={{ zIndex: 1050 }}>
-        <div
-          className={`toast ${showSuccessToast ? "show" : ""}`}
-          role="alert"
-          aria-live="assertive"
-          aria-atomic="true"
-        >
+        <div className={`toast ${showSuccessToast ? "show" : ""}`} role="alert" aria-live="assertive" aria-atomic="true">
           <div className="toast-header">
             <strong className="me-auto">Notification</strong>
-            <button
-              type="button"
-              className="btn-close"
-              onClick={() => setShowSuccessToast(false)}
-            ></button>
+            <button type="button" className="btn-close" onClick={() => setShowSuccessToast(false)}></button>
           </div>
           <div className="toast-body">{successMessage}</div>
         </div>

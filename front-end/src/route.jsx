@@ -11,7 +11,7 @@ import ForgotPasswordForm from "./components/auth/ForgotPasswordForm.jsx";
 import ResetPasswordForm from "./components/auth/ResetPasswordForm.jsx";
 import ProductList from "./pages/home/prodductList.jsx";
 import ProductDetail from "./components/product/ProductDetail.jsx";
-import ServiceBooking from "./pages/ServiceBooking/ServiceBooking.jsx";
+// import ServiceBooking from "./pages/ServiceBooking/ServiceBooking.jsx";
 import Checkout from "./pages/checkout/Checkout.jsx";
 import CheckoutGuest from "./pages/checkout/CheckoutGuest.jsx";
 import OrderSuccess from "./pages/checkout/OrderSuccess.jsx";
@@ -42,6 +42,10 @@ import MyBookingsPage from "./pages/ServiceBooking/MyBookingsPage.jsx";
 import BarberBookingPage from "./pages/barber/BarberBookingPage.jsx";
 import FeedbackProduct from "./pages/FeedbackProduct/FeedbackProduct.jsx";
 import OauthSuccess from "./pages/auth/OauthSuccess.jsx";
+import AboutPage from "./components/landing/about/About.jsx"
+import BlogPage from "./components/landing/blog/BlogPage.jsx"
+import BlogDetail from "./components/landing/blog/BlogDetail.jsx";
+import ContactPage from "./components/landing/contact/ContactPage.jsx"
 import Statistics from "./pages/dashboard/statistics.jsx";
 import { element } from "prop-types";
 
@@ -54,7 +58,7 @@ const publicRoutes = {
     {path: "/register", element: <Register/>},
     {path: "/products", element: <ProductList/>},
     {path: "/forget", element: <ProductList/>},
-    {path: "/services", element: <ServiceBooking/>},
+    // {path: "/services", element: <ServiceBooking/>},
     { path: "/forgot-password", element: <ForgotPasswordForm /> },
     { path: "/reset-password", element: <ResetPasswordForm /> },
     { path: "/profile", element: <CustomerProfile /> },
@@ -63,6 +67,7 @@ const publicRoutes = {
     { path: "/choose-barber", element: <BarberSelectionPage /> },
     { path: "/choose-time-slot", element: <TimeSlotPickerPage /> },
     { path: "/booking-info", element: <BookingPage /> },
+    
   ],
 };
 
@@ -116,7 +121,7 @@ const router = createBrowserRouter([
       { path: "/oauth-success", element: <OauthSuccess /> },
       { path: "/products", element: <ProductList /> },
       { path: "/products/:id", element: <ProductDetail /> },
-      { path: "/services", element: <ServiceBooking /> },
+      // { path: "/services", element: <ServiceBooking /> },
       { path: "/checkout", element: <Checkout /> },
       { path: "/checkout-guest", element: <CheckoutGuest /> },
       { path: "/order-success", element: <OrderSuccess /> },
@@ -129,6 +134,10 @@ const router = createBrowserRouter([
       { path: "/choose-time-slot", element: <TimeSlotPickerPage /> },
       { path: "/booking-info", element: <BookingInfoPage /> },
       { path: "/my-booking", element: <MyBookingsPage /> },
+      {path: "/about", element: <AboutPage/>},
+      {path: "/news", element: <BlogPage/>},
+      { path: "/news/:id", element: <BlogDetail /> },
+      {path: "/contact", element: <ContactPage/>},
 
       // Customer protected routes
       {
