@@ -46,6 +46,8 @@ import AboutPage from "./components/landing/about/About.jsx"
 import BlogPage from "./components/landing/blog/BlogPage.jsx"
 import BlogDetail from "./components/landing/blog/BlogDetail.jsx";
 import ContactPage from "./components/landing/contact/ContactPage.jsx"
+import Statistics from "./pages/dashboard/statistics.jsx";
+import { element } from "prop-types";
 
 const publicRoutes = {
   element: <CommonLayout />,
@@ -73,21 +75,25 @@ const adminRoutes = {
   element: <RequireRole allowedRoles={["admin"]} />,
   children: [
     {
-      path: "/admin",
-      element: <AdminLayout />,
-      children: [
-        { index: true, element: <ProductManagement /> },
-        { path: "product", element: <ProductManagement /> },
-        { path: "brand", element: <BrandManagement /> },
-        { path: "category", element: <CategoryManagement /> },
-        { path: "service", element: <ManagingService /> },
-        { path: "barber", element: <BarberManagement /> },
-        { path: "user", element: <UserManagement /> },
-        {path: "feedback-product", element:  <ManageFeedbackProduct/>},
-        {path: "feedback-barber", element: <ManageFeedbackBarber/>}, 
-        {path: "discount-product", element: <ManageDiscountProduct/>},
-      ],
-    },
+  path: "/admin",
+  element: <AdminLayout />,
+  children: [
+    { index: true, element: <ProductManagement /> },
+    { path: "product", element: <ProductManagement /> },
+    { path: "brand", element: <BrandManagement /> },
+    { path: "category", element: <CategoryManagement /> },
+    { path: "service", element: <ManagingService /> },
+    { path: "barber", element: <BarberManagement /> },
+    { path: "user", element: <UserManagement /> },
+    { path: "voucher", element: <VoucherManagement /> },
+    { path: "user-vouchers", element: <UserVoucherManagement /> },
+    { path: "order", element: <OrderManagement /> },
+    { path: "feedback-product", element: <ManageFeedbackProduct /> },
+    { path: "feedback-barber", element: <ManageFeedbackBarber /> },
+    { path: "discount-product", element: <ManageDiscountProduct /> },
+    { path: "statistics", element: <Statistics /> },  
+  ],
+}
   ],
 };
 
@@ -171,6 +177,7 @@ const router = createBrowserRouter([
           { path: "feedback-product", element: <ManageFeedbackProduct /> },
           { path: "feedback-barber", element: <ManageFeedbackBarber /> },
           { path: "discount-product", element: <ManageDiscountProduct /> },
+          { path: "statistics", element: <Statistics /> },
         ],
       },
     ],
