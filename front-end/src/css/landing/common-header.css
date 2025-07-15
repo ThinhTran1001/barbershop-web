@@ -33,3 +33,15 @@
   z-index: 1001;
   margin-top: 8px;
 }
+
+.header-fixed {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1000;
+}
+
+.content-below-header {
+  padding-top: 64px; /* Điều chỉnh theo chiều cao thực tế của header */
+}

@@ -1,8 +1,12 @@
 import React from "react";
 import { Layout, Menu, Button, Dropdown, Badge } from "antd";
-import { ShoppingCartOutlined, UserOutlined, CalendarOutlined, StarOutlined } from "@ant-design/icons";
+import {
+  ShoppingCartOutlined,
+  UserOutlined,
+  CalendarOutlined,
+  StarOutlined,
+} from "@ant-design/icons";
 import { useAuth } from "../../context/AuthContext";
-import { useCart } from "../../context/CartContext";
 import { useUserCart } from "../../context/UserCartContext";
 import { useNavigate } from "react-router-dom";
 import "../../css/landing/common-header.css";
@@ -20,12 +24,13 @@ const navItems = [
 
 export default function UserHeader() {
   const { user, logout } = useAuth();
-  const { getCartCount: getGuestCartCount } = useCart();
-  const { getCartCount: getUserCartCount } = useUserCart();
+  const { getCartCount, version } = useUserCart();
   const navigate = useNavigate();
-  const getCartCount = () => {
-    return user ? getUserCartCount() : getGuestCartCount();
-  };
+
+  // Force re-render khi version thay đổi (cart thay đổi)
+  React.useEffect(() => {}, [version]);
+
+  console.log("UserHeader render, cart count:", getCartCount());
 
   const handleLogout = async () => {
     await logout();
@@ -33,8 +38,8 @@ export default function UserHeader() {
   };
 
   const scrollToSection = (sectionId) => {
-    if (window.location.pathname !== '/') {
-      navigate('/');
+    if (window.location.pathname !== "/") {
+      navigate("/");
       setTimeout(() => {
         scrollToElement(sectionId);
       }, 100);
@@ -46,12 +51,12 @@ export default function UserHeader() {
   const scrollToElement = (elementId) => {
     const element = document.getElementById(elementId);
     if (element) {
-      const headerHeight = 70; 
+      const headerHeight = 70;
       const elementPosition = element.offsetTop - headerHeight;
-      
+
       window.scrollTo({
         top: elementPosition,
-        behavior: 'smooth'
+        behavior: "smooth",
       });
     }
   };
@@ -138,10 +143,7 @@ export default function UserHeader() {
             <Button type="default" onClick={() => navigate("/login")}>
               Đăng nhập
             </Button>
-            <Button
-              className="bg-warning"
-              onClick={() => navigate("/register")}
-            >
+            <Button className="bg-warning" onClick={() => navigate("/register")}>
               Đăng ký
             </Button>
           </>

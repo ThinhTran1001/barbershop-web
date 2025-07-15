@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useState } from 'react';
 import { useAuth } from './AuthContext';
 import {
   getCart,
@@ -12,6 +12,7 @@ const UserCartContext = createContext();
 
 // Action types
 const LOAD_CART = 'LOAD_CART';
+const UPDATE_QUANTITY = 'UPDATE_QUANTITY';
 
 const cartReducer = (state, action) => {
   switch (action.type) {
@@ -19,6 +20,15 @@ const cartReducer = (state, action) => {
       return {
         ...state,
         items: action.payload.items || [],
+      };
+    case UPDATE_QUANTITY:
+      return {
+        ...state,
+        items: state.items.map(item =>
+          item.productId === action.payload.productId || item.id === action.payload.productId
+            ? { ...item, quantity: action.payload.quantity }
+            : item
+        ),
       };
     default:
       return state;
@@ -28,12 +38,14 @@ const cartReducer = (state, action) => {
 export const UserCartProvider = ({ children }) => {
   const [cart, dispatch] = useReducer(cartReducer, { items: [] });
   const { user, loading } = useAuth();
+  const [version, setVersion] = useState(0); // Thêm version để force update
 
   // Load cart from API khi user login hoặc reload
   const fetchCart = async () => {
     if (!user || loading) return;
     try {
       const response = await getCart();
+      
       // Ưu tiên data.items, nếu không có thì lấy data.data.items
       let items = [];
       if (Array.isArray(response?.data?.items)) {
@@ -41,16 +53,26 @@ export const UserCartProvider = ({ children }) => {
       } else if (Array.isArray(response?.data?.data?.items)) {
         items = response.data.data.items;
       }
-      const formattedItems = items.map((i) => ({
-        id: i.productId._id || i.productId,
-        name: i.productId.name,
-        image: i.productId.image,
-        price: i.productId.price,
-        discount: i.productId.discount || 0,
-        stock: i.productId.stock,
-        quantity: i.quantity,
-      }));
-      dispatch({ type: LOAD_CART, payload: { items: formattedItems } });
+      
+      const formattedItems = items.map((i) => {
+        // Kiểm tra cấu trúc dữ liệu từ backend
+        const productData = i.productId;
+        const formattedItem = {
+          id: productData._id || productData,
+          productId: productData._id || productData, // Thêm productId để checkout có thể sử dụng
+          name: productData.name,
+          image: productData.image,
+          price: productData.price,
+          discount: productData.discount || 0,
+          stock: productData.stock,
+          quantity: i.quantity,
+        };
+        return formattedItem;
+      });
+      
+      // Đảm bảo tạo object mới để trigger re-render
+      dispatch({ type: LOAD_CART, payload: { items: [...formattedItems] } });
+      setVersion(v => v + 1); // Tăng version mỗi lần fetchCart
     } catch (err) {
       console.error('Error loading cart from API', err);
     }
@@ -82,10 +104,18 @@ export const UserCartProvider = ({ children }) => {
 
   const updateQuantity = async (productId, quantity) => {
     try {
+      // Update state immediately for better UX
+      dispatch({ type: UPDATE_QUANTITY, payload: { productId, quantity } });
+      
+      // Then update API
       await updateItem(productId, { quantity });
+      
+      // Fetch fresh data from API to ensure sync
       await fetchCart();
     } catch (err) {
       console.error('Failed to update quantity in API cart', err);
+      // Revert state if API call failed
+      await fetchCart();
     }
   };
 
@@ -120,6 +150,8 @@ export const UserCartProvider = ({ children }) => {
         clearCart,
         getCartTotal,
         getCartCount,
+        fetchCart, // <-- export fetchCart
+        version, // Trả version ra context
         isLoggedIn: !!user,
       }}
     >

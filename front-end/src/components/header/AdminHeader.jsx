@@ -36,6 +36,10 @@ const AdminHeader = () => {
       ? "feedback-product"
       : location.pathname.includes("feedback-barber")
       ? "feedback-barber"
+      : location.pathname.includes("user")
+      ? "user"
+      : location.pathname.includes("appointment")
+      ? "appointment"
       : location.pathname.includes("barber-schedule")
       ? "barber-schedule"
       : "user";
@@ -65,6 +69,7 @@ const AdminHeader = () => {
         className="flex-grow-1 mx-5 border-0"
         style={{ background: "transparent" }}
       >
+        <Menu.Item key="appointment" onClick={() => navigate("/admin/appointment")}>Appointment</Menu.Item>
         <Menu.Item key="product" onClick={() => navigate("/admin/product")}>Product</Menu.Item>
         <Menu.Item key="brand" onClick={() => navigate("/admin/brand")}>Brand</Menu.Item>
         <Menu.Item key="category" onClick={() => navigate("/admin/category")}>Category</Menu.Item>

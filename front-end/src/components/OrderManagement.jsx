@@ -22,6 +22,24 @@ const OrderManagement = () => {
     { value: 'cancelled', label: 'Cancelled', color: 'red' },
   ];
 
+  // Function to get allowed status transitions based on current status
+  const getAllowedStatusTransitions = (currentStatus) => {
+    switch (currentStatus) {
+      case 'pending':
+        return ['processing', 'cancelled'];
+      case 'processing':
+        return ['shipped', 'cancelled'];
+      case 'shipped':
+        return ['delivered', 'cancelled'];
+      case 'delivered':
+        return []; // Cannot change status once delivered
+      case 'cancelled':
+        return []; // Cannot change status once cancelled
+      default:
+        return STATUS_OPTIONS.map(opt => opt.value);
+    }
+  };
+
   const [orders, setOrders] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isViewModalVisible, setIsViewModalVisible] = useState(false);
@@ -66,6 +84,12 @@ const OrderManagement = () => {
 
   const handleUpdateOrder = async (values) => {
     try {
+      // Validate status transition
+      if (editingOrder && !getAllowedStatusTransitions(editingOrder.status).includes(values.status)) {
+        message.error('Không thể chuyển đổi trạng thái này');
+        return;
+      }
+
       const orderData = {
         ...values,
         updatedAt: new Date().toISOString()
@@ -156,15 +180,22 @@ const OrderManagement = () => {
       title: 'Payment Status',
       render: (_, record) => {
         const status = record.payment?.status;
-        const color = status === 'paid' ? 'green' : status === 'unpaid' ? 'gold' : 'default';
+        const color = status === 'paid' ? 'green' : status === 'unpaid' ? 'red' : 'default';
         return <Tag color={color}>{status?.toUpperCase() || 'N/A'}</Tag>;
       },
     },
     {
       title: 'Status',
       dataIndex: 'status',
-      render: (status) => (
+      render: (status, record) => (
+        <div>
         <Tag color={getStatusColor(status)}>{status?.toUpperCase()}</Tag>
+          {getAllowedStatusTransitions(status).length === 0 && (
+            <div style={{ fontSize: '10px', color: '#999', marginTop: '2px' }}>
+              {status === 'delivered' ? 'Đã hoàn thành' : status === 'cancelled' ? 'Đã hủy' : ''}
+            </div>
+          )}
+        </div>
       ),
     },
     {
@@ -201,7 +232,15 @@ const OrderManagement = () => {
       render: (_, record) => (
         <Space>
           <Button icon={<EyeOutlined />} onClick={() => showViewModal(record)} />
-          <Button icon={<InfoCircleFilled />} onClick={() => showModal(record)} />
+          <Button 
+            icon={<InfoCircleFilled />} 
+            onClick={() => showModal(record)}
+            disabled={getAllowedStatusTransitions(record.status).length === 0}
+            title={getAllowedStatusTransitions(record.status).length === 0 ? 
+              `Không thể thay đổi trạng thái đơn hàng ${record.status === 'delivered' ? 'đã giao' : 'đã hủy'}` : 
+              'Chỉnh sửa trạng thái đơn hàng'
+            }
+          />
           <Button icon={<DeleteFilled />} onClick={() => handleDeleteOrder(record._id)} danger />
         </Space>
       ),
@@ -253,7 +292,7 @@ const OrderManagement = () => {
               </Descriptions.Item>
               <Descriptions.Item label="Payment Method">{viewingOrder.payment?.method?.toUpperCase() || 'N/A'}</Descriptions.Item>
               <Descriptions.Item label="Payment Status">
-                <Tag color={viewingOrder.payment?.status === 'paid' ? 'green' : 'gold'}>
+                <Tag color={viewingOrder.payment?.status === 'paid' ? 'green' : 'red'}>
                   {viewingOrder.payment?.status?.toUpperCase() || 'N/A'}
                 </Tag>
               </Descriptions.Item>
@@ -278,6 +317,19 @@ const OrderManagement = () => {
               dataSource={viewingOrder.items}
               rowKey="productId"
               columns={[
+                {
+                  title: 'Product Image',
+                  dataIndex: 'productImage',
+                  render: (image, record) => (
+                    <img
+                      src={image || record.image || 'https://via.placeholder.com/50'}
+                      alt={record.productName}
+                      width={50}
+                      height={50}
+                      style={{ objectFit: 'cover', borderRadius: 4 }}
+                    />
+                  ),
+                },
                 { title: 'Product Name', dataIndex: 'productName' },
                 { title: 'Quantity', dataIndex: 'quantity' },
                 {
@@ -294,21 +346,40 @@ const OrderManagement = () => {
 
       {/* Edit Modal */}
       <Modal
-        title="Edit Order Status"
+        title={`Edit Order Status - ${editingOrder?.orderCode || ''}`}
         open={isModalVisible}
         onCancel={() => setIsModalVisible(false)}
         onOk={() => form.submit()}
         okText="Update"
         cancelText="Cancel"
+        okButtonProps={{
+          disabled: editingOrder && getAllowedStatusTransitions(editingOrder.status).length === 0
+        }}
       >
         <Form form={form} onFinish={handleUpdateOrder} layout="vertical">
           <Form.Item name="status" label="Status" rules={[{ required: true, message: 'Please select status' }]}> 
             <Select>
-              {STATUS_OPTIONS.map(opt => (
-                <Select.Option key={opt.value} value={opt.value}>{opt.label}</Select.Option>
-              ))}
+              {editingOrder && getAllowedStatusTransitions(editingOrder.status).length > 0 ? (
+                getAllowedStatusTransitions(editingOrder.status).map(status => {
+                  const option = STATUS_OPTIONS.find(opt => opt.value === status);
+                  return (
+                    <Select.Option key={option.value} value={option.value}>
+                      {option.label}
+                    </Select.Option>
+                  );
+                })
+              ) : (
+                <Select.Option value={editingOrder?.status || 'pending'}>
+                  {STATUS_OPTIONS.find(opt => opt.value === editingOrder?.status)?.label || 'Current Status'}
+                </Select.Option>
+              )}
             </Select>
           </Form.Item>
+          {editingOrder && getAllowedStatusTransitions(editingOrder.status).length === 0 && (
+            <div style={{ color: '#ff4d4f', fontSize: '12px', marginTop: '8px' }}>
+              Không thể thay đổi trạng thái đơn hàng này. Đơn hàng đã {editingOrder.status === 'delivered' ? 'được giao' : 'bị hủy'}.
+            </div>
+          )}
         </Form>
       </Modal>
     </div>

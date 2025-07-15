@@ -25,7 +25,7 @@ const { Option } = Select;
 
 const Checkout = () => {
   /* --------------------------- App Contexts & Hooks --------------------------- */
-  const { cart, clearCart } = useUserCart();
+  const { cart, clearCart, fetchCart } = useUserCart();
   const { user } = useAuth();
   const [form] = Form.useForm();
   const navigate = useNavigate();
@@ -144,9 +144,11 @@ const Checkout = () => {
         const rawPrice = item.price || item.product?.price || 0;
         const discount = item.discount || item.product?.discount || 0;
         const finalPrice = discount > 0 ? rawPrice * (1 - discount / 100) : rawPrice;
+        
+        const productId = item.productId || item.id || item._id || item.product?._id;
   
         return {
-          productId: item.productId || item.id || item._id || item.product?._id,
+          productId: productId,
           quantity: item.quantity,
           price: finalPrice, // Giá sau khi giảm sản phẩm
           originalPrice: rawPrice, // Giá gốc để backend có thể tính toán
@@ -223,6 +225,11 @@ const Checkout = () => {
     initData();
   }, [user, form]);
 
+  // Luôn fetch lại cart khi vào trang checkout để đảm bảo lấy số lượng mới nhất
+  useEffect(() => {
+    fetchCart();
+  }, []);
+
   /* ------------------------------ Empty / Success --------------------------- */
   if (orderSuccess) {
     return (
@@ -253,11 +260,6 @@ const Checkout = () => {
   /* --------------------------------- Render --------------------------------- */
   return (
     <div className="checkout-container">
-      {/* --------------------------- HEADER --------------------------- */}
-      <div className="checkout-header">
-        <h1>Thanh toán (Khách)</h1>
-      </div>
-
       <div className="checkout-content">
         {/* ================= FORM ================= */}
         <div className="checkout-form-section">
@@ -362,7 +364,6 @@ const Checkout = () => {
                 <Select placeholder="Chọn phương thức">
                   <Option value="cash">Thanh toán khi nhận hàng</Option>
                   <Option value="bank">Chuyển khoản ngân hàng</Option>
-                  <Option value="momo">Ví MoMo</Option>
                 </Select>
               </Form.Item>
 
@@ -380,11 +381,11 @@ const Checkout = () => {
           <Card title="Đơn hàng của bạn" className="checkout-card">
             {/* Danh sách sản phẩm */}
             <div className="checkout-products-list">
-              <div className="checkout-products-header">
-                <div>Ảnh</div>
-                <div>Tên sản phẩm</div>
-                <div>Số lượng</div>
-                <div>Giá</div>
+              <div className="checkout-products-header" style={{ display: 'grid', gridTemplateColumns: '60px 1fr 80px 100px', alignItems: 'center', fontWeight: 600, color: '#333', background: '#f8f9fa', borderRadius: 6, padding: '8px 0', marginBottom: 8 }}>
+                <div style={{ textAlign: 'center' }}>Ảnh</div>
+                <div style={{ textAlign: 'left' }}>Tên sản phẩm</div>
+                <div style={{ textAlign: 'center' }}>Số lượng</div>
+                <div style={{ textAlign: 'center' }}>Giá</div>
               </div>
 
               {itemsToCheckout.map((item, idx) => {
@@ -392,13 +393,13 @@ const Checkout = () => {
                 const discount = item.discount || item.product?.discount || 0;
                 const finalPrice = discount > 0 ? rawPrice * (1 - discount / 100) : rawPrice;
                 return (
-                  <div key={idx} className="checkout-product-row">
-                    <div className="checkout-product-image">
-                      <img src={item.image || item.product?.image} alt={item.name || item.product?.name} />
+                  <div key={idx} className="checkout-product-row" style={{ display: 'grid', gridTemplateColumns: '60px 1fr 80px 100px', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
+                    <div className="checkout-product-image" style={{ textAlign: 'center' }}>
+                      <img src={item.image || item.product?.image} alt={item.name || item.product?.name} style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4 }} />
                     </div>
-                    <div className="checkout-product-name">{item.name || item.product?.name}</div>
-                    <div className="checkout-product-quantity">x{item.quantity}</div>
-                    <div className="checkout-product-price">
+                    <div className="checkout-product-name" style={{ textAlign: 'left' }}>{item.name || item.product?.name}</div>
+                    <div className="checkout-product-quantity" style={{ textAlign: 'center' }}>x{item.quantity}</div>
+                    <div className="checkout-product-price" style={{ textAlign: 'center' }}>
                       {discount > 0 ? (
                         <>
                           <span className="original-price">{formatPrice(rawPrice)}</span>

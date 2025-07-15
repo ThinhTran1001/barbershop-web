@@ -4,6 +4,7 @@
   padding: 20px;
   min-height: 80vh;
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  margin-top: 48px;
 }
 
 .checkout-header {

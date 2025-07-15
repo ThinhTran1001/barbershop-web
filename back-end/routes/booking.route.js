@@ -6,6 +6,10 @@ const { authenticate } = require('../middlewares/auth.middleware');
 // Booking CRUD operations
 router.post('/', authenticate, bookingController.createBooking);
 router.get('/me', authenticate, bookingController.getMyBookings);
+router.get('/all', authenticate, bookingController.getAllBookings);
+router.get('/stats', authenticate, bookingController.getBookingStats);
+router.get('/chart-stats', bookingController.getBookingChartStats);
+router.get('/:id', authenticate, bookingController.getBookingDetail);
 
 // Booking status management
 router.put('/:bookingId/status', authenticate, bookingController.updateBookingStatus);

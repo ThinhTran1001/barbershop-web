@@ -3,8 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getOrderById, updateOrder, createFeedbackOrder, getFeedbackOrderByOrderId } from '../../services/api';
 import {
-  Spin, Alert, Button, Typography, Tag, List, Avatar, Popconfirm, message, Descriptions, Form, Input, Card, Steps, Divider, notification
-} from 'antd';
+  Spin, Alert, Button, Typography, Tag, List, Avatar, Popconfirm, message, Descriptions, Form, Input, Card, Steps, Divider, notification } from 'antd';
 import {
   ArrowLeftOutlined, CopyOutlined, CheckCircleFilled, ShoppingOutlined, CarOutlined, HomeOutlined
 } from '@ant-design/icons';
@@ -23,28 +22,40 @@ const getStatusStep = (status) => {
   }
 };
 
-const steps = [
-  {
-    title: 'Đặt hàng thành công',
-    description: 'Đơn hàng đã được xác nhận',
-    icon: <CheckCircleFilled style={{ color: '#52c41a' }} />,
-  },
-  {
-    title: 'Đang xử lý',
-    description: 'Chúng tôi đang chuẩn bị đơn hàng',
-    icon: <ShoppingOutlined />,
-  },
-  {
-    title: 'Đang giao hàng',
-    description: 'Đơn hàng đang được vận chuyển',
-    icon: <CarOutlined />,
-  },
-  {
-    title: 'Giao hàng thành công',
-    description: 'Đơn hàng đã được giao',
-    icon: <HomeOutlined />,
-  },
-];
+const getDynamicSteps = (currentStatus) => {
+  const currentStep = getStatusStep(currentStatus);
+  const icons = [
+    <CheckCircleFilled style={{ color: '#52c41a' }} />, // Thành công
+    <ShoppingOutlined />, // Đang xử lý
+    <CarOutlined />,      // Đang giao hàng
+    <HomeOutlined />,     // Giao hàng thành công
+  ];
+  const stepsData = [
+    {
+      title: 'Đặt hàng thành công',
+      description: 'Đơn hàng đã được xác nhận',
+    },
+    {
+      title: 'Đang xử lý',
+      description: 'Chúng tôi đang chuẩn bị đơn hàng',
+    },
+    {
+      title: 'Đang giao hàng',
+      description: 'Đơn hàng đang được vận chuyển',
+    },
+    {
+      title: 'Giao hàng thành công',
+      description: 'Đơn hàng đã được giao',
+    },
+  ];
+  return stepsData.map((step, idx) => ({
+    ...step,
+    icon:
+      idx < currentStep
+        ? <CheckCircleFilled style={{ color: '#52c41a' }} />
+        : icons[idx],
+  }));
+};
 
 const getStatusTag = (status) => {
   switch (status) {
@@ -64,6 +75,7 @@ const OrderDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [form] = Form.useForm();
+  const [showToast, setShowToast] = useState(false);
   const [feedbackStatus, setFeedbackStatus] = useState(null);
 
   const fetchOrderDetail = async () => {
@@ -117,10 +129,8 @@ const OrderDetail = () => {
 
   const copyOrderId = () => {
     navigator.clipboard.writeText(order.orderCode);
-    notification.success({
-      message: 'Đã sao chép mã đơn hàng',
-      placement: 'topRight',
-    });
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 2000);
   };
 
   const handleStartFeedback = async () => {
@@ -149,18 +159,38 @@ const OrderDetail = () => {
 
   return (
     <div className="order-success-container">
-      <div className="order-success-header">
+      {/* Bootstrap Toast thông báo copy thành công */}
+      {/* <div
+          className="toast show position-fixed top-0 end-0 m-3"
+          role="alert"
+          aria-live="assertive"
+          aria-atomic="true"
+          style={{ zIndex: 9999, minWidth: 250 }}
+        >
+          <div className="toast-header">
+            <strong className="me-auto text-success">Thành công</strong>
+            <button
+              type="button"
+              className="btn-close"
+              onClick={() => setShowToast(false)}
+            ></button>
+          </div>
+          <div className="toast-body">
+            Đã copy thành công mã đơn hàng!
+          </div>
+        </div> */}
+
+      <div className="order-success-content">
+        {/* Đưa nút back-button lên sát Card tiêu đề */}
         <Button 
           type="text" 
           icon={<ArrowLeftOutlined />} 
           onClick={() => navigate('/my-orders')}
           className="back-button"
+          style={{ marginBottom: 12 }}
         >
           Quay lại danh sách đơn hàng
         </Button>
-      </div>
-
-      <div className="order-success-content">
         <Card className="success-card">
           <Title level={3} style={{ color: '#52c41a', marginBottom: 0 }}>Chi tiết đơn hàng</Title>
           <Paragraph style={{ marginBottom: 0 }}>Cảm ơn bạn đã mua hàng tại Barbershop!</Paragraph>
@@ -171,7 +201,7 @@ const OrderDetail = () => {
             <div className="order-id-section">
               <div className="order-id-display">
                 <Text strong>Mã đơn hàng:</Text>
-                <div className="order-id-container">
+                <div className="order-id-container" style={{ position: 'relative', display: 'inline-block' }}>
                   <Text code className="order-id">{order.orderCode}</Text>
                   <Button 
                     type="text" 
@@ -180,6 +210,34 @@ const OrderDetail = () => {
                     className="copy-button"
                     title="Sao chép mã đơn hàng"
                   />
+                  {showToast && (
+                    <div
+                      className="toast show"
+                      role="alert"
+                      aria-live="assertive"
+                      aria-atomic="true"
+                      style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        marginTop: 8,
+                        zIndex: 100,
+                        minWidth: 200
+                      }}
+                    >
+                      <div className="toast-header">
+                        <strong className="me-auto text-success">Thành công</strong>
+                        <button
+                          type="button"
+                          className="btn-close"
+                          onClick={() => setShowToast(false)}
+                        ></button>
+                      </div>
+                      <div className="toast-body">
+                        Đã copy thành công mã đơn hàng!
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
               <Paragraph className="order-id-note">
@@ -200,14 +258,10 @@ const OrderDetail = () => {
               </div>
               <div className="summary-item">
                 <Text>Trạng thái thanh toán:</Text>
-                {order.status === 'pending' ? (
-                  <span>
-                    {order.payment?.status === 'paid' ? 'Đã thanh toán' : 'Chưa thanh toán'}
-                  </span>
+                {order.status === 'delivered' && order.payment?.status === 'paid' ? (
+                  <Tag color="green">Đã thanh toán</Tag>
                 ) : (
-                  <Tag>
-                    {order.payment?.status?.toUpperCase() || 'N/A'}
-                  </Tag>
+                  <Tag color="orange">Chưa thanh toán</Tag>
                 )}
               </div>
               <div className="summary-item">
@@ -257,7 +311,7 @@ const OrderDetail = () => {
           {order.status !== 'cancelled' ? (
             <Steps
               current={getStatusStep(order.status)}
-              items={steps}
+              items={getDynamicSteps(order.status)}
               className="order-steps"
             />
           ) : (
