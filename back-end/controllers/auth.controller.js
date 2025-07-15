@@ -76,11 +76,11 @@ exports.login = async (req, res) => {
             return res.status(400).json({ message: 'Account is not verified' });
         }
 
-        if (user.oauthProvider) {
-            return res.status(400).json({
-                message: `Tài khoản này sử dụng ${user.oauthProvider}. Vui lòng đăng nhập bằng ${user.oauthProvider}.`
-            });
-        }
+        // if (user.oauthProvider) {
+        //     return res.status(400).json({
+        //         message: `Tài khoản này sử dụng ${user.oauthProvider}. Vui lòng đăng nhập bằng ${user.oauthProvider}.`
+        //     });
+        // }
 
         if (!user.passwordHash) {
             return res.status(400).json({
