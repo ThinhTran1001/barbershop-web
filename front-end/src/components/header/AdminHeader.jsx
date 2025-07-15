@@ -20,6 +20,12 @@ const AdminHeader = () => {
       ? "brand"
       : location.pathname.includes("category")
       ? "category"
+      : location.pathname.includes("barber-schedule")
+      ? "barber-schedule"
+      : location.pathname.includes("feedback-product")
+      ? "feedback-product"
+      : location.pathname.includes("feedback-barber")
+      ? "feedback-barber"
       : location.pathname.includes("service")
       ? "service"
       : location.pathname.includes("product")
@@ -32,16 +38,10 @@ const AdminHeader = () => {
       ? "voucher"
       : location.pathname.includes("order")
       ? "order"
-      : location.pathname.includes("feedback-product")
-      ? "feedback-product"
-      : location.pathname.includes("feedback-barber")
-      ? "feedback-barber"
       : location.pathname.includes("user")
       ? "user"
       : location.pathname.includes("appointment")
       ? "appointment"
-      : location.pathname.includes("barber-schedule")
-      ? "barber-schedule"
       : "user";
 
   return (

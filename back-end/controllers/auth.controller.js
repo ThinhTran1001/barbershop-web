@@ -315,10 +315,7 @@ exports.googleOauthHandler = async (req, res) => {
             sameSite: 'Strict',
             maxAge: 24 * 60 * 60 * 1000,
         });
-
-        return res.redirect(
-            `${process.env.CORS_ORIGIN}/oauth-success?accessToken=${encodeURIComponent(accessToken)}`
-        );
+        return res.redirect(`${process.env.CORS_ORIGIN}`);
     } catch (error) {
         console.error('Google OAuth error:', error);
         res.redirect(
