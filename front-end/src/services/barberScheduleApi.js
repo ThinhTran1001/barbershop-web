@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE = '/api/barber-schedule';
+const API_BASE = 'http://localhost:3000/api/barber-schedule';
 
 export const fetchAvailableSlots = async (barberId, date) => {
   const res = await axios.get(`${API_BASE}/available-slots`, { params: { barberId, date } });

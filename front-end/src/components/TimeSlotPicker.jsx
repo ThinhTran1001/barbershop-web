@@ -45,7 +45,14 @@ const TimeSlotPicker = ({ barberId, onSelect }) => {
 
   const handleSlotSelect = (slot) => {
     setSelectedSlot(slot);
-    if (onSelect) onSelect(slot);
+    // Tạo object chứa cả ngày và giờ
+    const selectedDateTime = {
+      date: date,
+      time: slot,
+      dateTime: `${date} ${slot}`, // Format: "2024-07-15 14:30"
+      label: `${new Date(date).toLocaleDateString('vi-VN')} lúc ${slot}`
+    };
+    if (onSelect) onSelect(selectedDateTime);
   };
 
   return (

@@ -5,7 +5,8 @@ const { Title } = Typography;
 
 const ServiceList = ({ services, tabs, activeTab, handleTabClick }) => {
   const [expandedService, setExpandedService] = useState(null);
-  const displayServices = services || [];
+  // const displayServices = services || [];
+  const displayServices = Array.isArray(services) ? services : [];
 
   const toggleService = (index) => {
     setExpandedService(expandedService === index ? null : index);

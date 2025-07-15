@@ -29,7 +29,7 @@ export default function HeroSection() {
           <span className="year">MMXVI</span>
         </div>
         
-        <Button className="appointment-button">
+        <Button href="/browse-services" className="appointment-button">
           ĐẶT LỊCH HẸN
         </Button>
       </div>
