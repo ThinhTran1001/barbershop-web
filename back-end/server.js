@@ -44,6 +44,7 @@ app.use(cors({
 connectDB();
 const kafkaConsumer = require('./services/kafka-consumer.service');
 kafkaConsumer().then(() => console.log('Kafka consumer running'));
+const ScheduleInitializerService = require('./services/schedule-initializer.service');
 
 app.use('/api/products', productRoutes);
 app.use('/api/categories', categoryRoutes);
@@ -73,7 +74,16 @@ app.use('/api/statistics', statisticRoutes);
 
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
     console.log(`Server running at http://localhost:${PORT}`);
     connectDB();
+
+    // Khởi tạo schedule cho các barber khi server khởi động
+    try {
+        console.log('Initializing barber schedules...');
+        await ScheduleInitializerService.initializeSchedules(7); // Tạo schedule cho 7 ngày tới
+        console.log('Barber schedules initialized successfully');
+    } catch (error) {
+        console.error('Error initializing barber schedules:', error);
+    }
 });

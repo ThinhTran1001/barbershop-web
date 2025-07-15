@@ -7,12 +7,14 @@ const { Title } = Typography;
 // For demo, you can pass a hardcoded barberId or get it from route/query
 const TimeSlotPickerPage = () => {
   // Lấy barberId từ localStorage hoặc route tuỳ flow thực tế
-  const barberId = localStorage.getItem('selectedBarberId') || 'BARBER_ID_HERE';
+  const barber = localStorage.getItem('selectedBarber');
+  const barberId = barber ? JSON.parse(barber)._id : null;
   const [selectedSlot, setSelectedSlot] = useState(null);
 
-  const handleSelect = (slot) => {
-    setSelectedSlot(slot);
-    localStorage.setItem('selectedTimeSlot', JSON.stringify(slot));
+  const handleSelect = (selectedDateTime) => {
+    setSelectedSlot(selectedDateTime);
+    localStorage.setItem('selectedTimeSlot', JSON.stringify(selectedDateTime));
+    console.log('Selected DateTime:', selectedDateTime); // Debug log
     // Chuyển sang trang xác nhận booking hoặc booking info
     window.location.href = '/booking-info';
   };

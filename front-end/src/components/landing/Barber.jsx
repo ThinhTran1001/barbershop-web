@@ -28,6 +28,7 @@ export default function Barbers() {
           throw new Error(`Barbers API error: ${barberRes.status}`);
         }
         const barbersData = await barberRes.json();
+        const barbersArray = Array.isArray(barbersData.barbers) ? barbersData.barbers : [];
 
         // 2. Lấy danh sách users (Axios)
         const userRes = await getAllUser();
@@ -35,7 +36,7 @@ export default function Barbers() {
         const usersData = userRes.data;
 
         // 3. Đẩy vào state
-        setBarbers(barbersData);
+        setBarbers(barbersArray);
         setUsers(usersData);
       } catch (err) {
         console.error("Error fetching data:", err);

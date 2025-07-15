@@ -97,7 +97,9 @@ const barberSchema = new mongoose.Schema({
 
 // Indexes for efficient filtering
 barberSchema.index({ expertiseTags: 1, isAvailable: 1 });
-barberSchema.index({ hairTypeExpertise: 1, styleExpertise: 1 });
+// barberSchema.index({ hairTypeExpertise: 1, styleExpertise: 1 });
+barberSchema.index({ hairTypeExpertise: 1 });
+barberSchema.index({ styleExpertise: 1 });
 barberSchema.index({ averageRating: -1, totalBookings: -1 });
 
 module.exports = mongoose.model('Barber', barberSchema);

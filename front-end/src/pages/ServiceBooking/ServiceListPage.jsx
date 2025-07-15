@@ -78,8 +78,10 @@ const ServiceListPage = () => {
           fetchStyleCompatibility()
         ]);
 
-        setAllServices(servicesData.services || servicesData);
-        setDisplayedServices(servicesData.services || servicesData);
+        // setAllServices(servicesData.services || servicesData);
+        // setDisplayedServices(servicesData.services || servicesData);
+        setAllServices(Array.isArray(servicesData.services) ? servicesData.services : []);
+        setDisplayedServices(Array.isArray(servicesData.services) ? servicesData.services : []);
         setFilterOptions({
           categories: categoriesData,
           hairTypes: hairTypesData,
@@ -154,7 +156,8 @@ const ServiceListPage = () => {
         userId: user?.id,
         limit: 10
       });
-      setSuggestedServices(data.suggestions || data);
+      // setSuggestedServices(data.suggestions || data);
+      setSuggestedServices(Array.isArray(data?.suggestions) ? data.suggestions : []);
     } catch (error) {
       message.error('Failed to fetch suggestions');
       console.error('Error fetching suggestions:', error);
@@ -192,7 +195,7 @@ const ServiceListPage = () => {
   };
 
   const renderServices = (services) => {
-    if (!services || services.length === 0) {
+    if (!Array.isArray(services) || services.length === 0) {
       return (
         <div style={{ textAlign: 'center', padding: '40px 0' }}>
           <Title level={4} style={{ color: '#999' }}>Không tìm thấy dịch vụ phù hợp</Title>
