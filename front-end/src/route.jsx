@@ -4,6 +4,7 @@ import CommonLayout from "./pages/layout/CommonLayout.jsx";
 import AdminLayout from "./pages/layout/AdminLayout.jsx";
 import BarberLayout from "./pages/layout/BarberLayout.jsx";
 import RoleBasedLayout from "./pages/layout/RoleBasedLayout.jsx";
+
 import Landing from "./pages/home/Landing.jsx";
 import Login from "./pages/auth/LoginPage.jsx";
 import Register from "./pages/auth/RegisterPage.jsx";
@@ -11,7 +12,6 @@ import ForgotPasswordForm from "./components/auth/ForgotPasswordForm.jsx";
 import ResetPasswordForm from "./components/auth/ResetPasswordForm.jsx";
 import ProductList from "./pages/home/prodductList.jsx";
 import ProductDetail from "./components/product/ProductDetail.jsx";
-import ServiceBooking from "./pages/ServiceBooking/ServiceBooking.jsx";
 import Checkout from "./pages/checkout/Checkout.jsx";
 import CheckoutGuest from "./pages/checkout/CheckoutGuest.jsx";
 import OrderSuccess from "./pages/checkout/OrderSuccess.jsx";
@@ -32,73 +32,29 @@ import ManagingService from "./pages/ManagingService/ManagingService.jsx";
 import ManageFeedbackProduct from "./pages/ManageFeedbackProduct/ManageFeedbackProduct.jsx";
 import ManageFeedbackBarber from "./pages/ManageFeedbackBarber/ManageFeedbackBarber.jsx";
 import ManageDiscountProduct from "./pages/ManageDiscountProduct/ManageDiscountProduct.jsx";
-import RequireRole from "./middleware/RequireAuth.jsx";
+import Appointment from "./components/Appointment.jsx";
+import FeedbackProduct from "./pages/FeedbackProduct/FeedbackProduct.jsx";
+import OauthSuccess from "./pages/auth/OauthSuccess.jsx";
+import BarberDashboard from "./pages/Barber/BarberDashboard.jsx";
+import BarberCalendarPage from "./pages/Barber/BarberCalendarPage.jsx";
+import BarberBookingManagement from "./pages/Barber/BarberBookingManagement.jsx";
+import BarberScheduleManagement from "./pages/Admin/BarberScheduleManagement.jsx";
+import BarberSetup from "./pages/Barber/BarberSetup.jsx";
+import BookingFeedbackPage from "./pages/Feedback/BookingFeedbackPage.jsx";
+import MyFeedbackPage from "./pages/Feedback/MyFeedbackPage.jsx";
+import AboutPage from "./components/landing/about/About.jsx";
+import BlogPage from "./components/landing/blog/BlogPage.jsx";
+import BlogDetail from "./components/landing/blog/BlogDetail.jsx";
+import ContactPage from "./components/landing/contact/ContactPage.jsx";
+import Statistics from "./pages/dashboard/statistics.jsx";
 import ServiceListPage from "./pages/ServiceBooking/ServiceListPage.jsx";
 import BarberSelectionPage from "./pages/ServiceBooking/BarberSelectionPage.jsx";
 import TimeSlotPickerPage from "./pages/ServiceBooking/TimeSlotPickerPage.jsx";
 import BookingPage from "./pages/barber/BookingPage.jsx";
 import BookingInfoPage from "./pages/ServiceBooking/BookingInfoPage.jsx";
 import MyBookingsPage from "./pages/ServiceBooking/MyBookingsPage.jsx";
-import BarberBookingPage from "./pages/barber/BarberBookingPage.jsx";
-import Appointment from "./components/Appointment.jsx";
-
-const publicRoutes = {
-  element: <CommonLayout />,
-  children: [
-    { path: "/", element: <Landing /> },
-    { path: "/products/:id", element: <ProductDetail/> },
-    { path: "/login", element: <Login /> },
-    {path: "/register", element: <Register/>},
-    {path: "/products", element: <ProductList/>},
-    {path: "/forget", element: <ProductList/>},
-    {path: "/services", element: <ServiceBooking/>},
-    { path: "/forgot-password", element: <ForgotPasswordForm /> },
-    { path: "/reset-password", element: <ResetPasswordForm /> },
-    { path: "/profile", element: <CustomerProfile /> },
-    { path: "/cart", element: <Cart /> },
-    { path: "/browse-services", element: <ServiceListPage /> },
-    { path: "/choose-barber", element: <BarberSelectionPage /> },
-    { path: "/choose-time-slot", element: <TimeSlotPickerPage /> },
-    { path: "/booking-info", element: <BookingPage /> },
-  ],
-};
-
-const adminRoutes = {
-  element: <RequireRole allowedRoles={["admin"]} />,
-  children: [
-    {
-      path: "/admin",
-      element: <AdminLayout />,
-      children: [
-        { index: true, element: <ProductManagement /> },
-        { path: "product", element: <ProductManagement /> },
-        { path: "brand", element: <BrandManagement /> },
-        { path: "category", element: <CategoryManagement /> },
-        { path: "service", element: <ManagingService /> },
-        { path: "barber", element: <BarberManagement /> },
-        { path: "user", element: <UserManagement /> },
-        {path: "feedback-product", element:  <ManageFeedbackProduct/>},
-        {path: "feedback-barber", element: <ManageFeedbackBarber/>}, 
-        {path: "discount-product", element: <ManageDiscountProduct/>},
-        {path: "appointment", element: <Appointment/>},
-      ],
-    },
-  ],
-};
-
-const barberRoutes = {
-  element: <RequireRole allowedRoles={["barber"]} />,
-  children: [
-    {
-      path: "/barber",
-      element: <BarberLayout />,
-      children: [],
-    },
-  ],
-};
 
 const router = createBrowserRouter([
-  // Common layout with public and customer routes
   {
     element: <CommonLayout />,
     children: [
@@ -107,34 +63,40 @@ const router = createBrowserRouter([
       { path: "/register", element: <Register /> },
       { path: "/forgot-password", element: <ForgotPasswordForm /> },
       { path: "/reset-password/:token", element: <ResetPasswordForm /> },
+      { path: "/oauth-success", element: <OauthSuccess /> },
       { path: "/products", element: <ProductList /> },
       { path: "/products/:id", element: <ProductDetail /> },
-      { path: "/services", element: <ServiceBooking /> },
       { path: "/checkout", element: <Checkout /> },
       { path: "/checkout-guest", element: <CheckoutGuest /> },
       { path: "/order-success", element: <OrderSuccess /> },
       { path: "/cart-guest", element: <Cart /> },
       { path: "/cart", element: <UserCart /> },
       { path: "/profile", element: <CustomerProfile /> },
-      { path: "/checkout-guest", element: <CheckoutGuest/>},
       { path: "/browse-services", element: <ServiceListPage /> },
       { path: "/choose-barber", element: <BarberSelectionPage /> },
       { path: "/choose-time-slot", element: <TimeSlotPickerPage /> },
       { path: "/booking-info", element: <BookingInfoPage /> },
       { path: "/my-booking", element: <MyBookingsPage /> },
+      { path: "/feedback/:bookingId", element: <BookingFeedbackPage /> },
+      { path: "/my-feedback", element: <MyFeedbackPage /> },
+      { path: "/about", element: <AboutPage /> },
+      { path: "/news", element: <BlogPage /> },
+      { path: "/news/:id", element: <BlogDetail /> },
+      { path: "/contact", element: <ContactPage /> },
 
-      // Customer protected routes
+      // Protected Customer Routes
       {
         element: <RequireAuth allowedRoles={["customer"]} />,
         children: [
           { path: "/my-orders", element: <ListOfOrder /> },
           { path: "/my-orders/:id", element: <OrderDetail /> },
+          { path: "/feedback/:orderId", element: <FeedbackProduct /> },
         ],
       },
     ],
   },
 
-  // Admin protected routes
+  // Admin Routes
   {
     element: <RequireAuth allowedRoles={["admin"]} />,
     children: [
@@ -156,12 +118,14 @@ const router = createBrowserRouter([
           { path: "feedback-barber", element: <ManageFeedbackBarber /> },
           { path: "discount-product", element: <ManageDiscountProduct /> },
           { path: "appointment", element: <Appointment /> },
+          { path: "barber-schedule", element: <BarberScheduleManagement /> },
+          { path: "statistics", element: <Statistics /> },
         ],
       },
     ],
   },
 
-  // Barber protected routes
+  // Barber Routes
   {
     element: <RequireAuth allowedRoles={["barber"]} />,
     children: [
@@ -169,16 +133,24 @@ const router = createBrowserRouter([
         path: "/barber",
         element: <BarberLayout />,
         children: [
-          { index: true, element: <ManagingService /> },
-          { path: "/barbers/:barberId/bookings", element: <BarberBookingPage /> },
-          // thêm các route riêng cho barber ở đây nếu có
+          { index: true, element: <BarberDashboard /> },
+          { path: "dashboard", element: <BarberDashboard /> },
+          { path: "setup", element: <BarberSetup /> },
+          { path: "calendar", element: <BarberCalendarPage /> },
+          { path: "bookings", element: <BarberBookingManagement /> },
+          { path: "customers", element: <BarberBookingManagement /> },
+          { path: "feedback", element: <BarberBookingManagement /> },
+          { path: "performance", element: <BarberBookingManagement /> },
         ],
       },
     ],
   },
 
-  // Optional role-based layout
-  { path: "/dashboard", element: <RoleBasedLayout /> },
+  // Role-based fallback
+  {
+    path: "/dashboard",
+    element: <RoleBasedLayout />,
+  },
 ]);
 
 export default router;

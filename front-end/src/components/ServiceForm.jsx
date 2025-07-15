@@ -17,7 +17,11 @@ const ServiceForm = () => {
         label="Price (VND)"
         rules={[
           { required: true, message: "Please enter the price" },
-          { type: "number", min: 1, message: "Price must be a positive number" },
+          {
+            type: "number",
+            min: 1,
+            message: "Price must be a positive number",
+          },
         ]}
       >
         <InputNumber
@@ -43,8 +47,12 @@ const ServiceForm = () => {
         name="steps"
         label="Procedure Steps"
         rules={[{ required: true, message: "Please enter the steps" }]}
+        getValueFromEvent={(e) => e.target.value.split("\n").map(s => s.trim()).filter(s => s)}
       >
-        <Input.TextArea rows={3} placeholder="Enter the procedure steps" />
+        <Input.TextArea
+          rows={4}
+          placeholder={`Enter each step on a new line\nExample:\nGội đầu\nCạo hai bên\nTỉa tóc\nSấy tạo kiểu`}
+        />
       </Form.Item>
 
       <Form.Item
@@ -52,7 +60,11 @@ const ServiceForm = () => {
         label="Duration (minutes)"
         rules={[
           { required: true, message: "Please enter the duration" },
-          { type: "number", min: 1, message: "Duration must be a positive number" },
+          {
+            type: "number",
+            min: 1,
+            message: "Duration must be a positive number",
+          },
         ]}
       >
         <InputNumber
@@ -65,9 +77,11 @@ const ServiceForm = () => {
       <Form.Item
         name="suggestedFor"
         label="Suitable For"
-        rules={[{ required: true, message: "Please enter suitability info" }]}
+        rules={[
+          { required: true, message: "Please enter suitability info" },
+        ]}
       >
-        <Input placeholder="Enter target suitability info" />
+        <Input placeholder="Example: Tóc ngắn, Tóc dày" />
       </Form.Item>
     </>
   );

@@ -13,13 +13,14 @@ const ServiceList = ({ services, tabs, activeTab, handleTabClick }) => {
 
   return (
     <div className="services-list">
-      <Title level={2} className="services-title" style={{color: "white"}}>DỊCH VỤ & BẢNG GIÁ</Title>
-      {/* Tabs moved here, below the title */}
+      <Title level={2} className="services-title" style={{ color: "white" }}>
+        DỊCH VỤ & BẢNG GIÁ
+      </Title>
       <div className="service-tabs row mb-4">
         {tabs.map((tab) => (
           <div key={tab.id} className="col-2 px-1">
             <div
-              className={`service-tab ${activeTab === tab.id ? 'active' : ''}`}
+              className={`service-tab ${activeTab === tab.id ? "active" : ""}`}
               onClick={() => handleTabClick(tab.id)}
             >
               <div className="tab-label">{tab.label}</div>
@@ -27,6 +28,7 @@ const ServiceList = ({ services, tabs, activeTab, handleTabClick }) => {
           </div>
         ))}
       </div>
+
       <List
         dataSource={displayServices}
         renderItem={(service, index) => (
@@ -40,7 +42,8 @@ const ServiceList = ({ services, tabs, activeTab, handleTabClick }) => {
                 justifyContent: "space-between",
                 padding: "15px",
                 borderBottom: "1px dashed #444",
-                backgroundColor: expandedService === index ? "#2a2a2a" : "transparent",
+                backgroundColor:
+                  expandedService === index ? "#2a2a2a" : "transparent",
                 borderRadius: "4px",
               }}
             >
@@ -61,9 +64,21 @@ const ServiceList = ({ services, tabs, activeTab, handleTabClick }) => {
                   animation: "fade 0.3s ease-in",
                 }}
               >
-                <p><strong>Mô tả:</strong> {service.description || service.detail}</p>
-                <p><strong>Các bước:</strong> {service.steps}</p>
-                <p><strong>Thời gian:</strong> {service.durationMinutes} phút</p>
+                <p>
+                  <strong>Mô tả:</strong>{" "}
+                  {service.description || service.detail}
+                </p>
+                <p>
+                  <strong>Các bước:</strong>{" "}
+                  {Array.isArray(service.steps)
+                    ? service.steps.join(", ")
+                    : typeof service.steps === "string"
+                    ? service.steps.replace(/(?<=[a-zà-ỹ])(?=[A-ZÀ-Ỹ])/g, ", ")
+                    : ""}
+                </p>
+                <p>
+                  <strong>Thời gian:</strong> {service.durationMinutes} phút
+                </p>
                 <p>
                   <strong>Phù hợp với:</strong>{" "}
                   {Array.isArray(service.suggestedFor)

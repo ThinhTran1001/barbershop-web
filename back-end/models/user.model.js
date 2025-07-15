@@ -9,10 +9,10 @@ const userSchema = new mongoose.Schema({
     unique: true,
     match: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
   },
-  passwordHash: { type: String, required: true },
+  passwordHash: { type: String }, 
   phone: {
     type: String,
-    match: /^[0-9]{10}$/,
+    // match: /^[0-9]{10}$/,
     default: null
   },
   role: {
@@ -27,24 +27,22 @@ const userSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ['active', 'suspended', 'banned'],
-    default : 'active'
+    default: 'active'
   },
-  isVerified : {
-    type : Boolean,
-    default : false
+  isVerified: {
+    type: Boolean,
+    default: false
+  },
+  oauthId: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
+  oauthProvider: {
+    type: String,
+    enum: ['GOOGLE'],
+    default: null
   }
 }, { timestamps: true });
-
-// userSchema.pre('save', async function (next) {
-//   if (!this.isModified('passwordHash')) return next();
-
-//   try {
-//     const salt = await bcrypt.genSalt(10);
-//     this.passwordHash = await bcrypt.hash(this.passwordHash, salt);
-//     next();
-//   } catch (error) {
-//     next(error);
-//   }
-// });
 
 module.exports = mongoose.model('User', userSchema);

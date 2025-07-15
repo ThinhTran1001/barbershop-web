@@ -1,9 +1,9 @@
+// OrderDetail.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { getOrderById, updateOrder } from '../../services/api';
+import { getOrderById, updateOrder, createFeedbackOrder, getFeedbackOrderByOrderId } from '../../services/api';
 import {
-  Spin, Alert, Button, Typography, Tag, List, Avatar, Popconfirm, message, Descriptions, Form, Input, Card, Steps, Divider, notification
-} from 'antd';
+  Spin, Alert, Button, Typography, Tag, List, Avatar, Popconfirm, message, Descriptions, Form, Input, Card, Steps, Divider, notification } from 'antd';
 import {
   ArrowLeftOutlined, CopyOutlined, CheckCircleFilled, ShoppingOutlined, CarOutlined, HomeOutlined
 } from '@ant-design/icons';
@@ -76,13 +76,25 @@ const OrderDetail = () => {
   const [error, setError] = useState(null);
   const [form] = Form.useForm();
   const [showToast, setShowToast] = useState(false);
+  const [feedbackStatus, setFeedbackStatus] = useState(null);
 
   const fetchOrderDetail = async () => {
     try {
       setLoading(true);
+      console.log('Fetching order with id:', id); // Debug orderId
       const response = await getOrderById(id);
       const { order: orderData, items, payment } = response.data.data;
       setOrder({ ...orderData, items, payment });
+
+      // Kiểm tra status feedback
+      try {
+        const feedbackResponse = await getFeedbackOrderByOrderId(id);
+        console.log('Feedback response:', feedbackResponse.data); // Debug response
+        setFeedbackStatus(feedbackResponse.data.status);
+      } catch (feedbackError) {
+        console.error('Error fetching feedback status:', feedbackError);
+        setFeedbackStatus(null); // Đặt null nếu không tìm thấy
+      }
     } catch (err) {
       setError('Không thể tải chi tiết đơn hàng. Vui lòng thử lại.');
       console.error(err);
@@ -119,6 +131,15 @@ const OrderDetail = () => {
     navigator.clipboard.writeText(order.orderCode);
     setShowToast(true);
     setTimeout(() => setShowToast(false), 2000);
+  };
+
+  const handleStartFeedback = async () => {
+    try {
+      await createFeedbackOrder({ orderId: id, userId: order.userId });
+      navigate(`/feedback/${id}`);
+    } catch (err) {
+      message.error('Không thể bắt đầu đánh giá.');
+    }
   };
 
   if (loading) {
@@ -306,9 +327,6 @@ const OrderDetail = () => {
               {order.status === 'delivered' && 'Đơn hàng đã giao thành công.'}
               {order.status === 'cancelled' && 'Đơn hàng đã bị hủy.'}
             </Paragraph>
-            {/* <Paragraph>
-              <Text strong>Thời gian giao hàng dự kiến:</Text> 2-5 ngày làm việc (tùy thuộc vào địa chỉ giao hàng)
-            </Paragraph> */}
           </div>
         </Card>
 
@@ -356,8 +374,8 @@ const OrderDetail = () => {
           </div>
         </Card>
 
-        {order.status === 'pending' && (
-          <div className="order-actions">
+        <div className="order-actions">
+          {order.status === 'pending' && (
             <Popconfirm
               title="Bạn có chắc muốn hủy đơn hàng này?"
               onConfirm={handleCancelOrder}
@@ -366,8 +384,17 @@ const OrderDetail = () => {
             >
               <Button type="primary" danger>Hủy đơn hàng</Button>
             </Popconfirm>
-          </div>
-        )}
+          )}
+          {order.status === 'delivered' && order.payment?.status === 'paid' && !feedbackStatus && (
+            <Button 
+              type="primary" 
+              onClick={handleStartFeedback}
+              style={{ marginLeft: 10 }}
+            >
+              Đánh giá sản phẩm
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -1,9 +1,40 @@
 const FeedbackBarber = require('../models/feedbackBarber.model');
+const FeedbackBooking = require('../models/feedbackBooking.model');
+const Barber = require('../models/barber.model');
 const mongoose = require('mongoose');
+
+// Helper function to update barber rating
+const updateBarberRating = async (barberId) => {
+  try {
+    const approvedFeedbacks = await FeedbackBarber.find({ 
+      barberId, 
+      isApproved: true 
+    });
+
+    if (approvedFeedbacks.length === 0) {
+      // If no approved feedbacks, set rating to 0
+      await Barber.findByIdAndUpdate(barberId, { 
+        rating: 0, 
+        totalRatings: 0 
+      });
+      return;
+    }
+
+    const totalRating = approvedFeedbacks.reduce((sum, fb) => sum + fb.rating, 0);
+    const averageRating = totalRating / approvedFeedbacks.length;
+
+    await Barber.findByIdAndUpdate(barberId, { 
+      rating: Number(averageRating.toFixed(1)), 
+      totalRatings: approvedFeedbacks.length 
+    });
+  } catch (error) {
+    console.error('Error updating barber rating:', error);
+  }
+};
 
 exports.getAllFeedbacks = async (req, res) => {
   try {
-    const { page = 1, limit = 10, search, status, startDate, endDate } = req.query;
+    const { page = 1, limit = 10, search, status, startDate, endDate, rating } = req.query;
 
     const query = {};
     
@@ -21,6 +52,10 @@ exports.getAllFeedbacks = async (req, res) => {
       query.comment = { $regex: search, $options: 'i' };
     }
 
+    if (rating && rating !== 'All') {
+      query.rating = Number(rating);
+    }
+
     const feedbacks = await FeedbackBarber.find(query)
       .populate('barberId', 'name email')
       .populate('customerId', 'name email')
@@ -30,8 +65,6 @@ exports.getAllFeedbacks = async (req, res) => {
       .limit(Number(limit));
 
     const total = await FeedbackBarber.countDocuments(query);
-
-    console.log('Fetched feedbacks:', feedbacks);
 
     const transformedFeedbacks = feedbacks.map(fb => ({
       ...fb.toObject(),
@@ -99,6 +132,11 @@ exports.createBarberFeedback = async (req, res) => {
       return res.status(400).json({ message: 'Điểm đánh giá phải từ 1 đến 5' });
     }
 
+    const existingFeedback = await FeedbackBooking.findOne({ bookingId, userId: customerId });
+    if (existingFeedback && existingFeedback.status) {
+      return res.status(400).json({ message: 'Bạn đã đánh giá booking này rồi' });
+    }
+
     const feedback = new FeedbackBarber({
       bookingId,
       barberId,
@@ -110,6 +148,15 @@ exports.createBarberFeedback = async (req, res) => {
     });
 
     await feedback.save();
+
+    if (!existingFeedback) {
+      await FeedbackBooking.create({ bookingId, userId: customerId });
+    } else {
+      await FeedbackBooking.findOneAndUpdate({ bookingId, userId: customerId }, { status: true });
+    }
+
+    // Update barber rating after creating feedback
+    await updateBarberRating(barberId);
 
     const populatedFeedback = await FeedbackBarber.findById(feedback._id)
       .populate('barberId', 'name email')
@@ -174,6 +221,9 @@ exports.updateApprovalStatus = async (req, res) => {
     }
 
     console.log('Updated feedback:', feedback);
+
+    // Update barber rating after approval status change
+    await updateBarberRating(feedback.barberId._id);
 
     const transformedFeedback = {
       ...feedback.toObject(),
@@ -261,9 +311,14 @@ exports.deleteBarberFeedback = async (req, res) => {
 
     console.log('Found feedback to delete:', existingFeedback);
 
+    const barberId = existingFeedback.barberId;
+
     await FeedbackBarber.findByIdAndDelete(id);
 
     console.log('Successfully deleted feedback with ID:', id);
+
+    // Update barber rating after deletion
+    await updateBarberRating(barberId);
 
     res.json({ 
       message: 'Phản hồi đã được xóa thành công',

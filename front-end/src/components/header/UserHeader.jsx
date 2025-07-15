@@ -1,6 +1,11 @@
 import React from "react";
 import { Layout, Menu, Button, Dropdown, Badge } from "antd";
-import { ShoppingCartOutlined, UserOutlined } from "@ant-design/icons";
+import {
+  ShoppingCartOutlined,
+  UserOutlined,
+  CalendarOutlined,
+  StarOutlined,
+} from "@ant-design/icons";
 import { useAuth } from "../../context/AuthContext";
 import { useUserCart } from "../../context/UserCartContext";
 import { useNavigate } from "react-router-dom";
@@ -22,18 +27,38 @@ export default function UserHeader() {
   const { getCartCount, version } = useUserCart();
   const navigate = useNavigate();
 
-  // Force re-render khi version thay đổi
+  // Force re-render khi version thay đổi (cart thay đổi)
   React.useEffect(() => {}, [version]);
 
-  // Luôn dùng getCartCount từ useUserCart cho user login
-  // Nếu muốn hiển thị cho guest, cần logic riêng ở component khác
-
-  // Log để debug re-render
-  console.log('UserHeader render, cart count:', getCartCount());
+  console.log("UserHeader render, cart count:", getCartCount());
 
   const handleLogout = async () => {
     await logout();
     navigate("/login");
+  };
+
+  const scrollToSection = (sectionId) => {
+    if (window.location.pathname !== "/") {
+      navigate("/");
+      setTimeout(() => {
+        scrollToElement(sectionId);
+      }, 100);
+    } else {
+      scrollToElement(sectionId);
+    }
+  };
+
+  const scrollToElement = (elementId) => {
+    const element = document.getElementById(elementId);
+    if (element) {
+      const headerHeight = 70;
+      const elementPosition = element.offsetTop - headerHeight;
+
+      window.scrollTo({
+        top: elementPosition,
+        behavior: "smooth",
+      });
+    }
   };
 
   const userMenuItems = [
@@ -47,6 +72,21 @@ export default function UserHeader() {
       key: "orders",
       label: "Lịch sử đơn hàng",
       onClick: () => navigate("/my-orders"),
+    },
+    {
+      key: "bookings",
+      icon: <CalendarOutlined />,
+      label: "Lịch hẹn của tôi",
+      onClick: () => navigate("/my-booking"),
+    },
+    {
+      key: "feedback",
+      icon: <StarOutlined />,
+      label: "Đánh giá của tôi",
+      onClick: () => navigate("/my-feedback"),
+    },
+    {
+      type: "divider",
     },
     {
       key: "logout",
@@ -79,7 +119,11 @@ export default function UserHeader() {
           }}
           defaultSelectedKeys={["home"]}
           onClick={({ key }) => {
-            navigate(`/${key === "home" ? "" : key}`);
+            if (key === "services") {
+              scrollToSection("services");
+            } else {
+              navigate(`/${key === "home" ? "" : key}`);
+            }
           }}
         />
       </div>
@@ -99,10 +143,7 @@ export default function UserHeader() {
             <Button type="default" onClick={() => navigate("/login")}>
               Đăng nhập
             </Button>
-            <Button
-              className="bg-warning"
-              onClick={() => navigate("/register")}
-            >
+            <Button className="bg-warning" onClick={() => navigate("/register")}>
               Đăng ký
             </Button>
           </>

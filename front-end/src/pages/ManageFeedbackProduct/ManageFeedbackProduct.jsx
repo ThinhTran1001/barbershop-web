@@ -13,10 +13,10 @@ const ManageFeedbackProduct = () => {
   const [filteredFeedbacks, setFilteredFeedbacks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchValue, setSearchValue] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('All');
   const [dateRange, setDateRange] = useState([]);
-  const [ratingFilter, setRatingFilter] = useState(null);
-  const [productFilter, setProductFilter] = useState(null);
+  const [ratingFilter, setRatingFilter] = useState('All');
+  const [productFilter, setProductFilter] = useState('All');
   const [products, setProducts] = useState([]);
   const [viewModalVisible, setViewModalVisible] = useState(false);
   const [selectedFeedback, setSelectedFeedback] = useState(null);
@@ -27,19 +27,15 @@ const ManageFeedbackProduct = () => {
 
   useEffect(() => {
     applyFilters();
-  }, [feedbacks, searchValue, statusFilter, dateRange, ratingFilter, productFilter]); 
+  }, [feedbacks, searchValue, statusFilter, dateRange, ratingFilter, productFilter]);
 
   const fetchFeedbacks = async () => {
     setLoading(true);
     try {
       const res = await getAllFeedbacks();
-      
-      // Handle different response structures
       const feedbackData = res.data?.data || res.data || res || [];
-      
       setFeedbacks(Array.isArray(feedbackData) ? feedbackData : []);
-      
-      // Extract unique products from feedbacks for product filter
+
       if (Array.isArray(feedbackData) && feedbackData.length > 0) {
         const uniqueProducts = [];
         const productIds = new Set();
@@ -49,12 +45,16 @@ const ManageFeedbackProduct = () => {
             productIds.add(feedback.productId._id);
             uniqueProducts.push({
               _id: feedback.productId._id,
-              name: feedback.productId.name || 'Unknown Product'
+              name: feedback.productId.name || 'Unknown Product',
+              rating: feedback.productId.rating || 0,
+              feedbackCount: feedback.productId.feedbackCount || 0
             });
           }
         });
         
         setProducts(uniqueProducts);
+      } else {
+        setProducts([]);
       }
     } catch (err) {
       console.error('Error fetching feedbacks:', err);
@@ -74,34 +74,29 @@ const ManageFeedbackProduct = () => {
 
     let filtered = [...feedbacks];
 
-    // Search functionality - search by comment, user name, product name
     if (searchValue) {
       const searchLower = searchValue.toLowerCase();
       filtered = filtered.filter(item =>
-        item.comment?.toLowerCase().includes(searchLower) ||
-        item.userId?.name?.toLowerCase().includes(searchLower) ||
-        item.productId?.name?.toLowerCase().includes(searchLower)
+        (item.comment?.toLowerCase().includes(searchLower) || '') ||
+        (item.userId?.name?.toLowerCase().includes(searchLower) || '') ||
+        (item.productId?.name?.toLowerCase().includes(searchLower) || '')
       );
     }
 
-    // Status filter
-    if (statusFilter !== 'all') {
+    if (statusFilter !== 'All') {
       filtered = filtered.filter(item =>
-        statusFilter === 'approved' ? item.isApproved : !item.isApproved
+        statusFilter === 'Approved' ? item.isApproved : !item.isApproved
       );
     }
 
-    // Rating filter - filter by star rating
-    if (ratingFilter !== null) {
-      filtered = filtered.filter(item => item.rating === ratingFilter);
+    if (ratingFilter !== 'All') {
+      filtered = filtered.filter(item => item.rating === Number(ratingFilter));
     }
 
-    // Product filter - filter by product
-    if (productFilter) {
+    if (productFilter !== 'All') {
       filtered = filtered.filter(item => item.productId?._id === productFilter);
     }
 
-    // Date range filter
     if (dateRange && dateRange.length === 2) {
       const [start, end] = dateRange;
       filtered = filtered.filter(item => {
@@ -116,8 +111,8 @@ const ManageFeedbackProduct = () => {
   const handleApproveFeedback = async (id) => {
     try {
       await approveFeedback(id);
-      message.success('Feedback approved successfully');
-      fetchFeedbacks();
+      message.success('Feedback approved successfully. Product rating updated.');
+      await fetchFeedbacks();
     } catch (err) {
       console.error('Error approving feedback:', err);
       message.error('An error occurred while approving feedback');
