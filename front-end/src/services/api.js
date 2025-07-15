@@ -57,7 +57,7 @@ export const deleteOrder = (id) => api.delete(`/orders/${id}`);
 
 export const getCart = (params) => api.get('/carts',{params});
 export const addItem = (data) => api.post('/carts', data);
-export const updateItem = (productId, data) => api.put('/carts', { productId, ...data });
+export const updateItem = (productId, data) => api.put('/carts', { productId, quantity: data.quantity });
 export const removeItem = (id) => api.delete(`/carts/${id}`);
 export const clearCart = () => api.delete(`/carts`);
 
@@ -117,5 +117,10 @@ export const getProductDiscounts = (productId) => api.get(`/discounts/product/${
 export const toggleDiscountStatus = (id) => api.patch(`/discounts/${id}/toggle-status`);
 export const getDiscountStats = () => api.get('/discounts/stats');
 export const cleanupExpiredDiscounts = () => api.post('/discounts/cleanup-expired');
+
+export const getAllBookings = (params) => api.get('/bookings/all', { params });
+export const getBookingChartStats = (params) => api.get('/bookings/chart-stats', { params });
+export const getBookingDetail = (id) => api.get(`/bookings/${id}`);
+export const getBookingStats = () => api.get('/bookings/stats');
 
 export default api;

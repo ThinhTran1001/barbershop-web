@@ -2,7 +2,6 @@ import React from "react";
 import { Layout, Menu, Button, Dropdown, Badge } from "antd";
 import { ShoppingCartOutlined, UserOutlined } from "@ant-design/icons";
 import { useAuth } from "../../context/AuthContext";
-import { useCart } from "../../context/CartContext";
 import { useUserCart } from "../../context/UserCartContext";
 import { useNavigate } from "react-router-dom";
 import "../../css/landing/common-header.css";
@@ -20,14 +19,17 @@ const navItems = [
 
 export default function UserHeader() {
   const { user, logout } = useAuth();
-  const { getCartCount: getGuestCartCount } = useCart();
-  const { getCartCount: getUserCartCount } = useUserCart();
+  const { getCartCount, version } = useUserCart();
   const navigate = useNavigate();
 
-  // Dùng cart count theo trạng thái đăng nhập
-  const getCartCount = () => {
-    return user ? getUserCartCount() : getGuestCartCount();
-  };
+  // Force re-render khi version thay đổi
+  React.useEffect(() => {}, [version]);
+
+  // Luôn dùng getCartCount từ useUserCart cho user login
+  // Nếu muốn hiển thị cho guest, cần logic riêng ở component khác
+
+  // Log để debug re-render
+  console.log('UserHeader render, cart count:', getCartCount());
 
   const handleLogout = async () => {
     await logout();

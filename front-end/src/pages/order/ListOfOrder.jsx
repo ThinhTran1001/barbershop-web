@@ -70,8 +70,17 @@ const ListOfOrder = () => {
                                 {getStatusTag(order.status)}
                             </div>
                             <div className="order-card-body">
-                                {order.items && order.items.map(item => (
-                                    <div key={item._id} className="order-item-preview">
+                                {order.items && order.items.map((item, idx) => (
+                                    <div
+                                        key={item._id}
+                                        className="order-item-preview"
+                                        style={{
+                                            borderBottom: idx !== order.items.length - 1 ? '2px solid #bbb' : 'none',
+                                            padding: '16px 0',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                        }}
+                                    >
                                         <img src={item.productImage || 'https://via.placeholder.com/60'} alt={item.productName} className="item-preview-image" />
                                         <div className="item-preview-info">
                                             <Text className="item-name">{item.productName}</Text>

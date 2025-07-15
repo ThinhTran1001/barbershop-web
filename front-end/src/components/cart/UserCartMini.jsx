@@ -1,5 +1,5 @@
 import React from 'react';
-import { UserCartProvider, useUserCart } from '../../context/UserCartContext';
+import { useUserCart } from '../../context/UserCartContext';
 import { useAuth } from '../../context/AuthContext';
 import { 
   Button, 
@@ -111,7 +111,7 @@ const UserCartMiniContent = () => {
       <div className="user-cart-mini-items">
         <Card className="items-card">
           {cart.items.slice(0, 3).map((item) => (
-            <div key={item.id} className="user-cart-mini-item">
+            <div key={item.productId || item.id} className="user-cart-mini-item">
               <Row align="middle" gutter={12}>
                 <Col span={6}>
                   <div className="item-image-container">
@@ -160,7 +160,7 @@ const UserCartMiniContent = () => {
                     size="small"
                     danger
                     icon={<DeleteOutlined />}
-                    onClick={() => handleRemoveItem(item.id)}
+                                            onClick={() => handleRemoveItem(item.productId || item.id)}
                     className="remove-btn"
                   />
                 </Col>
@@ -234,10 +234,6 @@ const UserCartMiniContent = () => {
   );
 };
 
-const UserCartMini = () => (
-  <UserCartProvider>
-    <UserCartMiniContent />
-  </UserCartProvider>
-);
+const UserCartMini = () => <UserCartMiniContent />;
 
 export default UserCartMini; 

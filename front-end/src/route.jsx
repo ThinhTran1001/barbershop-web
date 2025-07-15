@@ -40,6 +40,7 @@ import BookingPage from "./pages/barber/BookingPage.jsx";
 import BookingInfoPage from "./pages/ServiceBooking/BookingInfoPage.jsx";
 import MyBookingsPage from "./pages/ServiceBooking/MyBookingsPage.jsx";
 import BarberBookingPage from "./pages/barber/BarberBookingPage.jsx";
+import Appointment from "./components/Appointment.jsx";
 
 const publicRoutes = {
   element: <CommonLayout />,
@@ -79,6 +80,7 @@ const adminRoutes = {
         {path: "feedback-product", element:  <ManageFeedbackProduct/>},
         {path: "feedback-barber", element: <ManageFeedbackBarber/>}, 
         {path: "discount-product", element: <ManageDiscountProduct/>},
+        {path: "appointment", element: <Appointment/>},
       ],
     },
   ],
@@ -153,6 +155,7 @@ const router = createBrowserRouter([
           { path: "feedback-product", element: <ManageFeedbackProduct /> },
           { path: "feedback-barber", element: <ManageFeedbackBarber /> },
           { path: "discount-product", element: <ManageDiscountProduct /> },
+          { path: "appointment", element: <Appointment /> },
         ],
       },
     ],

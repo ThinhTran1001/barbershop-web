@@ -182,7 +182,6 @@ export default function CheckoutGuest() {
                 <Select placeholder="Chọn phương thức">
                   <Option value="cash">Thanh toán khi nhận hàng</Option>
                   <Option value="bank">Chuyển khoản ngân hàng</Option>
-                  <Option value="momo">Ví MoMo</Option>
                 </Select>
               </Form.Item>
 
