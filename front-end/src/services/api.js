@@ -34,7 +34,7 @@ export const updateUser = (id, data) => api.put(`/users/${id}`, data);
 export const deleteUser = (id) => api.delete(`/users/${id}`);
 
 // Barber
-export const getAllBarber = () => api.get('/barbers');
+export const getAllBarber = (params) => api.get('/barbers', { params });
 export const createBarber = (data) => api.post('/barbers', data);
 export const updateBarber = (id, data) => api.put(`/barbers/${id}`, data);
 export const deleteBarber = (id) => api.delete(`/barbers/${id}`);

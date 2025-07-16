@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, message, Select, DatePicker, InputNumber } from 'antd';
 import { getAllBarber, createBarber, updateBarber } from '../services/api';
-import { InfoCircleFilled, SortAscendingOutlined, SortDescendingOutlined } from '@ant-design/icons';
+import { InfoCircleFilled, SortAscendingOutlined, SortDescendingOutlined, EyeOutlined } from '@ant-design/icons';
 // import moment from 'moment';
 
 const { Option } = Select;
@@ -44,33 +44,40 @@ const BarberManagement = () => {
   const [pageSize, setPageSize] = useState(5);
   const [sortName, setSortName] = useState(null);
   const [sortExperience, setSortExperience] = useState(null);
+  const [detailBarber, setDetailBarber] = useState(null);
+  const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
+
+  const fetchInitialData = async (searchValue = '') => {
+    try {
+      const params = {};
+      if (searchValue) params.search = searchValue;
+      const response = await getAllBarber(params);
+      const barbersData = Array.isArray(response.data)
+        ? response.data
+        : response.data.barbers || [];
+      setAllBarbers(barbersData);
+      setBarbers(barbersData);
+    } catch (error) {
+      message.error('Failed to load barber list: ' + error.message);
+    }
+  };
 
   useEffect(() => {
     fetchInitialData();
   }, []);
 
   useEffect(() => {
-    filterBarbers();
-  }, [searchTerm, availabilityFilter, totalBookingsFilter, averageRatingFilter, experienceFilter, sortName, sortExperience]);
-
-  const fetchInitialData = async () => {
-    try {
-      const response = await getAllBarber();
-      console.log('Barber data after fetch:', response.data);
-      setAllBarbers(response.data);
-      setBarbers(response.data);
-    } catch (error) {
-      message.error('Failed to load barber list: ' + error.message);
+    if (searchTerm) {
+      fetchInitialData(searchTerm);
+    } else {
+      fetchInitialData();
     }
-  };
+    // eslint-disable-next-line
+  }, [searchTerm]);
 
+  // filterBarbers chỉ còn lọc các filter khác, không lọc searchTerm nữa
   const filterBarbers = () => {
     let filtered = [...allBarbers];
-    if (searchTerm) {
-      filtered = filtered.filter((barber) =>
-        barber.userId?.name?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
     if (availabilityFilter !== undefined) {
       filtered = filtered.filter((barber) => barber.isAvailable === availabilityFilter);
     }
@@ -100,12 +107,31 @@ const BarberManagement = () => {
     setBarbers(filtered);
   };
 
+  useEffect(() => {
+    filterBarbers();
+    // eslint-disable-next-line
+  }, [availabilityFilter, totalBookingsFilter, averageRatingFilter, experienceFilter, sortName, sortExperience, allBarbers]);
+
   const handleAddOrUpdateBarber = async (values) => {
     try {
       const barberData = {
-        ...values,
-        workingSince: values.workingSince ? values.workingSince.toISOString() : null,
+        userId: values.userId,
+        bio: values.bio,
+        experienceYears: values.experienceYears,
         specialties: values.specialties ? values.specialties.split(',').map((s) => s.trim()) : [],
+        expertiseTags: values.expertiseTags ? values.expertiseTags.split(',').map((s) => s.trim()) : [],
+        hairTypeExpertise: values.hairTypeExpertise ? values.hairTypeExpertise.split(',').map((s) => s.trim()) : [],
+        styleExpertise: values.styleExpertise ? values.styleExpertise.split(',').map((s) => s.trim()) : [],
+        workingSince: values.workingSince ? values.workingSince.toISOString() : null,
+        autoAssignmentEligible: values.autoAssignmentEligible ?? true,
+        maxDailyBookings: values.maxDailyBookings ?? 12,
+        preferredWorkingHours: {
+          start: values.preferredWorkingHours?.start || "09:00",
+          end: values.preferredWorkingHours?.end || "18:00"
+        },
+        profileImageUrl: values.profileImageUrl || null,
+        certifications: values.certifications ? values.certifications.split(',').map((s) => s.trim()) : [],
+        languages: values.languages ? values.languages.split(',').map((s) => s.trim()) : ["Vietnamese"]
       };
 
       console.log('Payload sent:', barberData);
@@ -236,22 +262,29 @@ const BarberManagement = () => {
       key: 'workingSince',
       render: (date) => (date ? new Date(date).toLocaleDateString() : 'N/A'),
     },
-    // {
-    //   title: 'Actions',
-    //   key: 'actions',
-    //   render: (_, record) => (
-    //     <Button onClick={() => showModal(record)} className="me-2">
-    //       <InfoCircleFilled />
-    //     </Button>
-    //   ),
-    // },
+    {
+      title: 'Action',
+      key: 'action',
+      align: 'center',
+      render: (_, record) => (
+        <Button
+          shape="circle"
+          icon={<EyeOutlined />}
+          onClick={() => {
+            setDetailBarber(record);
+            setIsDetailModalVisible(true);
+          }}
+          style={{ margin: '0 4px', border: '1px solid #d9d9d9', background: '#fff' }}
+        />
+      ),
+    },
   ];
 
   return (
     <div className="container mt-4">
       <div className="mb-3 d-flex align-items-center">
         <Input
-          placeholder="Search by name"
+          placeholder="Search by name, email"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{ width: 200, marginRight: 10 }}
@@ -362,38 +395,22 @@ const BarberManagement = () => {
             <Input placeholder="e.g., Haircut, Shaving, Styling" />
           </Form.Item>
           <Form.Item
-            name="averageRating"
-            label="Average Rating"
-            rules={[{ required: true, message: 'Please enter average rating!' }]}
+            name="expertiseTags"
+            label="Expertise Tags (comma-separated)"
           >
-            <InputNumber min={0} max={5} step={0.1} style={{ width: '100%' }} />
+            <Input placeholder="e.g., fade, coloring, beard, long_hair" />
           </Form.Item>
           <Form.Item
-            name="ratingCount"
-            label="Rating Count"
-            rules={[{ required: true, message: 'Please enter rating count!' }]}
+            name="hairTypeExpertise"
+            label="Hair Type Expertise (comma-separated)"
           >
-            <InputNumber min={0} style={{ width: '100%' }} />
+            <Input placeholder="e.g., straight, wavy, curly, coily" />
           </Form.Item>
           <Form.Item
-            name="totalBookings"
-            label="Total Bookings"
-            rules={[{ required: true, message: 'Please enter total bookings!' }]}
+            name="styleExpertise"
+            label="Style Expertise (comma-separated)"
           >
-            <InputNumber min={0} style={{ width: '100%' }} />
-          </Form.Item>
-          <Form.Item
-            name="isAvailable"
-            label="Availability"
-            rules={[{ required: true, message: 'Please select availability!' }]}
-          >
-            <Select>
-              {AVAILABILITY_OPTIONS.map((option) => (
-                <Option key={option.value} value={option.value}>
-                  {option.label}
-                </Option>
-              ))}
-            </Select>
+            <Input placeholder="e.g., short, medium, long, beard, mustache" />
           </Form.Item>
           <Form.Item
             name="workingSince"
@@ -402,12 +419,122 @@ const BarberManagement = () => {
           >
             <DatePicker format="YYYY-MM-DD" />
           </Form.Item>
+          <Form.Item
+            name="autoAssignmentEligible"
+            label="Auto Assignment Eligible"
+            initialValue={true}
+          >
+            <Select>
+              <Option value={true}>Yes</Option>
+              <Option value={false}>No</Option>
+            </Select>
+          </Form.Item>
+          <Form.Item
+            name="maxDailyBookings"
+            label="Max Daily Bookings"
+            initialValue={12}
+          >
+            <InputNumber min={1} style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item
+            label="Preferred Working Hours"
+          >
+            <Input.Group compact>
+              <Form.Item
+                name={["preferredWorkingHours", "start"]}
+                noStyle
+                rules={[{ required: false }]}
+              >
+                <Input style={{ width: '50%' }} placeholder="Start (e.g., 09:00)" />
+              </Form.Item>
+              <Form.Item
+                name={["preferredWorkingHours", "end"]}
+                noStyle
+                rules={[{ required: false }]}
+              >
+                <Input style={{ width: '50%' }} placeholder="End (e.g., 18:00)" />
+              </Form.Item>
+            </Input.Group>
+          </Form.Item>
+          <Form.Item
+            name="profileImageUrl"
+            label="Profile Image URL"
+          >
+            <Input placeholder="Enter image URL" />
+          </Form.Item>
+          <Form.Item
+            name="certifications"
+            label="Certifications (comma-separated)"
+          >
+            <Input placeholder="e.g., Certificate A, Certificate B" />
+          </Form.Item>
+          <Form.Item
+            name="languages"
+            label="Languages (comma-separated)"
+            initialValue="Vietnamese"
+          >
+            <Input placeholder="e.g., Vietnamese, English" />
+          </Form.Item>
           <Form.Item>
             <Button type="primary" htmlType="submit">
               Save
             </Button>
           </Form.Item>
         </Form>
+      </Modal>
+      {/* Modal xem chi tiết barber */}
+      <Modal
+        title="Barber Detail"
+        open={isDetailModalVisible}
+        onCancel={() => setIsDetailModalVisible(false)}
+        footer={null}
+        width={600}
+      >
+        {detailBarber && (
+          <div style={{ display: 'flex', gap: 24 }}>
+            {/* Avatar và tên */}
+            <div style={{ flex: '0 0 180px', textAlign: 'center' }}>
+              <div style={{ marginBottom: 16 }}>
+                {detailBarber.profileImageUrl ? (
+                  <img
+                    src={detailBarber.profileImageUrl}
+                    alt="Profile"
+                    style={{ width: 120, height: 120, borderRadius: '50%', objectFit: 'cover', border: '2px solid #eee', boxShadow: '0 2px 8px #eee' }}
+                  />
+                ) : (
+                  <div style={{ width: 120, height: 120, borderRadius: '50%', background: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 48, color: '#bbb', border: '2px solid #eee' }}>
+                    <span role="img" aria-label="avatar">👤</span>
+                  </div>
+                )}
+              </div>
+              <div style={{ fontWeight: 600, fontSize: 20 }}>{detailBarber.userId?.name || 'N/A'}</div>
+              <div style={{ color: '#888', fontSize: 14 }}>{detailBarber.userId?.email || 'N/A'}</div>
+              <div style={{ marginTop: 8, fontSize: 13, color: detailBarber.isAvailable ? '#52c41a' : '#f5222d' }}>
+                {detailBarber.isAvailable ? 'Available' : 'Unavailable'}
+              </div>
+            </div>
+            {/* Thông tin chi tiết */}
+            <div style={{ flex: 1 }}>
+              <div style={{ borderBottom: '1px solid #f0f0f0', marginBottom: 12, paddingBottom: 8, fontWeight: 500, fontSize: 16 }}>General Info</div>
+              <div style={{ marginBottom: 8 }}><b>Bio:</b> <span style={{ color: '#555' }}>{detailBarber.bio}</span></div>
+              <div style={{ marginBottom: 8 }}><b>Experience:</b> <span style={{ color: '#555' }}>{detailBarber.experienceYears} years</span></div>
+              <div style={{ marginBottom: 8 }}><b>Working Since:</b> <span style={{ color: '#555' }}>{detailBarber.workingSince ? new Date(detailBarber.workingSince).toLocaleDateString() : 'N/A'}</span></div>
+              <div style={{ marginBottom: 8 }}><b>Languages:</b> <span style={{ color: '#555' }}>{detailBarber.languages?.join(', ')}</span></div>
+              <div style={{ borderBottom: '1px solid #f0f0f0', margin: '16px 0 12px', paddingBottom: 8, fontWeight: 500, fontSize: 16 }}>Expertise</div>
+              <div style={{ marginBottom: 8 }}><b>Specialties:</b> <span style={{ color: '#555' }}>{detailBarber.specialties?.join(', ')}</span></div>
+              <div style={{ marginBottom: 8 }}><b>Expertise Tags:</b> <span style={{ color: '#555' }}>{detailBarber.expertiseTags?.join(', ')}</span></div>
+              <div style={{ marginBottom: 8 }}><b>Hair Type Expertise:</b> <span style={{ color: '#555' }}>{detailBarber.hairTypeExpertise?.join(', ')}</span></div>
+              <div style={{ marginBottom: 8 }}><b>Style Expertise:</b> <span style={{ color: '#555' }}>{detailBarber.styleExpertise?.join(', ')}</span></div>
+              <div style={{ marginBottom: 8 }}><b>Certifications:</b> <span style={{ color: '#555' }}>{detailBarber.certifications?.join(', ') || 'N/A'}</span></div>
+              <div style={{ borderBottom: '1px solid #f0f0f0', margin: '16px 0 12px', paddingBottom: 8, fontWeight: 500, fontSize: 16 }}>Work & Rating</div>
+              <div style={{ marginBottom: 8 }}><b>Auto Assignment:</b> <span style={{ color: '#555' }}>{detailBarber.autoAssignmentEligible ? 'Yes' : 'No'}</span></div>
+              <div style={{ marginBottom: 8 }}><b>Max Daily Bookings:</b> <span style={{ color: '#555' }}>{detailBarber.maxDailyBookings}</span></div>
+              <div style={{ marginBottom: 8 }}><b>Preferred Working Hours:</b> <span style={{ color: '#555' }}>{detailBarber.preferredWorkingHours?.start} - {detailBarber.preferredWorkingHours?.end}</span></div>
+              <div style={{ marginBottom: 8 }}><b>Average Rating:</b> <span style={{ color: '#faad14', fontWeight: 600 }}>{detailBarber.averageRating}</span> <span style={{ color: '#888', fontSize: 13 }}>(from {detailBarber.ratingCount} ratings)</span></div>
+              <div style={{ marginBottom: 8 }}><b>Total Bookings:</b> <span style={{ color: '#555' }}>{detailBarber.totalBookings}</span></div>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );
