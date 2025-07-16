@@ -10,7 +10,7 @@ const ContactPage = () => {
 
   return (
     <Container className="my-5">
-      <div className="berger-about__breadcrumb mb-4">
+      <div className="berger-about__breadcrumb mb-4" style={{ marginTop: 100 }}>
         <Breadcrumb>
           <Breadcrumb.Item>
             <span
