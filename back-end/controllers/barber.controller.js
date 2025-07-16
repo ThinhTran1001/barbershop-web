@@ -17,7 +17,21 @@ exports.createBarber = async (req, res) => {
       bio: req.body.bio,
       experienceYears: req.body.experienceYears,
       specialties: req.body.specialties,
+      expertiseTags: req.body.expertiseTags || [],
+      hairTypeExpertise: req.body.hairTypeExpertise || [],
+      styleExpertise: req.body.styleExpertise || [],
       workingSince: req.body.workingSince,
+      autoAssignmentEligible: req.body.autoAssignmentEligible ?? true,
+      maxDailyBookings: req.body.maxDailyBookings || 12,
+      preferredWorkingHours: {
+        start: req.body.preferredWorkingHours?.start || "09:00",
+        end: req.body.preferredWorkingHours?.end || "18:00"
+      },
+      profileImageUrl: req.body.profileImageUrl || null,
+      certifications: req.body.certifications || [],
+      languages: req.body.languages || ["Vietnamese"],
+      // Các trường có default nên không cần gán nếu không có input:
+      // averageRating, ratingCount, totalBookings, isAvailable
     });
 
     const savedBarber = await newBarber.save();
@@ -40,7 +54,8 @@ exports.getAllBarbers = async (req, res) => {
       sortBy = 'averageRating',
       sortOrder = 'desc',
       page = 1,
-      limit = 20
+      limit = 20,
+      search // thêm search param
     } = req.query;
 
     // Build filter object
@@ -76,12 +91,37 @@ exports.getAllBarbers = async (req, res) => {
 
     // Execute query with pagination
     const skip = (page - 1) * limit;
-    const barbers = await Barber.find(filter)
+    let query = Barber.find(filter)
       .populate('userId', 'name email phone avatarUrl')
       .sort(sort)
       .skip(skip)
       .limit(Number(limit));
 
+    // Nếu có search, filter theo tên hoặc email user
+    if (search) {
+      // Lấy tất cả trước, filter sau vì populate không hỗ trợ trực tiếp $regex trên field populate
+      const allBarbers = await Barber.find(filter)
+        .populate('userId', 'name email phone avatarUrl')
+        .sort(sort);
+      const searchLower = search.toLowerCase();
+      const filteredBarbers = allBarbers.filter(b => {
+        const name = b.userId?.name?.toLowerCase() || '';
+        const email = b.userId?.email?.toLowerCase() || '';
+        return name.includes(searchLower) || email.includes(searchLower);
+      });
+      const pagedBarbers = filteredBarbers.slice(skip, skip + Number(limit));
+      return res.json({
+        barbers: pagedBarbers,
+        pagination: {
+          page: Number(page),
+          limit: Number(limit),
+          total: filteredBarbers.length,
+          pages: Math.ceil(filteredBarbers.length / limit)
+        }
+      });
+    }
+
+    const barbers = await query;
     const total = await Barber.countDocuments(filter);
 
     res.json({
