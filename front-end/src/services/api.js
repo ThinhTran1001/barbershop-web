@@ -154,5 +154,8 @@ export const getFeedbackBookingByBookingId = (bookingId) => api.get(`/feedback-b
 // Blog
 export const getAllBlogs = (params) => api.get('/news', { params });
 export const getBlogById = (id) => api.get(`/news/${id}`);
+export const createBlog = (data) => api.post('/news', data);
+export const updateBlog = (id, data) => api.put(`/news/${id}`, data);
+export const deleteBlog = (id) => api.delete(`/news/${id}`);
 
 export default api;

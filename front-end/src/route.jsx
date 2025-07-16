@@ -53,6 +53,7 @@ import TimeSlotPickerPage from "./pages/ServiceBooking/TimeSlotPickerPage.jsx";
 import BookingPage from "./pages/barber/BookingPage.jsx";
 import BookingInfoPage from "./pages/ServiceBooking/BookingInfoPage.jsx";
 import MyBookingsPage from "./pages/ServiceBooking/MyBookingsPage.jsx";
+import ManageBlog from "./pages/ManageBlog/ManageBlog.jsx";
 
 const router = createBrowserRouter([
   {
@@ -120,6 +121,7 @@ const router = createBrowserRouter([
           { path: "appointment", element: <Appointment /> },
           { path: "barber-schedule", element: <BarberScheduleManagement /> },
           { path: "statistics", element: <Statistics /> },
+          { path: "manage-blog", element: <ManageBlog /> },
         ],
       },
     ],

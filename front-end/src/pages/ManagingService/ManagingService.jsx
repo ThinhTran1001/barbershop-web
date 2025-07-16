@@ -35,11 +35,13 @@ const ManagingService = () => {
   const fetchServices = async () => {
     try {
       const res = await getAllServices();
-      setServices(res.data);
+      // Sửa lại để lấy đúng mảng services từ response
+      setServices(Array.isArray(res.data.services) ? res.data.services : []);
     } catch {
       setSuccessMessage("Failed to load services!");
       setShowSuccessToast(true);
       setTimeout(() => setShowSuccessToast(false), 3000);
+      setServices([]); // Nếu lỗi, cũng set về array rỗng
     }
   };
 
@@ -138,24 +140,26 @@ const ManagingService = () => {
     }
   };
 
-  const filteredServices = services
-    .filter((item) => item.name.toLowerCase().includes(searchText.toLowerCase()))
-    .filter(
-      (item) =>
-        filterSuggested.length === 0 ||
-        (item.suggestedFor || []).some((v) => filterSuggested.includes(v))
-    )
-    .filter((item) => {
-      if (priceFilter === "low") return item.price < 100000;
-      if (priceFilter === "medium") return item.price >= 100000 && item.price <= 300000;
-      if (priceFilter === "high") return item.price > 300000;
-      return true;
-    })
-    .filter((item) => {
-      if (statusFilter === "active") return item.isActive === true;
-      if (statusFilter === "inactive") return item.isActive === false;
-      return true;
-    });
+  const filteredServices = Array.isArray(services)
+    ? services
+        .filter((item) => item.name.toLowerCase().includes(searchText.toLowerCase()))
+        .filter(
+          (item) =>
+            filterSuggested.length === 0 ||
+            (item.suggestedFor || []).some((v) => filterSuggested.includes(v))
+        )
+        .filter((item) => {
+          if (priceFilter === "low") return item.price < 100000;
+          if (priceFilter === "medium") return item.price >= 100000 && item.price <= 300000;
+          if (priceFilter === "high") return item.price > 300000;
+          return true;
+        })
+        .filter((item) => {
+          if (statusFilter === "active") return item.isActive === true;
+          if (statusFilter === "inactive") return item.isActive === false;
+          return true;
+        })
+    : [];
 
   const columns = [
     { title: "Service Name", dataIndex: "name", key: "name" },

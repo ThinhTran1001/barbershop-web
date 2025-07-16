@@ -40,8 +40,8 @@ const ServiceBooking = () => {
     const loadServices = async () => {
       try {
         const res = await getAllServices();
-        setServices(res.data);
-        setFilteredServices(res.data);
+        setServices(Array.isArray(res.data.services) ? res.data.services : []);
+        setFilteredServices(Array.isArray(res.data.services) ? res.data.services : []);
       // eslint-disable-next-line no-unused-vars
       } catch (err) {
         message.error('Lỗi khi tải dịch vụ');
