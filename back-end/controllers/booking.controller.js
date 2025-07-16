@@ -514,7 +514,9 @@ exports.getAllBookings = async (req, res) => {
       filter.customerName = regex; // chỉ tìm trong tên khách
     }
 
-    const bookings = await Booking.find(filter);
+    const bookings = await Booking.find(filter)
+      .populate({ path: 'barberId', populate: { path: 'userId', select: 'name' } })
+      .populate('serviceId', 'name');
 
     res.status(200).json(bookings);
   } catch (err) {
@@ -527,8 +529,8 @@ exports.getAllBookings = async (req, res) => {
 exports.getBookingDetail = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id)
-      .populate('serviceId')
-      .populate({ path: 'barberId', populate: { path: 'userId' } })
+      .populate('serviceId', 'name')
+      .populate({ path: 'barberId', populate: { path: 'userId', select: 'name' } })
       .populate('customerId');
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
     res.json(booking);
