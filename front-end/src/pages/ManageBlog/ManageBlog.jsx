@@ -50,7 +50,7 @@ const ManageBlog = () => {
       setBlogs(res.data?.data || []);
       setTotal(res.data?.total || 0);
     } catch {
-      showAlert('danger', 'Lỗi tải danh sách blog');
+      showAlert('danger', 'Failed to load blog list');
     } finally {
       setLoading(false);
     }
@@ -132,28 +132,28 @@ const ManageBlog = () => {
     if (confirmModal.type === 'delete') {
       try {
         await deleteBlog(confirmModal.data);
-        showAlert('success', 'Đã xóa blog thành công');
+        showAlert('success', 'Blog deleted successfully');
         fetchBlogs();
       } catch {
-        showAlert('danger', 'Xóa blog thất bại');
+        showAlert('danger', 'Delete blog failed');
       }
     } else if (confirmModal.type === 'add') {
       try {
         await createBlog(confirmModal.data);
-        showAlert('success', 'Tạo blog mới thành công');
+        showAlert('success', 'Blog created successfully');
         setModalVisible(false);
         fetchBlogs();
       } catch {
-        showAlert('danger', 'Tạo blog thất bại');
+        showAlert('danger', 'Create blog failed');
       }
     } else if (confirmModal.type === 'edit') {
       try {
         await updateBlog(editingBlog._id, confirmModal.data);
-        showAlert('success', 'Cập nhật blog thành công');
+        showAlert('success', 'Blog updated successfully');
         setModalVisible(false);
         fetchBlogs();
       } catch {
-        showAlert('danger', 'Cập nhật blog thất bại');
+        showAlert('danger', 'Update blog failed');
       }
     }
     setConfirmModal({ show: false, type: '', data: null });
@@ -189,7 +189,7 @@ const ManageBlog = () => {
           tags={tags}
         />
         <Button variant="primary" onClick={handleAdd} style={{ height: 40 }}>
-          + Thêm Blog
+          + Add Blog
         </Button>
       </div>
       <BlogTable
@@ -201,7 +201,7 @@ const ManageBlog = () => {
           current: currentPage,
           pageSize: PAGE_SIZE,
           total,
-          showTotal: (t) => `Tổng cộng ${t} blog`,
+          showTotal: (t) => `Total ${t} blogs`,
         }}
         onChange={handleTableChange}
       />
@@ -215,22 +215,22 @@ const ManageBlog = () => {
       <Modal show={confirmModal.show} onHide={handleCancelConfirm} centered>
         <Modal.Header closeButton>
           <Modal.Title>
-            {confirmModal.type === 'delete' && 'Xác nhận xóa blog'}
-            {confirmModal.type === 'add' && 'Xác nhận thêm blog'}
-            {confirmModal.type === 'edit' && 'Xác nhận sửa blog'}
+            {confirmModal.type === 'delete' && 'Confirm delete blog'}
+            {confirmModal.type === 'add' && 'Confirm add blog'}
+            {confirmModal.type === 'edit' && 'Confirm edit blog'}
           </Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          {confirmModal.type === 'delete' && 'Bạn có chắc chắn muốn xóa blog này không?'}
-          {confirmModal.type === 'add' && 'Bạn có chắc chắn muốn thêm blog này không?'}
-          {confirmModal.type === 'edit' && 'Bạn có chắc chắn muốn sửa blog này không?'}
+          {confirmModal.type === 'delete' && 'Are you sure you want to delete this blog?'}
+          {confirmModal.type === 'add' && 'Are you sure you want to add this blog?'}
+          {confirmModal.type === 'edit' && 'Are you sure you want to edit this blog?'}
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={handleCancelConfirm}>
-            Hủy
+            Cancel
           </Button>
           <Button variant="primary" onClick={handleConfirm}>
-            Xác nhận
+            Confirm
           </Button>
         </Modal.Footer>
       </Modal>

@@ -121,7 +121,7 @@ const router = createBrowserRouter([
           { path: "appointment", element: <Appointment /> },
           { path: "barber-schedule", element: <BarberScheduleManagement /> },
           { path: "statistics", element: <Statistics /> },
-          { path: "blog", element: <ManageBlog /> },
+          { path: "manage-blog", element: <ManageBlog /> },
         ],
       },
     ],

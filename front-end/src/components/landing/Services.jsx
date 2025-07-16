@@ -15,7 +15,7 @@ export default function Services() {
           throw new Error("Network response was not ok");
         }
         const data = await response.json();
-        setServices(data);
+        setServices(Array.isArray(data.services) ? data.services : []);
         setLoading(false);
       } catch (error) {
         setError("Không thể tải dữ liệu dịch vụ. Vui lòng thử lại sau.");

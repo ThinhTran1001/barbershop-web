@@ -31,7 +31,7 @@ const BlogFilter = ({ onChange, authors = [], categories = [], tags = [] }) => {
       <Col flex="none">
         <Select
           allowClear
-          placeholder="Trạng thái"
+          placeholder="Status"
           style={{ width: 120, ...inputStyle }}
           value={status}
           onChange={v => { setStatus(v); triggerChange({ status: v }); }}
@@ -44,7 +44,7 @@ const BlogFilter = ({ onChange, authors = [], categories = [], tags = [] }) => {
       <Col flex="none">
         <Select
           allowClear
-          placeholder="Chuyên mục"
+          placeholder="Category"
           style={{ width: 140, ...inputStyle }}
           value={category}
           onChange={v => { setCategory(v); triggerChange({ category: v }); }}
@@ -58,7 +58,7 @@ const BlogFilter = ({ onChange, authors = [], categories = [], tags = [] }) => {
       <Col flex="none">
         <Select
           allowClear
-          placeholder="Tác giả"
+          placeholder="Author"
           style={{ width: 140, ...inputStyle }}
           value={author}
           onChange={v => { setAuthor(v); triggerChange({ author: v }); }}
@@ -91,11 +91,12 @@ const BlogFilter = ({ onChange, authors = [], categories = [], tags = [] }) => {
           onChange={v => { setDateRange(v); triggerChange({ dateRange: v }); }}
           size="large"
           format="DD/MM/YYYY"
+          placeholder={["Start date", "End date"]}
         />
       </Col>
       <Col flex="none">
         <Input.Search
-          placeholder="Tìm tiêu đề..."
+          placeholder="Search title..."
           style={{ width: 200, ...inputStyle }}
           value={search}
           onChange={e => { setSearch(e.target.value); triggerChange({ search: e.target.value }); }}

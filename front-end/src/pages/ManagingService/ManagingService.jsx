@@ -35,8 +35,8 @@ const ManagingService = () => {
   const fetchServices = async () => {
     try {
       const res = await getAllServices();
-      // Đảm bảo luôn là array
-      setServices(Array.isArray(res.data) ? res.data : []);
+      // Sửa lại để lấy đúng mảng services từ response
+      setServices(Array.isArray(res.data.services) ? res.data.services : []);
     } catch {
       setSuccessMessage("Failed to load services!");
       setShowSuccessToast(true);

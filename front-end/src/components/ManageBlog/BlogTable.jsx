@@ -4,26 +4,26 @@ import { Table, Button, Tag, Space, Popconfirm } from 'antd';
 const BlogTable = ({ data, loading, onEdit, onDelete, pagination, onChange }) => {
   const columns = [
     {
-      title: 'Ảnh',
+      title: 'Image',
       dataIndex: 'image',
       key: 'image',
       render: (img) => img ? <img src={img} alt="blog" style={{ width: 64, height: 48, objectFit: 'cover', borderRadius: 4 }} /> : null,
       width: 80,
     },
     {
-      title: 'Tiêu đề',
+      title: 'Title',
       dataIndex: 'title',
       key: 'title',
       render: (text, record) => <b>{text}</b>,
     },
     {
-      title: 'Chuyên mục',
+      title: 'Category',
       dataIndex: 'categories',
       key: 'categories',
       render: (cats) => cats?.map((cat) => <Tag key={cat} color="blue">{cat}</Tag>),
     },
     {
-      title: 'Trạng thái',
+      title: 'Status',
       dataIndex: 'status',
       key: 'status',
       render: (status) => {
@@ -34,14 +34,14 @@ const BlogTable = ({ data, loading, onEdit, onDelete, pagination, onChange }) =>
       width: 100,
     },
     {
-      title: 'Ngày đăng',
+      title: 'Published Date',
       dataIndex: 'date',
       key: 'date',
-      render: (date) => date ? new Date(date).toLocaleDateString('vi-VN') : '',
+      render: (date) => date ? new Date(date).toLocaleDateString('en-GB') : '',
       width: 120,
     },
     {
-      title: 'Tác giả',
+      title: 'Author',
       dataIndex: 'author',
       key: 'author',
       render: (author) => author ? author.name : '',
@@ -55,16 +55,16 @@ const BlogTable = ({ data, loading, onEdit, onDelete, pagination, onChange }) =>
       width: 160,
     },
     {
-      title: 'Hành động',
+      title: 'Actions',
       key: 'action',
       width: 120,
       render: (_, record) => (
         <Space>
           <Button size="small" onClick={() => onEdit(record)}>
-            Sửa
+            Edit
           </Button>
           <Button size="small" danger onClick={() => onDelete(record._id)}>
-            Xóa
+            Delete
           </Button>
         </Space>
       ),
