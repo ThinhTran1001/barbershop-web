@@ -84,14 +84,14 @@ const router = createBrowserRouter([
       { path: "/news", element: <BlogPage /> },
       { path: "/news/:id", element: <BlogDetail /> },
       { path: "/contact", element: <ContactPage /> },
-
+      { path: "/feedback-order/:orderId", element: <FeedbackProduct /> },
       // Protected Customer Routes
       {
         element: <RequireAuth allowedRoles={["customer"]} />,
         children: [
           { path: "/my-orders", element: <ListOfOrder /> },
           { path: "/my-orders/:id", element: <OrderDetail /> },
-          { path: "/feedback/:orderId", element: <FeedbackProduct /> },
+          
         ],
       },
     ],
