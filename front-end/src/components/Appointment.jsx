@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Input, Button, Select, Table, message, Spin, Modal, DatePicker, Avatar } from 'antd';
 import { getAllBookings, getBookingDetail, getBookingStats, getAllBarber, getAllServices } from '../services/api';
 import dayjs from 'dayjs';
@@ -185,13 +185,26 @@ const Appointment = () => {
   };
 
   // Generate unique services from booking data
-  const uniqueServices = Array.from(
-    new Map(
-      data
-        .filter(b => b.serviceId && b.serviceId._id)
-        .map(b => [b.serviceId._id, b.serviceId])
-    ).values()
-  );
+  const uniqueServices = useMemo(() => {
+    return Array.from(
+      new Map(
+        data
+          .filter(b => b.serviceId && b.serviceId.name)
+          .map(b => [b.serviceId._id, { _id: b.serviceId._id, name: b.serviceId.name }])
+      ).values()
+    );
+  }, [data]);
+
+  // Tạo uniqueBarbers từ data booking, dùng useMemo để tối ưu
+  const uniqueBarbers = useMemo(() => {
+    return Array.from(
+      new Map(
+        data
+          .filter(b => b.barberId && b.barberId.userId && b.barberId.userId.name)
+          .map(b => [b.barberId._id, { _id: b.barberId._id, name: b.barberId.userId.name }])
+      ).values()
+    );
+  }, [data]);
 
   // Gọi API getAllBookings với search và status
   const fetchBookings = async (params = {}) => {
@@ -469,9 +482,9 @@ const Appointment = () => {
           value={barberId}
           onChange={handleBarberChange}
         >
-          {barbers.map(barber => (
+          {uniqueBarbers.map(barber => (
             <Option key={barber._id} value={barber._id}>
-              {barber.userId?.name || 'N/A'}
+              {barber.name}
             </Option>
           ))}
         </Select>
