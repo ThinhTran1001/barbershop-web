@@ -5,7 +5,8 @@ const { authenticate, authorizeRoles } = require('../middlewares/auth.middleware
 
 // Barber CRUD operations
 router.post('/', authenticate,barberController.createBarber);
-router.get('/', authenticate,barberController.getAllBarbers);
+// router.get('/', authenticate,barberController.getAllBarbers);
+router.get('/', barberController.getAllBarbers);
 router.get('/:id', authorizeRoles("admin"),authenticate,barberController.getBarberById);
 router.put('/:id', authenticate,barberController.updateBarber);
 router.delete('/:id', authenticate,barberController.deleteBarber);
