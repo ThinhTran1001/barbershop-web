@@ -41,13 +41,6 @@ const BlogTable = ({ data, loading, onEdit, onDelete, pagination, onChange }) =>
       width: 120,
     },
     {
-      title: 'Author',
-      dataIndex: 'author',
-      key: 'author',
-      render: (author) => author ? author.name : '',
-      width: 120,
-    },
-    {
       title: 'Tags',
       dataIndex: 'tags',
       key: 'tags',

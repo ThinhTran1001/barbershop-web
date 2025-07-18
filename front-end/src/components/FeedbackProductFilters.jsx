@@ -54,6 +54,8 @@ const FeedbackProductFilters = ({
         />
       </Col>
 
+
+
       <Col xs={12} sm={6} md={4} lg={3}>
         <Select
           style={{ width: '100%' }}
@@ -61,8 +63,8 @@ const FeedbackProductFilters = ({
           onChange={setStatusFilter}
           options={[
             { label: 'All Status', value: 'All' },
-            { label: 'Approved', value: 'Approved' },
-            { label: 'Pending', value: 'Pending' }
+            { label: 'Active', value: 'Active' },
+            { label: 'Deleted', value: 'Deleted' }
           ]}
         />
       </Col>

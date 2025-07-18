@@ -12,8 +12,6 @@ const FeedbackProductTable = ({
   filteredFeedbacks,
   loading,
   handleViewFeedback,
-  approveFeedback,
-  unapprovalFeedback,
   deleteFeedback
 }) => {
   const [showModal, setShowModal] = useState(false);
@@ -49,12 +47,7 @@ const FeedbackProductTable = ({
       let toastMessage = '';
       let toastType = 'success';
 
-      if (modalConfig.title.includes('Approve')) {
-        toastMessage = 'Feedback approved successfully. Product rating updated.';
-      } else if (modalConfig.title.includes('Unapprove')) {
-        toastMessage = 'Feedback unapproved successfully!';
-        toastType = 'warning';
-      } else if (modalConfig.title.includes('Delete')) {
+      if (modalConfig.title.includes('Delete')) {
         toastMessage = 'Feedback deleted successfully!';
         toastType = 'danger';
       }
@@ -100,7 +93,6 @@ const FeedbackProductTable = ({
       render: (rating) => (
         <Space>
           <Rate disabled allowHalf value={rating || 0} />
-          <Text strong>{(rating ?? 'N/A') !== 'N/A' ? rating.toFixed(1) : 'N/A'}</Text>
         </Space>
       ),
       sorter: (a, b) => (a.rating || 0) - (b.rating || 0),
@@ -171,19 +163,19 @@ const FeedbackProductTable = ({
     },
     {
       title: 'Status',
-      dataIndex: 'isApproved',
-      key: 'isApproved',
-      render: (approved) =>
-        approved ? (
-          <Tag color="success" icon={<CheckOutlined />}>Approved</Tag>
+      dataIndex: 'isDeleted',
+      key: 'isDeleted',
+      render: (deleted) =>
+        deleted ? (
+          <Tag color="error" icon={<CloseOutlined />}>Deleted</Tag>
         ) : (
-          <Tag color="warning" icon={<CloseOutlined />}>Pending</Tag>
+          <Tag color="success" icon={<CheckOutlined />}>Active</Tag>
         ),
       filters: [
-        { text: 'Approved', value: true },
-        { text: 'Pending', value: false }
+        { text: 'Active', value: false },
+        { text: 'Deleted', value: true }
       ],
-      onFilter: (value, record) => record.isApproved === value,
+      onFilter: (value, record) => record.isDeleted === value,
       width: 130,
     },
     {
@@ -209,37 +201,7 @@ const FeedbackProductTable = ({
             />
           </Tooltip>
 
-          {record.isApproved ? (
-            <Tooltip title="Unapprove">
-              <Button
-                type="text"
-                icon={<CloseOutlined />}
-                onClick={() => showConfirmModal(
-                  'Unapprove Feedback',
-                  'Are you sure you want to unapprove this feedback?',
-                  () => unapprovalFeedback?.(record._id),
-                  'warning'
-                )}
-                size="small"
-                className="feedback-table-unapprove-btn"
-              />
-            </Tooltip>
-          ) : (
-            <Tooltip title="Approve">
-              <Button
-                type="text"
-                icon={<CheckOutlined />}
-                onClick={() => showConfirmModal(
-                  'Approve Feedback',
-                  'Are you sure you want to approve this feedback?',
-                  () => approveFeedback?.(record._id),
-                  'success'
-                )}
-                size="small"
-                className="feedback-table-approve-btn"
-              />
-            </Tooltip>
-          )}
+
 
           <Tooltip title="Delete">
             <Button
@@ -370,8 +332,6 @@ FeedbackProductTable.propTypes = {
   filteredFeedbacks: PropTypes.array.isRequired,
   loading: PropTypes.bool.isRequired,
   handleViewFeedback: PropTypes.func,
-  approveFeedback: PropTypes.func,
-  unapprovalFeedback: PropTypes.func,
   deleteFeedback: PropTypes.func,
 };
 

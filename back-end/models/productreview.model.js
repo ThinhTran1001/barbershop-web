@@ -8,7 +8,7 @@ const ProductReviewSchema = new mongoose.Schema({
   }, 
   comment: { type: String, required: false },
   images: [{ type: String }],
-  isApproved: { type: Boolean, default: false },
+  isDeleted: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
 });
 

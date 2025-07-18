@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import BlogTable from '../../components/ManageBlog/BlogTable';
 import BlogModal from '../../components/ManageBlog/BlogModal';
 import BlogFilter from '../../components/ManageBlog/BlogFilter';
-import { getAllBlogs, createBlog, updateBlog, deleteBlog, getAllUser, getCategories } from '../../services/api';
+import { getAllBlogs, createBlog, updateBlog, deleteBlog, getAllUser, getCategories, createCategory } from '../../services/api';
 import Button from 'react-bootstrap/Button';
 import Modal from 'react-bootstrap/Modal';
 import Alert from 'react-bootstrap/Alert';
@@ -41,14 +41,39 @@ const ManageBlog = () => {
           cleanFilter[key] = value;
         }
       });
-
+      console.log('Filter object:', cleanFilter);
       const res = await getAllBlogs({
         ...cleanFilter,
         page,
         limit: PAGE_SIZE,
       });
-      setBlogs(res.data?.data || []);
-      setTotal(res.data?.total || 0);
+      let blogs = res.data?.data || [];
+      console.log('Fetched blogs:', blogs);
+      // Đảm bảo filter.tags hoặc filter.tag là mảng
+      let filterTags = cleanFilter.tags || cleanFilter.tag;
+      if (typeof filterTags === 'string') filterTags = [filterTags];
+      if (filterTags && filterTags.length > 0) {
+        const filterTagsLower = filterTags.map(t => t.toLowerCase());
+        blogs = blogs.filter(blog =>
+          Array.isArray(blog.tags) && blog.tags.some(tag => filterTagsLower.includes((tag || '').toLowerCase()))
+        );
+        console.log('Filtered blogs:', blogs);
+      }
+      // Lọc theo ngày nếu có
+      if (cleanFilter.startDate || cleanFilter.endDate) {
+        const start = cleanFilter.startDate ? new Date(cleanFilter.startDate) : null;
+        const end = cleanFilter.endDate ? new Date(cleanFilter.endDate) : null;
+        blogs = blogs.filter(blog => {
+          const blogDate = blog.date ? new Date(blog.date) : (blog.createdAt ? new Date(blog.createdAt) : null);
+          if (!blogDate) return false;
+          if (start && blogDate < start) return false;
+          if (end && blogDate > end) return false;
+          return true;
+        });
+        console.log('Filtered by date:', blogs);
+      }
+      setBlogs(blogs);
+      setTotal(res.data?.total || blogs.length);
     } catch {
       showAlert('danger', 'Failed to load blog list');
     } finally {
@@ -58,7 +83,13 @@ const ManageBlog = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-    fetchBlogs(1, filter);
+    // Chuyển đổi dateRange thành startDate, endDate
+    let filterObj = { ...filter };
+    if (filterObj.dateRange && Array.isArray(filterObj.dateRange) && filterObj.dateRange.length === 2) {
+      filterObj.startDate = filterObj.dateRange[0]?.startOf('day').toISOString();
+      filterObj.endDate = filterObj.dateRange[1]?.endOf('day').toISOString();
+    }
+    fetchBlogs(1, filterObj);
     // eslint-disable-next-line
   }, [filter]);
 
@@ -137,23 +168,32 @@ const ManageBlog = () => {
       } catch {
         showAlert('danger', 'Delete blog failed');
       }
-    } else if (confirmModal.type === 'add') {
+    } else if (confirmModal.type === 'add' || confirmModal.type === 'edit') {
       try {
-        await createBlog(confirmModal.data);
-        showAlert('success', 'Blog created successfully');
+        // Tạo category mới nếu cần
+        const blogData = { ...confirmModal.data };
+        if (Array.isArray(blogData.categories)) {
+          const existingNames = categories.map(c => c.name.toLowerCase());
+          for (const cat of blogData.categories) {
+            if (!existingNames.includes(cat.toLowerCase())) {
+              await createCategory({ name: cat });
+            }
+          }
+        }
+        if (confirmModal.type === 'add') {
+          await createBlog(blogData);
+          showAlert('success', 'Blog created successfully');
+        } else {
+          await updateBlog(editingBlog._id, blogData);
+          showAlert('success', 'Blog updated successfully');
+        }
         setModalVisible(false);
         fetchBlogs();
+        // Fetch lại categories sau khi thêm/sửa blog
+        const catRes = await getCategories();
+        setCategories(catRes.data || []);
       } catch {
-        showAlert('danger', 'Create blog failed');
-      }
-    } else if (confirmModal.type === 'edit') {
-      try {
-        await updateBlog(editingBlog._id, confirmModal.data);
-        showAlert('success', 'Blog updated successfully');
-        setModalVisible(false);
-        fetchBlogs();
-      } catch {
-        showAlert('danger', 'Update blog failed');
+        showAlert('danger', confirmModal.type === 'add' ? 'Create blog failed' : 'Update blog failed');
       }
     }
     setConfirmModal({ show: false, type: '', data: null });
@@ -207,9 +247,10 @@ const ManageBlog = () => {
       />
       <BlogModal
         visible={modalVisible}
-        onCancel={() => setModalVisible(false)}
         onOk={handleModalOk}
+        onCancel={() => setModalVisible(false)}
         initialValues={editingBlog}
+        tags={tags}
       />
       {/* Bootstrap Modal xác nhận */}
       <Modal show={confirmModal.show} onHide={handleCancelConfirm} centered>

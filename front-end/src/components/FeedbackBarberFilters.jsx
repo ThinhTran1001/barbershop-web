@@ -82,8 +82,8 @@ const FeedbackBarberFilters = ({
           onChange={setStatusFilter}
           options={[
             { label: 'All Status', value: 'All' },
-            { label: 'Approved', value: 'Approved' },
-            { label: 'Pending', value: 'Pending' }
+            { label: 'Active', value: 'Active' },
+            { label: 'Deleted', value: 'Deleted' }
           ]}
         />
       </Col>

@@ -11,12 +11,13 @@ const AboutPage = () => {
   const navigate = useNavigate();
 
   return (
-    <> <div className="about-breadcrumb">
+    <> 
+    {/* <div className="about-breadcrumb">
     <Breadcrumb>
       <Breadcrumb.Item className='about-breadcrumb_text' onClick={() => navigate('/')}>Trang chủ</Breadcrumb.Item>
       <Breadcrumb.Item>Giới thiệu</Breadcrumb.Item>
     </Breadcrumb>
-  </div>
+  </div> */}
     <div className="about-page">
     <AboutHero />
     <AboutContent />

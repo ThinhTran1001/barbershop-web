@@ -37,6 +37,7 @@ const ContactForm = () => {
   
       if (response.ok) {
         setShowToast(true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         setFormData({
           fullname: "",
           phone: "",

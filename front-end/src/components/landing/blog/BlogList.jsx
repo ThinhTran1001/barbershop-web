@@ -41,6 +41,12 @@ const BlogList = ({ sort, category, tags = [] }) => {
           Array.isArray(blog.tags) && blog.tags.some(tag => tags.includes(tag))
         );
       }
+      // Lọc category ở frontend nếu có chọn category (nếu backend chưa hỗ trợ)
+      if (category) {
+        blogs = blogs.filter(blog =>
+          Array.isArray(blog.categories) && blog.categories.includes(category)
+        );
+      }
       if (reset) {
         setPosts(blogs);
       } else {
@@ -80,7 +86,7 @@ const BlogList = ({ sort, category, tags = [] }) => {
                 title={post.title}
                 shortDesc={post.shortDesc}
                 date={post.date ? new Date(post.date).toLocaleDateString('vi-VN') : ''}
-                category={post.categories?.[0] || post.category}
+                category={post.categories || post.category}
                 author={post.author}
               />
             </div>
@@ -98,7 +104,7 @@ const BlogList = ({ sort, category, tags = [] }) => {
                 title={post.title}
                 shortDesc={post.shortDesc}
                 date={post.date ? new Date(post.date).toLocaleDateString('vi-VN') : ''}
-                category={post.categories?.[0] || post.category}
+                category={post.categories || post.category}
                 author={post.author}
               />
             </div>

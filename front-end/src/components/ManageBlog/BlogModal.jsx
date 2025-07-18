@@ -3,12 +3,13 @@ import { Modal, Spin } from 'antd';
 import BlogForm from './BlogForm';
 import { getAllUser, getCategories } from '../../services/api';
 
-const BlogModal = ({ visible, onOk, onCancel, initialValues }) => {
+const BlogModal = ({ visible, onOk, onCancel, initialValues, tags }) => {
   const [authors, setAuthors] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    if (!visible) return;
     const fetchAuthorsAndCategories = async () => {
       setLoading(true);
       try {
@@ -36,12 +37,12 @@ const BlogModal = ({ visible, onOk, onCancel, initialValues }) => {
       }
     };
     fetchAuthorsAndCategories();
-  }, []);
+  }, [visible]);
 
   return (
     <Modal
       open={visible}
-      title={initialValues ? 'Sửa Blog' : 'Thêm Blog'}
+      title={initialValues ? 'Edit Blog' : 'Add Blog'}
       onCancel={onCancel}
       footer={null}
       destroyOnClose
@@ -50,8 +51,9 @@ const BlogModal = ({ visible, onOk, onCancel, initialValues }) => {
         <BlogForm
           initialValues={initialValues}
           onSubmit={onOk}
-          authors={authors}
           categories={categories}
+          tags={tags}
+          loading={loading}
         />
       )}
     </Modal>

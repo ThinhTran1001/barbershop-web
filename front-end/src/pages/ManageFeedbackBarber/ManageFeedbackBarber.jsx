@@ -10,7 +10,6 @@ import FeedbackBarberModal from '../../components/FeedbackBarberModal';
 import {
   getBarberFeedbacks,
   getBarberFeedbackById,
-  updateBarberFeedbackApproval,
   deleteBarberFeedback
 } from '../../services/api';
 
@@ -29,8 +28,7 @@ const ManageFeedbackBarber = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
 
-  const [showApproveModal, setShowApproveModal] = useState(false);
-  const [itemToToggle, setItemToToggle] = useState(null);
+
 
   const [toast, setToast] = useState({ show: false, message: '', variant: 'success' });
 
@@ -43,8 +41,8 @@ const ManageFeedbackBarber = () => {
 
   const stats = {
     total: feedbacks.length,
-    approved: feedbacks.filter(fb => fb.isApproved).length,
-    pending: feedbacks.filter(fb => !fb.isApproved).length
+    active: feedbacks.filter(fb => !fb.isDeleted).length,
+    deleted: feedbacks.filter(fb => fb.isDeleted).length
   };
 
   const fetchFeedbacks = async (params = {}) => {
@@ -56,7 +54,7 @@ const ManageFeedbackBarber = () => {
       const queryParams = {
         page,
         limit,
-        ...(statusFilter !== 'All' && { status: statusFilter.toLowerCase() }),
+        ...(statusFilter !== 'All' && { isDeleted: statusFilter === 'Deleted' }),
         ...(ratingFilter !== 'All' && { rating: parseInt(ratingFilter) }),
         ...(barberFilter !== 'All' && { barberId: barberFilter }),
         ...(bookingFilter !== 'All' && { bookingId: bookingFilter }),
@@ -101,33 +99,7 @@ const ManageFeedbackBarber = () => {
     fetchFeedbacks({ page: 1, limit: pagination.pageSize });
   }, [statusFilter, ratingFilter, barberFilter, bookingFilter, searchKeyword, dateRange]);
 
-  const handleToggleApproval = (record) => {
-    if (!record?._id) {
-      showToast('Invalid feedback data', 'danger');
-      return;
-    }
-    setItemToToggle(record);
-    setShowApproveModal(true);
-  };
 
-  const confirmToggleApproval = async () => {
-    if (!itemToToggle?._id) return;
-
-    const newStatus = !itemToToggle.isApproved;
-    const action = newStatus ? 'approved' : 'unapproved';
-
-    try {
-      await updateBarberFeedbackApproval(itemToToggle._id, newStatus);
-      showToast(`Feedback ${action} successfully`, 'success');
-      fetchFeedbacks({ page: pagination.current, limit: pagination.pageSize });
-    } catch (error) {
-      console.error(`Error ${action} feedback:`, error);
-      showToast(`Failed to ${action} feedback`, 'danger');
-    } finally {
-      setItemToToggle(null);
-      setShowApproveModal(false);
-    }
-  };
 
   const handleDelete = (record) => {
     if (!record?._id) {
@@ -204,7 +176,6 @@ const ManageFeedbackBarber = () => {
           pagination={pagination}
           handleTableChange={handleTableChange}
           handleViewDetail={handleViewDetail}
-          toggleApproval={handleToggleApproval}
           handleDelete={handleDelete}
         />
       </Card>
@@ -231,23 +202,7 @@ const ManageFeedbackBarber = () => {
         </Modal.Footer>
       </Modal>
 
-      <Modal show={showApproveModal} onHide={() => setShowApproveModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>
-            <ExclamationTriangle className="text-warning me-2" />
-            {itemToToggle?.isApproved ? 'Unapprove' : 'Approve'} Feedback
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          Are you sure you want to {itemToToggle?.isApproved ? 'unapprove' : 'approve'} this feedback?
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowApproveModal(false)}>Cancel</Button>
-          <Button variant="primary" onClick={confirmToggleApproval}>
-            Yes, {itemToToggle?.isApproved ? 'Unapprove' : 'Approve'}
-          </Button>
-        </Modal.Footer>
-      </Modal>
+
 
       <ToastContainer position="top-end" className="p-3">
         <Toast show={toast.show} bg={toast.variant} onClose={() => setToast({ ...toast, show: false })} delay={3000} autohide>

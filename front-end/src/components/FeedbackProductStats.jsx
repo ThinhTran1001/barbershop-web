@@ -18,8 +18,8 @@ const FeedbackProductStats = ({ stats }) => {
       <Col xs={24} sm={12} lg={8}>
         <Card>
           <Statistic
-            title="Approved"
-            value={stats.approved}
+            title="Active"
+            value={stats.active}
             prefix={<CheckOutlined />}
             valueStyle={{ color: '#52c41a' }}
           />
@@ -28,8 +28,8 @@ const FeedbackProductStats = ({ stats }) => {
       <Col xs={24} sm={12} lg={8}>
         <Card>
           <Statistic
-            title="Pending"
-            value={stats.pending}
+            title="Deleted"
+            value={stats.deleted}
             prefix={<CloseOutlined />}
             valueStyle={{ color: '#faad14' }}
           />

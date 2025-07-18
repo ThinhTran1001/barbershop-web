@@ -4,12 +4,12 @@ const feedbackBarberController = require('../controllers/feedbackBarber.controll
 const { authenticate } = require('../middlewares/auth.middleware');
 
 router.get('/', feedbackBarberController.getAllFeedbacks);
-router.get('/approved', feedbackBarberController.getApprovedFeedbacks);
+
 router.get('/:id', feedbackBarberController.getBarberFeedbackById);
 
 router.post('/', authenticate, feedbackBarberController.createBarberFeedback);
 
-router.patch('/:id/approve', authenticate, feedbackBarberController.updateApprovalStatus);
+
 
 router.delete('/:id', authenticate, feedbackBarberController.deleteBarberFeedback);
 

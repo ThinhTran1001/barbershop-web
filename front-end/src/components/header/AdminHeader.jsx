@@ -44,6 +44,8 @@ const AdminHeader = () => {
       ? "appointment"
       : location.pathname.includes("manage-blog")
       ? "manage-blog"
+      : location.pathname.includes("discount-product")
+      ? "discount-product"
       : "user";
 
   return (
@@ -81,6 +83,7 @@ const AdminHeader = () => {
         <Menu.Item key="voucher" onClick={() => navigate("/admin/voucher")}>Voucher</Menu.Item>
         <Menu.Item key="user-vouchers" onClick={() => navigate("/admin/user-vouchers")}>User Voucher</Menu.Item>
         <Menu.Item key="order" onClick={() => navigate("/admin/order")}>Order</Menu.Item>
+        <Menu.Item key="discount-product" onClick={() => navigate("/admin/discount-product")}>Discount Product</Menu.Item>
         <Menu.Item key="feedback-product" onClick={() => navigate("/admin/feedback-product")}>Feedback Product</Menu.Item>
         <Menu.Item key="feedback-barber" onClick={() => navigate("/admin/feedback-barber")}>Feedback Barber</Menu.Item>
         <Menu.Item key="barber-schedule" onClick={() => navigate("/admin/barber-schedule")}>Barber Schedule</Menu.Item>
