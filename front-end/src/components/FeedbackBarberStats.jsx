@@ -18,8 +18,8 @@ const FeedbackBarberStats = ({ stats }) => {
       <Col xs={24} sm={8}>
         <Card>
           <Statistic
-            title="Approved"
-            value={stats.approved || 0}
+            title="Active"
+            value={stats.active || 0}
             prefix={<CheckOutlined style={{ color: '#52c41a' }} />}
             valueStyle={{ color: '#52c41a' }}
           />
@@ -28,8 +28,8 @@ const FeedbackBarberStats = ({ stats }) => {
       <Col xs={24} sm={8}>
         <Card>
           <Statistic
-            title="Pending"
-            value={stats.pending || 0}
+            title="Deleted"
+            value={stats.deleted || 0}
             prefix={<CloseOutlined style={{ color: '#ff4d4f' }} />}
             valueStyle={{ color: '#ff4d4f' }}
           />
