@@ -164,11 +164,12 @@ const UserCart = () => {
                   min={0}
                   max={item.stock}
                   value={item.quantity}
+                  step={1}
+                  stringMode
                   onChange={(value) => {
                     if (value === 0) {
                       Modal.confirm({
-                        title: 'Xác nhận xóa sản phẩm',
-                        content: `Bạn có muốn xóa sản phẩm "${item.name}" khỏi giỏ hàng không?`,
+                        title: `Bạn có muốn xóa sản phẩm ${item.name} khỏi giỏ hàng không?`,
                         okText: 'Đồng ý',
                         cancelText: 'Hủy',
                         onOk() {
@@ -183,7 +184,7 @@ const UserCart = () => {
                           updateQuantity(item.id, 1);
                         }
                       });
-                    } else {
+                    } else if (value > 0) {
                       handleQuantityChange(item.id, value, item.name);
                     }
                   }}

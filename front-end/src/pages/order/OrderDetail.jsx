@@ -353,8 +353,16 @@ const OrderDetail = () => {
             renderItem={(item) => (
               <List.Item>
                 <List.Item.Meta
-                  avatar={item.productImage && <Avatar src={item.productImage} />}
-                  title={<span className="item-name">{item.productName}</span>}
+                  avatar={item.productImage && (
+                    <Link to={`/products/${item.productId}`}>
+                      <Avatar src={item.productImage} style={{ cursor: 'pointer' }} />
+                    </Link>
+                  )}
+                  title={
+                    <Link to={`/products/${item.productId}`} className="item-name" style={{ color: '#222', textDecoration: 'underline', cursor: 'pointer' }}>
+                      {item.productName}
+                    </Link>
+                  }
                   description={<span>Số lượng: {item.quantity}</span>}
                 />
                 <div className="item-price-details">
