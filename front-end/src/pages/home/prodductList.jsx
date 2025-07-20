@@ -247,9 +247,27 @@ navigate(user ? "/cart" : "/cart-guest");
         <div className="shop-grid-full">
           {currentProducts.map((product) => (
             <div key={product._id} className="shop-item">
-              <div className="item-image-wrapper">
+              <div className="item-image-wrapper" style={{ position: 'relative' }}>
+                {product.discount > 0 && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 8,
+                      right: 8,
+                      background: '#ff4d4f',
+                      color: '#fff',
+                      padding: '2px 8px',
+                      borderRadius: 4,
+                      fontWeight: 'bold',
+                      fontSize: 12,
+                      zIndex: 2
+                    }}
+                  >
+                    -{product.discount}%
+                  </div>
+                )}
                 <img
-src={getImage(product.image)}
+                  src={getImage(product.image)}
                   alt={product.name}
                   className="item-image"
                   onError={(e) => {
@@ -260,9 +278,20 @@ src={getImage(product.image)}
               </div>
               <div className="item-details">
                 <h3 className="item-name">{product.name}</h3>
-                <p className="item-price">
-                  {product.price.toLocaleString("vi-VN")} VND
-                </p>
+                <div className="item-price">
+                  {product.discount > 0 ? (
+                    <>
+                      <span style={{ textDecoration: 'line-through', color: '#888', marginRight: 8 }}>
+                        {product.price.toLocaleString("vi-VN")} VND
+                      </span>
+                      <span style={{ color: '#ff4d4f', fontWeight: 'bold' }}>
+                        {(product.price * (1 - product.discount / 100)).toLocaleString("vi-VN")} VND
+                      </span>
+                    </>
+                  ) : (
+                    <span>{product.price.toLocaleString("vi-VN")} VND</span>
+                  )}
+                </div>
                 <div className="item-buttons">
                   <button className="purchase-button" onClick={() => handleBuyNow(product)}>Mua hàng</button>
                   <button className="detail-button" onClick={() => goToProductDetail(product._id)}>

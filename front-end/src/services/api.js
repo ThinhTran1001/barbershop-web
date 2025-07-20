@@ -132,8 +132,8 @@ export const updateDiscount = (id, data) => api.put(`/discounts/${id}`, data);
 export const deleteDiscount = (id) => api.delete(`/discounts/${id}`);
 export const getProductDiscounts = (productId) => api.get(`/discounts/product/${productId}`);
 export const toggleDiscountStatus = (id) => api.patch(`/discounts/${id}/toggle-status`);
-export const getDiscountStats = () => api.get('/discounts/stats');
-export const cleanupExpiredDiscounts = () => api.post('/discounts/cleanup-expired');
+
+
 
 // Booking
 export const getAllBookings = (params) => api.get('/bookings/all', { params });

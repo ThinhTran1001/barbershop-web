@@ -89,7 +89,7 @@ export const CartProvider = ({ children }) => {
       id: product.id || product._id,
       name: product.name,
       price: product.price,
-      discount: product.discount || 0,
+      discount: product.discount || 0, // Thêm discount vào cart
       image: product.image,
       stock: product.stock,
       quantity: quantity

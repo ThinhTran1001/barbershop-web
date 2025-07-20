@@ -16,6 +16,9 @@ const UserCart = () => {
   const navigate = useNavigate();
   const [updatingQuantity, setUpdatingQuantity] = useState({});
 
+  // Thêm log kiểm tra dữ liệu cart
+  console.log('Cart items:', cart.items);
+
   const formatPrice = (price) =>
     new Intl.NumberFormat('vi-VN', {
       style: 'currency',
@@ -24,7 +27,7 @@ const UserCart = () => {
 
   const calculateDiscountPrice = (price, discount) => {
     const priceNumber = parseFloat(price.toString().replace(/[^\d]/g, ''));
-    const result = priceNumber - (priceNumber * discount) / 100;
+    const result = priceNumber * (1 - Number(discount) / 100);
     return formatPrice(result);
   };
 
@@ -122,10 +125,27 @@ const UserCart = () => {
                 />
               </div>
 
-              <div className="item-info">
-                <h3 className="item-name">{item.name}</h3>
+              <div className="item-details">
+                <h3 className="item-name">
+                  {item.name}
+                  {Number(item.discount) > 0 && (
+                    <span style={{
+                      marginLeft: 8,
+                      background: '#ff4d4f',
+                      color: '#fff',
+                      padding: '2px 8px',
+                      borderRadius: 4,
+                      fontWeight: 'bold',
+                      fontSize: 12,
+                      marginTop: -2,
+                      display: 'inline-block'
+                    }}>
+                      -{item.discount}%
+                    </span>
+                  )}
+                </h3>
                 <div className="item-price">
-                  {item.discount > 0 ? (
+                  {Number(item.discount) > 0 ? (
                     <>
                       <span className="original-price">{formatPrice(item.price)}</span>
                       <span className="discounted-price">
@@ -174,9 +194,10 @@ const UserCart = () => {
               <div className="item-total">
                 <span className="total-label">Tổng:</span>
                 <span className="total-price">
-                  {item.discount > 0
+                  {Number(item.discount) > 0
                     ? calculateDiscountPrice(item.price * item.quantity, item.discount)
-                    : formatPrice(item.price * item.quantity)}
+                    : formatPrice(item.price * item.quantity)
+                  }
                 </span>
               </div>
 
