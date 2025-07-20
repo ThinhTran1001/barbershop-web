@@ -4,15 +4,12 @@ const Category = require('../models/category.model');
 const Service = require('../models/service.model');
 const Barber = require('../models/barber.model');
 const User = require('../models/user.model');
+const Cart = require('../models/cart.model');
 const gemini = require('../services/gemini.service');
 const NodeCache = require('node-cache');
+const jwt = require('jsonwebtoken');
 
 const cache = new NodeCache({ stdTTL: 3600 });
-
-const addToCartWithToken = (product) => {
-  console.log(`Thêm sản phẩm "${product.name}" vào giỏ hàng thành công (với token). Gửi đến addToCart.controller.js.`);
-  return { success: true, productName: product.name };
-};
 
 const createCartItem = (product, quantity = 1) => {
   return {
@@ -113,10 +110,10 @@ async function callFunction(fnName, entities, req) {
       console.log('Query:', query);
       const prods = await Product.aggregate([
         { $match: query },
-        { $sample: { size: 5 } }, // Lấy ngẫu nhiên 5 sản phẩm
+        { $sample: { size: 5 } },
         {
           $lookup: {
-            from: 'brands', // Tên collection của Brand
+            from: 'brands',
             localField: 'details.brandId',
             foreignField: '_id',
             as: 'brandDetails'
@@ -124,7 +121,7 @@ async function callFunction(fnName, entities, req) {
         },
         {
           $lookup: {
-            from: 'categories', // Tên collection của Category
+            from: 'categories',
             localField: 'categoryId',
             foreignField: '_id',
             as: 'categoryDetails'
@@ -234,15 +231,35 @@ async function callFunction(fnName, entities, req) {
         return { error: 'Vui lòng cung cấp tên sản phẩm để thêm vào giỏ hàng.' };
       }
 
-      // Kiểm tra số lượng sản phẩm tối đa là 5
       if (names.length > 5) {
         return { error: 'Chỉ có thể thêm tối đa 5 sản phẩm cùng lúc.' };
       }
 
-      // Mặc định quantity là 1, trừ khi có chỉ định cụ thể
       const quantity = Math.max(1, Number(entities.quantity) || 1);
       const cartItems = [];
       const errors = [];
+      const productNames = [];
+
+      // Lấy userId từ req.userId hoặc token
+      let userId = req.userId;
+      if (!userId) {
+        let token;
+        if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+          token = req.headers.authorization.split(' ')[1];
+        } else if (req.cookies?.accessToken) {
+          token = req.cookies.accessToken;
+        }
+
+        if (token) {
+          try {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            userId = decoded.id;
+          } catch (err) {
+            console.error('Token không hợp lệ:', err.message);
+            errors.push('Token không hợp lệ, vui lòng đăng nhập lại.');
+          }
+        }
+      }
 
       for (const name of names) {
         const product = await Product.findOne({ name: new RegExp(name, 'i'), isActive: true }).lean();
@@ -256,27 +273,49 @@ async function callFunction(fnName, entities, req) {
           continue;
         }
 
-        const cartItem = createCartItem(product, quantity);
-        cartItems.push(cartItem);
+        productNames.push(product.name);
+
+        if (userId) {
+          try {
+            let cart = await Cart.findOne({ userId });
+            if (!cart) {
+              cart = await Cart.create({ userId, items: [] });
+            }
+
+            const existingItem = cart.items.find(item => item.productId.toString() === product._id.toString());
+            if (existingItem) {
+              await Cart.updateOne(
+                { userId, 'items.productId': product._id },
+                { $inc: { 'items.$.quantity': quantity } }
+              );
+            } else {
+              await Cart.findOneAndUpdate(
+                { userId },
+                { $push: { items: { productId: product._id, quantity } } },
+                { new: true }
+              );
+            }
+          } catch (err) {
+            console.error(`Không thể thêm "${name}" vào giỏ hàng cho người dùng ${userId}:`, err);
+            errors.push(`Không thể thêm "${name}" vào giỏ hàng. Vui lòng thử lại.`);
+            continue;
+          }
+        } else {
+          const cartItem = createCartItem(product, quantity);
+          cartItems.push(cartItem);
+        }
       }
 
-      if (errors.length > 0) {
+      if (errors.length > 0 && productNames.length === 0) {
         return { error: errors.join('\n') };
       }
 
-      const token = req.headers.authorization;
-      if (token) {
-        cartItems.forEach(item => addToCartWithToken(item));
-        return { success: true, productNames: names };
-      } else {
-        return {
-          data: {
-            success: true,
-            productNames: names,
-            cartItems: cartItems
-          }
-        };
-      }
+      return {
+        success: true,
+        productNames,
+        data: userId ? null : { cartItems },
+        errors: errors.length > 0 ? errors : undefined
+      };
     }
     case 'book_appointment': {
       const services = Array.isArray(entities.service) ? entities.service : [entities.service].filter(Boolean);
@@ -361,9 +400,13 @@ function generateNaturalResponse(fnName, data, userMessage, entities) {
       return reply;
     }
     case 'add_to_cart': {
-      const productNames = data.data?.productNames || (Array.isArray(entities.name) ? entities.name : [entities.name]);
-      const quantity = entities.quantity || 1;
-      return `Kính chào bạn! Các sản phẩm ${productNames.join(', ')} đã được thêm vào giỏ hàng của bạn với số lượng ${quantity} mỗi loại. Bạn có muốn tiếp tục mua sắm hay thanh toán không?`;
+      const { productNames, errors } = data;
+      let reply = `Kính chào bạn! Các sản phẩm ${productNames.join(', ')} đã được thêm vào giỏ hàng của bạn với số lượng ${entities.quantity || 1} mỗi loại.`;
+      if (errors && errors.length > 0) {
+        reply += `\nLưu ý: ${errors.join('\n')}`;
+      }
+      reply += '\nBạn có muốn tiếp tục mua sắm hay thanh toán không?';
+      return reply;
     }
     case 'book_appointment': {
       const serviceNames = Array.isArray(entities.service) ? entities.service : [entities.service].filter(Boolean);

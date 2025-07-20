@@ -1,3 +1,4 @@
+// MyBookingsPage.jsx
 import React, { useEffect, useState } from 'react';
 import {
   Table,
@@ -24,9 +25,9 @@ import {
   cancelBooking
 } from '../../services/serviceApi.js';
 import {
-  getBookingFeedback,
-  canReviewBooking
-} from '../../services/bookingFeedbackApi.js';
+  getFeedbackBookingByBookingId,
+  createFeedbackBooking
+} from '../../services/api';
 import {
   CalendarOutlined,
   ClockCircleOutlined,
@@ -37,6 +38,7 @@ import {
   EyeOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { useNavigate } from 'react-router-dom';
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -44,9 +46,11 @@ const { RangePicker } = DatePicker;
 const { TextArea } = Input;
 
 const MyBookingsPage = () => {
+  const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [feedbackStatuses, setFeedbackStatuses] = useState({});
 
   // Filter state
   const [filters, setFilters] = useState({
@@ -79,6 +83,18 @@ const MyBookingsPage = () => {
       const paginationData = response.pagination;
 
       setBookings(Array.isArray(data) ? data : []);
+
+      // Fetch feedback status for each booking
+      const statuses = {};
+      for (const booking of data) {
+        try {
+          const feedbackResponse = await getFeedbackBookingByBookingId(booking._id);
+          statuses[booking._id] = feedbackResponse.data.status;
+        } catch (feedbackError) {
+          statuses[booking._id] = null; // Chưa có feedback hoặc lỗi
+        }
+      }
+      setFeedbackStatuses(statuses);
 
       if (paginationData) {
         setPagination({
@@ -190,12 +206,33 @@ const MyBookingsPage = () => {
 
   // Check if booking can be reviewed
   const canReviewBooking = (booking) => {
-    return booking.status === 'completed';
+    return booking.status === 'completed' && !feedbackStatuses[booking._id];
   };
 
-  // Handle feedback navigation
-  const handleFeedback = (booking) => {
-    navigate(`/feedback/${booking._id}`);
+  // Handle feedback navigation (giống OrderDetail)
+  const handleFeedback = async (booking) => {
+    try {
+      const existing = await getFeedbackBookingByBookingId(booking._id);
+      if (existing?.data) {
+        navigate(`/feedback/${booking._id}`);
+        return;
+      }
+    } catch (err) {
+      if (err.response?.status === 404) {
+        try {
+          await createFeedbackBooking({ bookingId: booking._id, userId: booking.customerId });
+          navigate(`/feedback/${booking._id}`);
+          return;
+        } catch (createError) {
+          console.error('Lỗi tạo mới feedback:', createError);
+          message.error('Không thể tạo feedback mới.');
+          return;
+        }
+      } else {
+        console.error('Lỗi kiểm tra feedback:', err);
+        message.error('Không thể kiểm tra trạng thái feedback.');
+      }
+    }
   };
 
   const columns = [
@@ -521,6 +558,17 @@ const MyBookingsPage = () => {
                 ))}
               </Descriptions.Item>
             )}
+            {canReviewBooking(selectedBooking) && (
+              <Descriptions.Item label="Đánh giá">
+                <Button
+                  type="primary"
+                  icon={<StarOutlined />}
+                  onClick={() => handleFeedback(selectedBooking)}
+                >
+                  Đánh giá barber
+                </Button>
+              </Descriptions.Item>
+            )}
           </Descriptions>
         )}
       </Modal>
@@ -529,4 +577,3 @@ const MyBookingsPage = () => {
 };
 
 export default MyBookingsPage;
-

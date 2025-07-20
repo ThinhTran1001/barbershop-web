@@ -3,7 +3,7 @@ import { Input } from 'antd';
 import { MessageOutlined, SendOutlined } from '@ant-design/icons';
 import { ChevronsDown } from 'lucide-react';
 import { sendChat } from '../../services/api';
-import { useCart } from '../../context/CartContext'; 
+import { useUserCart } from '../../context/UserCartContext';
 import './ChatWidget.css';
 
 const ProductCard = ({ product }) => (
@@ -45,7 +45,7 @@ export default function ChatWidget() {
   const contentRef = useRef();
   const inputRef = useRef(null);
   const [showScroll, setShowScroll] = useState(false);
-  const { addToCart } = useCart();
+  const { addToCart, isLoggedIn } = useUserCart();
   const [context, setContext] = useState({ products: [], services: [], barbers: [] });
 
   useEffect(() => {
@@ -96,13 +96,19 @@ export default function ChatWidget() {
       console.log('API response:', response);
       const { reply = 'Không có phản hồi', data = null } = response;
 
-      if (data?.cartItems) {
-        data.cartItems.forEach(item => addToCart(item, item.quantity || 1));
-        console.log('Added multiple items to cart:', data.cartItems);
+      if (data?.cartItems && isLoggedIn) {
+        data.cartItems.forEach(item => {
+          addToCart(item, item.quantity || 1, () => {
+            setMsgs([...msgs, { sender: 'bot', text: reply, data }]); // Trigger re-render
+            console.log('Bot message added:', { text: reply, data });
+          });
+        });
+      } else if (data?.cartItems && !isLoggedIn) {
+        console.log('Guest cart handling not implemented');
+      } else {
+        setMsgs(m => [...m, { sender: 'bot', text: reply, data }]);
+        console.log('Bot message added:', { text: reply, data });
       }
-
-      setMsgs(m => [...m, { sender: 'bot', text: reply, data }]);
-      console.log('Bot message added:', { text: reply, data });
     } catch (err) {
       console.error('Send error:', err);
       setMsgs(m => [...m, { sender: 'bot', text: '⚠️ Lỗi kết nối, vui lòng thử lại', data: null }]);

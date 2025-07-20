@@ -61,6 +61,7 @@ app.use('/api/chatbot', chatbotAI);
 app.use('/api/upload', updaloadRoutes);
 app.use('/api/product-reviews', reviewRoutes);
 app.use('/api/feedback-barber', feedbackBarberRoutes);
+app.use('/api/feedback-booking', feedbackBookingRoutes);
 app.use('/api/discounts', discountRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/feedback-orders', feedbackOrderRoutes);
