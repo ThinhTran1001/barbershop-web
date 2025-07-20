@@ -26,8 +26,8 @@ const BlogPage = () => {
   };
 
   return (
-    <div style={{ padding: '0 24px', maxWidth: 1200, margin: '0 auto' }}>
-      <div style={{ marginTop: 100, marginBottom: 32 }}>
+    <div style={{ padding: '0 24px', maxWidth: 1200, margin: '100px auto' }}>
+      {/* <div style={{ marginTop: 100, marginBottom: 32 }}>
         <Breadcrumb style={{ fontSize: 15 }}>
           <Breadcrumb.Item>
             <Link to="/">
@@ -40,7 +40,7 @@ const BlogPage = () => {
             </Link>
           </Breadcrumb.Item>
         </Breadcrumb>
-      </div>
+      </div> */}
 
       <Row justify="space-between" align="middle" style={{ marginBottom: 24 }}>
         <Col>
@@ -48,7 +48,7 @@ const BlogPage = () => {
         </Col>
       </Row>
 
-      <Row gutter={[32, 32]}>
+      <Row gutter={[32, 32]} align="start">
         <Col xs={24} lg={16}>
           <BlogList sort={sortOption} category={selectedCategory} tags={selectedTags} />
         </Col>

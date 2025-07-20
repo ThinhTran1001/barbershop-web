@@ -4,7 +4,7 @@ import { PlusOutlined, UploadOutlined } from '@ant-design/icons';
 
 const { Option } = Select;
 
-const BlogForm = ({ initialValues = {}, onSubmit, authors = [], categories = [], loading }) => {
+const BlogForm = ({ initialValues = {}, onSubmit, authors = [], categories = [], tags = [], loading }) => {
   const [form] = Form.useForm();
 
   // Lọc chỉ lấy user có role là admin
@@ -36,52 +36,48 @@ const BlogForm = ({ initialValues = {}, onSubmit, authors = [], categories = [],
       initialValues={initialValues}
       onFinish={handleFinish}
     >
-      <Form.Item name="title" label="Tiêu đề" rules={[{ required: true, message: 'Nhập tiêu đề' }]}> 
+      <Form.Item name="title" label="Title" rules={[{ required: true, message: 'Enter title' }]}> 
         <Input />
       </Form.Item>
-      <Form.Item name="image" label="Ảnh đại diện">
+      <Form.Item name="image" label="Cover Image">
         <Upload
           name="file"
           listType="picture"
           maxCount={1}
           action="/api/upload"
         >
-          <Button icon={<UploadOutlined />}>Tải ảnh lên</Button>
+          <Button icon={<UploadOutlined />}>Upload Image</Button>
         </Upload>
       </Form.Item>
-      <Form.Item name="categories" label="Chuyên mục">
-        <Select mode="tags" placeholder="Nhập hoặc chọn chuyên mục">
+      <Form.Item name="categories" label="Category">
+        <Select mode="tags" placeholder="Enter or select category">
           {categoryOptions.map((cat) => (
             <Option key={cat} value={cat}>{cat}</Option>
           ))}
         </Select>
       </Form.Item>
       <Form.Item name="tags" label="Tags">
-        <Select mode="tags" placeholder="Nhập hoặc chọn tag">
+        <Select mode="tags" placeholder="Enter or select tag">
+          {tags.map((tag) => (
+            <Option key={tag} value={tag}>{tag}</Option>
+          ))}
         </Select>
       </Form.Item>
-      <Form.Item name="shortDesc" label="Mô tả ngắn">
+      <Form.Item name="shortDesc" label="Short Description">
         <Input.TextArea rows={2} maxLength={300} showCount />
       </Form.Item>
-      <Form.Item name="status" label="Trạng thái" initialValue="active">
+      <Form.Item name="status" label="Status" initialValue="active">
         <Select>
           <Option value="active">Active</Option>
           <Option value="inactive">Inactive</Option>
         </Select>
       </Form.Item>
-      <Form.Item name="author" label="Tác giả" rules={[{ required: true, message: 'Chọn tác giả' }]}> 
-        <Select placeholder="Chọn tác giả">
-          {adminAuthors.map((a) => (
-            <Option key={a._id} value={a._id}>{a.name}</Option>
-          ))}
-        </Select>
-      </Form.Item>
-      <Form.Item name="content" label="Nội dung" rules={[{ required: true, message: 'Nhập nội dung' }]}> 
+      <Form.Item name="content" label="Content" rules={[{ required: true, message: 'Enter content' }]}> 
         <Input.TextArea rows={8} />
       </Form.Item>
       <Form.Item>
         <Button type="primary" htmlType="submit" loading={loading}>
-          Lưu
+          Save
         </Button>
       </Form.Item>
     </Form>

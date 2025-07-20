@@ -57,20 +57,6 @@ const BlogFilter = ({ onChange, authors = [], categories = [], tags = [] }) => {
       </Col>
       <Col flex="none">
         <Select
-          allowClear
-          placeholder="Author"
-          style={{ width: 140, ...inputStyle }}
-          value={author}
-          onChange={v => { setAuthor(v); triggerChange({ author: v }); }}
-          size="large"
-        >
-          {authors.map(a => (
-            <Option key={a._id} value={a.name}>{a.name}</Option>
-          ))}
-        </Select>
-      </Col>
-      <Col flex="none">
-        <Select
           mode="tags"
           allowClear
           placeholder="Tags"
