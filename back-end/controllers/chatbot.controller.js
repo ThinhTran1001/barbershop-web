@@ -5,9 +5,13 @@ const Service = require('../models/service.model');
 const Barber = require('../models/barber.model');
 const User = require('../models/user.model');
 const Cart = require('../models/cart.model');
+const Booking = require('../models/booking.model');
+const BarberSchedule = require('../models/barber-schedule.model');
 const gemini = require('../services/gemini.service');
 const NodeCache = require('node-cache');
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
+const { createBookingFromBot } = require('./booking.controller');
 
 const cache = new NodeCache({ stdTTL: 3600 });
 
@@ -25,28 +29,35 @@ const createCartItem = (product, quantity = 1) => {
 
 async function analyzeIntent(message, chatHistory = []) {
   const historyText = chatHistory.map(m => `${m.sender}: ${m.text}`).join('\n');
+  const currentState = chatHistory.length > 0 && chatHistory[chatHistory.length - 1].sender === 'Assistant'
+    ? chatHistory[chatHistory.length - 1].text.match(/Trạng thái: (\w+)/)?.[1] || 'start'
+    : 'start';
   const prompt = `
 Bạn là một trợ lý AI thông minh, chuyên cung cấp thông tin trang trọng, lịch sự và thân thiện cho khách hàng tại BerGer Barbershop. Phân tích câu hỏi sau dựa trên ngữ cảnh từ lịch sử cuộc trò chuyện và trả về JSON chứa:
-- intent: Ý định của người dùng (ví dụ: "get_product_list", "get_service_list", "get_barber_list", "add_to_cart", "book_appointment", "general").
-- entities: Các thực thể trong câu hỏi (ví dụ: {"name": ["Sáp vuốt tóc Gatsby Moving Rubber", "Dầu xả Schwarzkopf BC Bonacure"], "service": ["Cắt tóc nam"], "barber": ["Lê Quang Vinh"], "quantity": 5}, có thể rỗng nếu không có). Nếu có nhiều thực thể, trả về mảng trong "name", "service", hoặc "barber".
+- intent: Ý định của người dùng (ví dụ: "get_product_list", "get_service_list", "get_barber_list", "add_to_cart", "book_appointment", "get_barber_bookings", "general"). Nếu câu hỏi là "xác nhận", "đồng ý", hoặc các biến thể gần đúng (như "xác nhan") và trạng thái hiện tại là "confirm_booking", giữ intent là "book_appointment".
+- entities: Các thực thể trong câu hỏi (ví dụ: {"name": ["Sáp vuốt tóc Gatsby Moving Rubber"], "service": ["Cắt tóc nam"], "barber": ["Lê Quang Vinh"], "quantity": 5, "date": "2025-07-22", "time": "14:30", "customerName": "Nguyễn Văn A", "customerEmail": "a@example.com", "customerPhone": "0123456789"}, có thể rỗng nếu không có). Nếu có nhiều thực thể, trả về mảng trong "name", "service", hoặc "barber". Nếu trạng thái là "confirm_booking" và không có thực thể mới, giữ nguyên thực thể từ lịch sử.
+- state: Trạng thái hiện tại của cuộc trò chuyện (start, select_service, select_barber, select_time, collect_customer_info, confirm_booking) dựa trên lịch sử và câu hỏi. Nếu người dùng yêu cầu "xác nhận", "đồng ý", "xác nhân", hoặc các biến thể gần đúng (ví dụ: "xác nhan") và trạng thái hiện tại là "confirm_booking", giữ state là "confirm_booking". Nếu người dùng yêu cầu "sửa" hoặc "thay đổi", quay lại state trước đó dựa trên lịch sử.
+
 Câu hỏi: "${message}"
 Lịch sử cuộc trò chuyện:\n${historyText || 'Không có lịch sử'}
+Trạng thái hiện tại: ${currentState}
 
 Lưu ý quan trọng:
 - Nếu người dùng nói "sản phẩm này", "dịch vụ này", hoặc "thợ này" mà không rõ ràng, hãy tham chiếu đến danh sách sản phẩm/dịch vụ/thợ gần nhất từ lịch sử.
 - Nếu yêu cầu "thêm 5 sản phẩm này vào giỏ hàng", hãy hiểu "5" là số lượng sản phẩm (khác nhau) muốn thêm, và mặc định mỗi sản phẩm có quantity là 1, trừ khi có chỉ định rõ ràng như "thêm 5 sản phẩm này với mỗi sản phẩm 5 cái".
+- Nếu yêu cầu đặt lịch (book_appointment), xác định các thông tin như service, barber, date, time, customerName, customerEmail, customerPhone từ câu hỏi hoặc lịch sử, và gợi ý state tiếp theo dựa trên thông tin đã có.
+- Nếu yêu cầu xem lịch booking của barber (get_barber_bookings), xác định barber và giữ state là "start".
 - Không sử dụng dấu * để đánh dấu danh sách. Thay vào đó, sử dụng dấu ✦ kèm xuống dòng (\n✦ ) để định dạng danh sách rõ ràng, chỉ đặt ✦ trước phần tử chính, các thuộc tính con không cần ✦ mà chỉ thụt đầu dòng.
 - Trả lời bằng giọng điệu trang trọng, lịch sự, thân thiện, dễ hiểu và trực quan.
 
 Ví dụ đầu ra:
 {
-  "intent": "add_to_cart",
+  "intent": "book_appointment",
   "entities": {
-    "name": ["Sáp vuốt tóc Gatsby Moving Rubber", "Dầu xả Schwarzkopf BC Bonacure"],
-    "quantity": 1
+    "service": ["Cắt tóc nam"],
+    "state": "select_barber"
   }
 }
-Lưu ý: Nếu không có số lượng cụ thể cho mỗi sản phẩm, mặc định là 1.
 `;
   try {
     console.log('Analyzing intent for message:', message, 'with history:', historyText);
@@ -58,12 +69,12 @@ Lưu ý: Nếu không có số lượng cụ thể cho mỗi sản phẩm, mặc
     return result;
   } catch (e) {
     console.error('Intent analysis error:', e);
-    return { intent: 'general', entities: {} };
+    return { intent: 'general', entities: {}, state: 'start' };
   }
 }
 
-async function callFunction(fnName, entities, req) {
-  console.log('Calling function:', fnName, 'with entities:', entities);
+async function callFunction(fnName, entities, req, chatHistory = [], userMessage, state) {
+  console.log('Calling function:', fnName, 'with entities:', entities, 'userMessage:', userMessage, 'state:', state);
   switch (fnName) {
     case 'get_product_list': {
       const query = { isActive: true };
@@ -240,7 +251,6 @@ async function callFunction(fnName, entities, req) {
       const errors = [];
       const productNames = [];
 
-      // Lấy userId từ req.userId hoặc token
       let userId = req.userId;
       if (!userId) {
         let token;
@@ -318,23 +328,295 @@ async function callFunction(fnName, entities, req) {
       };
     }
     case 'book_appointment': {
-      const services = Array.isArray(entities.service) ? entities.service : [entities.service].filter(Boolean);
-      const barbers = Array.isArray(entities.barber) ? entities.barber : [entities.barber].filter(Boolean);
-      const errors = [];
+      // Tổng hợp thông tin từ chatHistory và ưu tiên entities mới nhất
+      let bookingData = {};
+      chatHistory.forEach(entry => {
+        if (entry.sender === 'user') {
+          const text = entry.text.toLowerCase();
+          // Trích xuất service
+          if (!bookingData.service && (text.includes('nhuộm tóc') || text.includes('cắt tóc') || text.includes('uốn tóc'))) {
+            if (text.includes('nhuộm tóc')) bookingData.service = 'Nhuộm tóc';
+            else if (text.includes('cắt tóc')) bookingData.service = 'Cắt tóc nam';
+            else if (text.includes('uốn tóc')) bookingData.service = 'Uốn tóc';
+          }
+          // Trích xuất barber
+          if (!bookingData.barber && (text.includes('lê quang vinh') || text.includes('phạm thành đạt') || text.includes('ngô minh nhật') || text.includes('đỗ quốc hùng') || text.includes('hồ tấn phát'))) {
+            if (text.includes('lê quang vinh')) bookingData.barber = 'Lê Quang Vinh';
+            else if (text.includes('phạm thành đạt')) bookingData.barber = 'Phạm Thành Đạt';
+            else if (text.includes('ngô minh nhật')) bookingData.barber = 'Ngô Minh Nhật';
+            else if (text.includes('đỗ quốc hùng')) bookingData.barber = 'Đỗ Quốc Hùng';
+            else if (text.includes('hồ tấn phát')) bookingData.barber = 'Hồ Tấn Phát';
+          }
+          // Trích xuất date và time
+          const dateTimeMatch = text.match(/(\d{4}-\d{2}-\d{2})\s*(\d{2}:\d{2})/);
+          if (dateTimeMatch && !bookingData.date) {
+            bookingData.date = dateTimeMatch[1];
+            bookingData.time = dateTimeMatch[2];
+          }
+          // Trích xuất thông tin khách hàng
+          const [name, email, phone] = text.split(',').map(s => s.trim());
+          if (name && !bookingData.customerName) bookingData.customerName = name;
+          if (email && !bookingData.customerEmail && email.includes('@')) bookingData.customerEmail = email;
+          if (phone && !bookingData.customerPhone && phone.match(/0\d{9,10}/)) bookingData.customerPhone = phone;
+        }
+      });
 
-      if (services.length > 0 || barbers.length > 0) {
-        let reply = 'Kính chào bạn! Đã thêm vào lịch đặt của bạn:\n';
-        if (services.length > 0) {
-          reply += 'Dịch vụ: ' + services.join(', ') + '\n';
+      // Ghi đè bookingData bằng entities mới nhất, ưu tiên khi state là confirm_booking
+      const { service, barber, date, time, customerName, customerEmail, customerPhone } = entities;
+      if (service && service.length > 0) bookingData.service = service[0]; // Ưu tiên entities
+      if (barber && barber.length > 0) bookingData.barber = barber[0];
+      if (date) bookingData.date = date;
+      if (time) bookingData.time = time;
+      if (customerName) bookingData.customerName = customerName; // Ưu tiên entities cho customerName
+      if (customerEmail) bookingData.customerEmail = customerEmail;
+      if (customerPhone) bookingData.customerPhone = customerPhone;
+
+      // Dùng chatHistory làm fallback nếu entities thiếu
+      if (!bookingData.service && chatHistory.length > 0) {
+        const lastUserMsg = chatHistory.filter(e => e.sender === 'user').pop();
+        if (lastUserMsg) {
+          const text = lastUserMsg.text.toLowerCase();
+          if (text.includes('nhuộm tóc')) bookingData.service = 'Nhuộm tóc';
+          else if (text.includes('cắt tóc')) bookingData.service = 'Cắt tóc nam';
+          else if (text.includes('uốn tóc')) bookingData.service = 'Uốn tóc';
         }
-        if (barbers.length > 0) {
-          reply += 'Thợ: ' + barbers.join(', ') + '\n';
-        }
-        reply += 'Chúng tôi sẽ liên hệ để xác nhận thời gian. Bạn có muốn tiếp tục đặt lịch không?';
-        return { reply, data: null };
-      } else {
-        return { error: 'Vui lòng cung cấp dịch vụ hoặc thợ để đặt lịch.' };
       }
+      if (!bookingData.barber && chatHistory.length > 0) {
+        const lastUserMsg = chatHistory.filter(e => e.sender === 'user').pop();
+        if (lastUserMsg) {
+          const text = lastUserMsg.text.toLowerCase();
+          if (text.includes('lê quang vinh')) bookingData.barber = 'Lê Quang Vinh';
+          else if (text.includes('phạm thành đạt')) bookingData.barber = 'Phạm Thành Đạt';
+          else if (text.includes('ngô minh nhật')) bookingData.barber = 'Ngô Minh Nhật';
+          else if (text.includes('đỗ quốc hùng')) bookingData.barber = 'Đỗ Quốc Hùng';
+          else if (text.includes('hồ tấn phát')) bookingData.barber = 'Hồ Tấn Phát';
+        }
+      }
+      if (!bookingData.date || !bookingData.time) {
+        const lastUserMsg = chatHistory.filter(e => e.sender === 'user').pop();
+        if (lastUserMsg) {
+          const dateTimeMatch = lastUserMsg.text.match(/(\d{4}-\d{2}-\d{2})\s*(\d{2}:\d{2})/);
+          if (dateTimeMatch) {
+            bookingData.date = dateTimeMatch[1];
+            bookingData.time = dateTimeMatch[2];
+          }
+        }
+      }
+      if (!bookingData.customerName || !bookingData.customerEmail || !bookingData.customerPhone) {
+        const lastUserMsg = chatHistory.filter(e => e.sender === 'user').pop();
+        if (lastUserMsg) {
+          const [name, email, phone] = lastUserMsg.text.split(',').map(s => s.trim());
+          if (name) bookingData.customerName = name;
+          if (email && email.includes('@')) bookingData.customerEmail = email;
+          if (phone && phone.match(/0\d{9,10}/)) bookingData.customerPhone = phone;
+        }
+      }
+
+      console.log('Booking Data:', bookingData);
+
+      // Xử lý xác nhận hoặc sửa trước khi kiểm tra trạng thái
+      if (state === 'confirm_booking' && userMessage.toLowerCase().includes('sửa')) {
+        return {
+          data: {
+            state: 'select_service',
+            prompt: 'Vui lòng chọn lại dịch vụ bạn muốn đặt (ví dụ: Cắt tóc nam, Uốn tóc).'
+          }
+        };
+      }
+
+      // Xử lý xác nhận
+      if (state === 'confirm_booking' && (
+        userMessage.toLowerCase().includes('đồng ý') ||
+        userMessage.toLowerCase().includes('xác nhận') ||
+        userMessage.toLowerCase().includes('xác nhan') ||
+        userMessage.toLowerCase().includes('xác nhân')
+      )) {
+        let userId = req.userId;
+        if (!userId) {
+          let token;
+          if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+            token = req.headers.authorization.split(' ')[1];
+          } else if (req.cookies?.accessToken) {
+            token = req.cookies.accessToken;
+          }
+
+          if (token) {
+            try {
+              const decoded = jwt.verify(token, process.env.JWT_SECRET);
+              userId = decoded.id;
+            } catch (err) {
+              console.error('Token không hợp lệ:', err.message);
+              return { error: 'Vui lòng đăng nhập để đặt lịch.' };
+            }
+          } else {
+            return { error: 'Vui lòng đăng nhập để đặt lịch.' };
+          }
+        }
+
+        // Chuyển đổi barber và service sang ObjectId
+        const barberUser = await User.findOne({ name: new RegExp(bookingData.barber, 'i') });
+        if (!barberUser) return { error: `Không tìm thấy thợ "${bookingData.barber}".` };
+        const barberDoc = await Barber.findOne({ userId: barberUser._id });
+        if (!barberDoc) return { error: `Thợ "${bookingData.barber}" hiện không khả dụng.` };
+
+        const serviceDoc = await Service.findOne({ name: new RegExp(bookingData.service, 'i') });
+        if (!serviceDoc) return { error: `Không tìm thấy dịch vụ "${bookingData.service}".` };
+
+        // Kiểm tra xung đột thời gian
+        const existingBookings = await Booking.find({
+          barberId: barberDoc._id,
+          bookingDate: {
+            $gte: new Date(`${bookingData.date}T00:00:00.000Z`),
+            $lt: new Date(`${bookingData.date}T23:59:59.999Z`)
+          },
+          status: { $in: ['pending', 'confirmed'] }
+        });
+        const newStart = new Date(`${bookingData.date}T${bookingData.time}:00.000Z`);
+        const newEnd = new Date(newStart.getTime() + serviceDoc.durationMinutes * 60000);
+        const hasConflict = existingBookings.some(b => {
+          const existingStart = new Date(b.bookingDate);
+          const existingEnd = new Date(existingStart.getTime() + b.durationMinutes * 60000);
+          return newStart < existingEnd && newEnd > existingStart;
+        });
+        if (hasConflict) return { error: `Khung giờ ${bookingData.time} ngày ${bookingData.date} đã bị trùng với booking khác.` };
+
+        // Gọi hàm createBooking
+        const payload = {
+          barberId: barberDoc._id,
+          serviceId: serviceDoc._id,
+          bookingDate: newStart.toISOString(),
+          timeSlot: bookingData.time,
+          durationMinutes: serviceDoc.durationMinutes,
+          note: '',
+          notificationMethods: ['email', 'sms'],
+          autoAssignedBarber: false,
+          customerName: bookingData.customerName,
+          customerEmail: bookingData.customerEmail,
+          customerPhone: bookingData.customerPhone
+        };
+
+        try {
+          console.log('Calling createBooking with payload:', payload);
+          const response = await createBookingFromBot(payload, userId); 
+          console.log('createBooking response:', response);
+          if (response.statusCode === 201) {
+            const booking = response.booking;
+            return {
+              success: true,
+              data: {
+                booking: {
+                  id: booking._id,
+                  service: bookingData.service,
+                  barber: bookingData.barber,
+                  date: bookingData.date,
+                  time: bookingData.time,
+                  customerName: bookingData.customerName,
+                  customerEmail: bookingData.customerEmail,
+                  customerPhone: bookingData.customerPhone
+                }
+              }
+            };
+          } else {
+            return { error: response.message || 'Không thể tạo booking. Vui lòng thử lại sau.' };
+          }
+        } catch (err) {
+          console.error('Lỗi khi gọi createBooking:', err.message);
+          return { error: 'Không thể tạo booking. Vui lòng thử lại sau.' };
+        }
+      }
+
+      // Xác định trạng thái tiếp theo
+      if (!bookingData.service) {
+        return {
+          data: {
+            state: 'select_service',
+            prompt: 'Vui lòng chọn dịch vụ bạn muốn đặt (ví dụ: Cắt tóc nam, Uốn tóc).'
+          }
+        };
+      }
+      if (!bookingData.barber) {
+        const availableBarbers = await Barber.find({ isAvailable: true }).populate('userId', 'name');
+        return {
+          data: {
+            state: 'select_barber',
+            prompt: 'Vui lòng chọn thợ bạn muốn đặt lịch:\n' +
+              availableBarbers.map(b => `✦ ${b.userId.name}`).join('\n') +
+              '\nHoặc nhắn "tự chọn" để hệ thống tự gán thợ phù hợp.'
+          }
+        };
+      }
+      if (!bookingData.date || !bookingData.time) {
+        const barberId = (await User.findOne({ name: new RegExp(bookingData.barber, 'i') }).select('_id'))._id;
+        const barberSchedule = await BarberSchedule.getAvailableSlots(barberId, new Date().toISOString().split('T')[0]);
+        const availableSlots = barberSchedule.available ? barberSchedule.slots.map(s => s.time) : [];
+        return {
+          data: {
+            state: 'select_time',
+            prompt: `Vui lòng chọn khung giờ bạn muốn đặt lịch:\n${availableSlots.map(t => `✦ ${t}`).join('\n')}\nHoặc nhập ngày và giờ (ví dụ: 2025-07-21 14:30).`
+          }
+        };
+      }
+      if (!bookingData.customerName || !bookingData.customerEmail || !bookingData.customerPhone) {
+        return {
+          data: {
+            state: 'collect_customer_info',
+            prompt: 'Vui lòng cung cấp thông tin của bạn:\n- Tên\n- Email\n- Số điện thoại\n(Ví dụ: Nguyễn Văn A, a@example.com, 0123456789)'
+          }
+        };
+      }
+      if (bookingData.service && bookingData.barber && bookingData.date && bookingData.time && bookingData.customerName && bookingData.customerEmail && bookingData.customerPhone) {
+        return {
+          data: {
+            state: 'confirm_booking',
+            prompt: `Kính chào bạn! Đây là thông tin đặt lịch của bạn:\n✦ Dịch vụ: ${bookingData.service}\n✦ Thợ: ${bookingData.barber}\n✦ Ngày: ${bookingData.date}\n✦ Giờ: ${bookingData.time}\n✦ Tên: ${bookingData.customerName}\n✦ Email: ${bookingData.customerEmail}\n✦ Số điện thoại: ${bookingData.customerPhone}\nVui lòng xác nhận bằng cách nhắn "đồng ý" hoặc "xác nhận", hoặc nhắn "sửa" để chỉnh sửa.`
+          }
+        };
+      }
+
+      return { error: 'Yêu cầu không hợp lệ. Vui lòng thử lại.' };
+    }
+    case 'get_barber_bookings': {
+      if (!entities.barber || !Array.isArray(entities.barber) || entities.barber.length === 0) {
+        return { error: 'Vui lòng cung cấp tên thợ để xem lịch booking.' };
+      }
+
+      const user = await User.findOne({ name: new RegExp(entities.barber[0], 'i') }).select('_id');
+      if (!user) {
+        return { error: `Không tìm thấy thợ "${entities.barber[0]}" tại BerGer Barbershop.` };
+      }
+
+      const barber = await Barber.findOne({ userId: user._id, isAvailable: true });
+      if (!barber) {
+        return { error: `Thợ "${entities.barber[0]}" hiện không khả dụng.` };
+      }
+
+      const bookings = await Booking.find({
+        barberId: barber._id,
+        status: { $in: ['pending', 'confirmed'] },
+        bookingDate: { $gte: new Date() }
+      })
+        .populate('serviceId', 'name')
+        .populate('customerId', 'name')
+        .sort({ bookingDate: 1 });
+
+      if (!bookings.length) {
+        return { error: `Hiện tại thợ "${entities.barber[0]}" không có lịch booking còn hiệu lực.` };
+      }
+
+      return {
+        data: {
+          barber: entities.barber[0],
+          bookings: bookings.map(b => ({
+            id: b._id,
+            service: b.serviceId.name,
+            customer: b.customerId.name,
+            date: b.bookingDate.toISOString().split('T')[0],
+            time: b.bookingDate.toISOString().split('T')[1].slice(0, 5),
+            status: b.status
+          })),
+          total: bookings.length
+        }
+      };
     }
     default:
       return { error: 'Yêu cầu không được hỗ trợ tại BerGer Barbershop.' };
@@ -342,7 +624,12 @@ async function callFunction(fnName, entities, req) {
 }
 
 function generateNaturalResponse(fnName, data, userMessage, entities) {
-  if (data.error) return data.error;
+  if (data.error) {
+    if (fnName === 'book_appointment' && data.data && data.data.prompt) {
+      return data.data.prompt;
+    }
+    return data.error;
+  }
 
   switch (fnName) {
     case 'get_product_list': {
@@ -409,16 +696,37 @@ function generateNaturalResponse(fnName, data, userMessage, entities) {
       return reply;
     }
     case 'book_appointment': {
-      const serviceNames = Array.isArray(entities.service) ? entities.service : [entities.service].filter(Boolean);
-      const barberNames = Array.isArray(entities.barber) ? entities.barber : [entities.barber].filter(Boolean);
-      let reply = 'Kính chào bạn! Đã thêm vào lịch đặt của bạn:\n';
-      if (serviceNames.length > 0) {
-        reply += 'Dịch vụ: ' + serviceNames.join(', ') + '\n';
+      if (data.data && data.data.prompt) {
+        return data.data.prompt;
       }
-      if (barberNames.length > 0) {
-        reply += 'Thợ: ' + barberNames.join(', ') + '\n';
+      const { booking } = data.data;
+      let reply = `Kính chào bạn! Booking của bạn đã được tạo thành công:\n`;
+      reply += `✦ Dịch vụ: ${booking.service}\n`;
+      reply += `  Thợ: ${booking.barber}\n`;
+      reply += `  Ngày: ${booking.date}\n`;
+      reply += `  Giờ: ${booking.time}\n`;
+      reply += `  Tên khách hàng: ${booking.customerName}\n`;
+      reply += `  Email: ${booking.customerEmail}\n`;
+      reply += `  Số điện thoại: ${booking.customerPhone}\n`;
+      reply += 'Cảm ơn bạn đã tin tưởng và lựa chọn BerGer Barbershop! Chúng tôi sẽ gửi thông báo xác nhận qua email và SMS. Bạn có cần hỗ trợ thêm không?';
+      return reply;
+    }
+    case 'get_barber_bookings': {
+      const { barber, bookings, total } = data.data;
+      let reply = `Kính chào bạn! Dưới đây là lịch booking còn hiệu lực của thợ ${barber}:\n`;
+      bookings.forEach(b => {
+        reply += `✦ Booking ID: ${b.id}\n`;
+        reply += `  Dịch vụ: ${b.service}\n`;
+        reply += `  Khách hàng: ${b.customer}\n`;
+        reply += `  Ngày: ${b.date}\n`;
+        reply += `  Giờ: ${b.time}\n`;
+        reply += `  Trạng thái: ${b.status === 'pending' ? 'Chờ xác nhận' : 'Đã xác nhận'}\n`;
+        reply += '\n';
+      });
+      if (total === 0) {
+        reply += `Hiện tại thợ ${barber} không có lịch booking nào còn hiệu lực.\n`;
       }
-      reply += 'Chúng tôi sẽ liên hệ để xác nhận thời gian. Bạn có muốn tiếp tục đặt lịch không?';
+      reply += 'Rất hân hạnh được hỗ trợ! Bạn có muốn đặt lịch với thợ này không?';
       return reply;
     }
     default:
@@ -445,8 +753,8 @@ Email: bergerbarbershop@gmail.com
 `;
 
   try {
-    console.log('Received message:', userMessage);
-    const { intent, entities } = await analyzeIntent(userMessage, chatHistory);
+    console.log('Received message:', userMessage, 'Chat History:', chatHistory);
+    const { intent, entities, state } = await analyzeIntent(userMessage, chatHistory);
 
     if (intent === 'general') {
       console.log('Processing general intent');
@@ -469,7 +777,7 @@ Email: bergerbarbershop@gmail.com
     if (entities.barberRatingMax !== undefined) entities.barberRatingMax = Number(entities.barberRatingMax);
 
     console.log('Calling function with intent:', intent);
-    const result = await callFunction(intent, entities, req);
+    const result = await callFunction(intent, entities, req, chatHistory, userMessage, state);
     const data = result.data || null;
     const reply = generateNaturalResponse(intent, result, userMessage, entities);
     console.log('Response:', { reply, data });
