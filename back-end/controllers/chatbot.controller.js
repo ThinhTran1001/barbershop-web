@@ -560,7 +560,7 @@ async function callFunction(fnName, entities, req, chatHistory = [], userMessage
         return {
           data: {
             state: 'collect_customer_info',
-            prompt: 'Vui lòng cung cấp thông tin của bạn:\n- Tên\n- Email\n- Số điện thoại\n(Ví dụ: Nguyễn Văn A, a@example.com, 0123456789)'
+            prompt: 'Vui lòng cung cấp thông tin của bạn:\n- Tên\n- Email\n- Số điện thoại\n(Ví dụ: Lê Văn Giang, giangdeptrai@gmail.com, 0966470396)'
           }
         };
       }
@@ -708,7 +708,7 @@ function generateNaturalResponse(fnName, data, userMessage, entities) {
       reply += `  Tên khách hàng: ${booking.customerName}\n`;
       reply += `  Email: ${booking.customerEmail}\n`;
       reply += `  Số điện thoại: ${booking.customerPhone}\n`;
-      reply += 'Cảm ơn bạn đã tin tưởng và lựa chọn BerGer Barbershop! Chúng tôi sẽ gửi thông báo xác nhận qua email và SMS. Bạn có cần hỗ trợ thêm không?';
+      reply += 'Cảm ơn bạn đã tin tưởng và lựa chọn BerGer Barbershop! Nhân viên chúng tôi sẽ sớm liên hệ xác nhận thông tin đặt lịch của bạn. Bạn có cần hỗ trợ thêm không?';
       return reply;
     }
     case 'get_barber_bookings': {
