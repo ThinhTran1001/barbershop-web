@@ -33,7 +33,10 @@ const initSocket = (server) => {
       socket.join(userId);
       console.log(`${role === 'admin' ? 'Admin' : 'User'} ${userId} joined room ${userId}`);
       if (role === 'admin') {
-        io.to(userId).emit("updateRooms", Object.keys(io.sockets.adapter.rooms).filter(r => r !== userId));
+        const ChatMessage = require("../models/chatMessage.model");
+        ChatMessage.distinct('roomId').then((rooms) => {
+          socket.emit("updateRooms", rooms); 
+        });
       }
     });
 
