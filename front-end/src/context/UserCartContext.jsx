@@ -10,25 +10,48 @@ import {
 
 const UserCartContext = createContext();
 
-// Action types
-const LOAD_CART = 'LOAD_CART';
-const UPDATE_QUANTITY = 'UPDATE_QUANTITY';
-
 const cartReducer = (state, action) => {
   switch (action.type) {
-    case LOAD_CART:
+    case 'LOAD_CART':
       return {
         ...state,
         items: action.payload.items || [],
       };
-    case UPDATE_QUANTITY:
+    case 'ADD_TO_CART':
+      const existingItem = state.items.find(item => item.productId === action.payload.productId);
+      if (existingItem) {
+        return {
+          ...state,
+          items: state.items.map(item =>
+            item.productId === action.payload.productId
+              ? { ...item, quantity: item.quantity + action.payload.quantity }
+              : item
+          ),
+        };
+      } else {
+        return {
+          ...state,
+          items: [...state.items, action.payload],
+        };
+      }
+    case 'UPDATE_QUANTITY':
       return {
         ...state,
         items: state.items.map(item =>
-          item.productId === action.payload.productId || item.id === action.payload.productId
+          item.productId === action.payload.productId
             ? { ...item, quantity: action.payload.quantity }
             : item
         ),
+      };
+    case 'REMOVE_FROM_CART':
+      return {
+        ...state,
+        items: state.items.filter(item => item.productId !== action.payload),
+      };
+    case 'CLEAR_CART':
+      return {
+        ...state,
+        items: [],
       };
     default:
       return state;
@@ -38,28 +61,23 @@ const cartReducer = (state, action) => {
 export const UserCartProvider = ({ children }) => {
   const [cart, dispatch] = useReducer(cartReducer, { items: [] });
   const { user, loading } = useAuth();
-  const [version, setVersion] = useState(0); // Thêm version để force update
+  const [version, setVersion] = useState(0);
 
-  // Load cart from API khi user login hoặc reload
   const fetchCart = async () => {
     if (!user || loading) return;
     try {
       const response = await getCart();
-      
-      // Ưu tiên data.items, nếu không có thì lấy data.data.items
       let items = [];
       if (Array.isArray(response?.data?.items)) {
         items = response.data.items;
       } else if (Array.isArray(response?.data?.data?.items)) {
         items = response.data.data.items;
       }
-      
       const formattedItems = items.map((i) => {
-        // Kiểm tra cấu trúc dữ liệu từ backend
         const productData = i.productId;
-        const formattedItem = {
+        return {
           id: productData._id || productData,
-          productId: productData._id || productData, // Thêm productId để checkout có thể sử dụng
+          productId: productData._id || productData,
           name: productData.name,
           image: productData.image,
           price: productData.price,
@@ -67,12 +85,9 @@ export const UserCartProvider = ({ children }) => {
           stock: productData.stock,
           quantity: i.quantity,
         };
-        return formattedItem;
       });
-      
-      // Đảm bảo tạo object mới để trigger re-render
-      dispatch({ type: LOAD_CART, payload: { items: [...formattedItems] } });
-      setVersion(v => v + 1); // Tăng version mỗi lần fetchCart
+      dispatch({ type: 'LOAD_CART', payload: { items: [...formattedItems] } });
+      setVersion(v => v + 1);
     } catch (err) {
       console.error('Error loading cart from API', err);
     }
@@ -80,51 +95,67 @@ export const UserCartProvider = ({ children }) => {
 
   useEffect(() => {
     fetchCart();
-    // eslint-disable-next-line
   }, [user, loading]);
 
-  // Actions
-  const addToCart = async (product, quantity = 1) => {
+  const addToCart = async (product, quantity = 1, callback) => {
     try {
+      // Cập nhật state cục bộ ngay lập tức
+      const cartItem = {
+        id: product.id || product._id,
+        productId: product.id || product._id,
+        name: product.name,
+        image: product.image,
+        price: product.price,
+        discount: product.discount || 0,
+        stock: product.stock,
+        quantity: quantity,
+      };
+      dispatch({ type: 'ADD_TO_CART', payload: cartItem });
+
+      // Gọi API để thêm vào server
       await addItem({ productId: product.id || product._id, quantity });
+
+      // Fetch lại để đồng bộ với server
       await fetchCart();
+
+      if (callback) callback();
     } catch (err) {
       console.error('Failed to add item to API cart', err);
+      // Revert state nếu thất bại
+      await fetchCart();
     }
   };
 
   const removeFromCart = async (productId) => {
     try {
+      dispatch({ type: 'REMOVE_FROM_CART', payload: productId });
       await removeItem(productId);
       await fetchCart();
     } catch (err) {
       console.error('Failed to remove item from API cart', err);
+      await fetchCart();
     }
   };
 
   const updateQuantity = async (productId, quantity) => {
     try {
-      // Update state immediately for better UX
-      dispatch({ type: UPDATE_QUANTITY, payload: { productId, quantity } });
-      
-      // Then update API
+      dispatch({ type: 'UPDATE_QUANTITY', payload: { productId, quantity } });
       await updateItem(productId, { quantity });
-      
-      // Fetch fresh data from API to ensure sync
       await fetchCart();
     } catch (err) {
       console.error('Failed to update quantity in API cart', err);
-      // Revert state if API call failed
       await fetchCart();
     }
   };
 
   const clearCart = async () => {
     try {
+      dispatch({ type: 'CLEAR_CART' });
       await clearCartApi();
       await fetchCart();
     } catch (err) {
       console.error('Failed to clear API cart', err);
+      await fetchCart();
     }
   };
 
@@ -150,8 +181,8 @@ export const UserCartProvider = ({ children }) => {
         clearCart,
         getCartTotal,
         getCartCount,
-        fetchCart, // <-- export fetchCart
-        version, // Trả version ra context
+        fetchCart,
+        version,
         isLoggedIn: !!user,
       }}
     >
@@ -166,4 +197,4 @@ export const useUserCart = () => {
     throw new Error('useUserCart must be used within a UserCartProvider');
   }
   return context;
-}; 
+};
