@@ -210,3 +210,36 @@
   -ms-hyphens: auto;
   hyphens: auto;
 }
+
+.chat-bubble {
+  margin: 10px 0;
+  padding: 12px;
+  border-radius: 8px;
+  max-width: 70%;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.user-bubble {
+  background: #1890ff;
+  color: white;
+  margin-left: auto;
+}
+
+.bot-bubble {
+  background: #e0e0e0;
+  color: black;
+  margin-right: auto;
+}
+
+.realtime-bubble.own {
+  background: #1890ff;
+  color: white;
+  margin-left: auto;
+}
+
+.realtime-bubble.other {
+  background: #e0e0e0;
+  color: black;
+  margin-right: auto;
+}

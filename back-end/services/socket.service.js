@@ -54,11 +54,12 @@ const initSocket = (server) => {
       };
       try {
         const ChatMessage = require("../models/chatMessage.model");
-        ChatMessage.create(message).then(() => {
+        ChatMessage.create(message).then(async () => {
           io.to(roomId).emit("receiveMessage", message);
-          if (senderRole === 'admin') {
-            io.emit("updateRooms", Object.keys(io.sockets.adapter.rooms).filter(r => r !== senderId));
-          }
+
+          const rooms = await ChatMessage.distinct('roomId');
+          io.emit("updateRooms", rooms); 
+
           if (callback) callback({ success: true });
         }).catch((err) => {
           console.error("Error saving message:", err);

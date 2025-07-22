@@ -56,6 +56,7 @@ export default function ChatWidget() {
   const [chatMessages, setChatMessages] = useState({});
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [rooms, setRooms] = useState([]);
+  const [messageRefreshKey, setMessageRefreshKey] = useState(0);
 
   useEffect(() => {
     if (open && inputRef.current) {
@@ -86,6 +87,11 @@ export default function ChatWidget() {
         ...prev,
         [message.roomId]: [...(prev[message.roomId] || []), message],
       }));
+
+      // Nếu là admin và đang xem đúng room → force re-render
+      if (user?.role === 'admin' && selectedRoom === message.roomId) {
+        setMessageRefreshKey((prev) => prev + 1);
+      }
     });
 
     newSocket.on("updateRooms", (roomIds) => {
@@ -230,30 +236,31 @@ export default function ChatWidget() {
   const handleSendAdmin = () => {
     if (!input.trim() || !user?.id || (user?.role === 'admin' && !selectedRoom)) return;
     if (!socket) {
-      console.error("Socket connection not available");
       notification.error({
         message: "Lỗi kết nối",
         description: "Không thể kết nối tới server. Vui lòng thử lại!",
       });
       return;
     }
+
     const roomId = user?.role === 'admin' ? selectedRoom : user.id;
+
     const message = {
       roomId,
       senderId: user.id,
       text: input,
       senderRole: user.role === 'admin' ? 'admin' : 'user',
     };
-    console.log("Sending message:", message);
+
     socket.emit("sendMessage", message, (response) => {
       if (response.error) {
-        console.error("Emit error:", response.error);
-        notification.error({
-          message: "Gửi tin nhắn thất bại",
-          description: response.error,
-        });
-      }
+    notification.error({
+      message: "Gửi tin nhắn thất bại",
+      description: response.error,
     });
+  }
+    });
+
     setInput('');
   };
 
@@ -288,7 +295,9 @@ export default function ChatWidget() {
                 className={`sidebar-item ${selectedRoom === room ? 'active' : ''}`}
                 onClick={() => {
                   setSelectedRoom(room);
+                  setActiveChat('admin');
                   fetchMessages(room);
+                  socket?.emit("joinRoom", room, 'admin');
                 }}
               >
                 <span>Room: {room}</span>
@@ -335,15 +344,17 @@ export default function ChatWidget() {
               </div>
             ))}
             {activeChat === 'admin' && user?.role !== 'admin' && chatMessages[user?.id]?.map((m, i) => (
-              <div key={i} className={`chat-bubble ${m.senderRole === 'user' ? 'user-bubble' : 'admin-bubble'}`}>
+              <div key={i} className={`chat-bubble realtime-bubble ${m.senderId === user.id ? 'own' : 'other'}`}>
                 <div className="message-text">{m.text}</div>
               </div>
             ))}
+
             {user?.role === 'admin' && selectedRoom && chatMessages[selectedRoom]?.map((m, i) => (
-              <div key={i} className={`chat-bubble ${m.senderRole === 'user' ? 'user-bubble' : 'admin-bubble'}`}>
+              <div key={`${m._id || i}-${messageRefreshKey}`} className={`chat-bubble realtime-bubble ${m.senderId === user.id ? 'own' : 'other'}`}>
                 <div className="message-text">{m.text}</div>
               </div>
             ))}
+
             {user?.role === 'admin' && !selectedRoom && (
               <div className="chat-placeholder">
                 <p>Chọn room để bắt đầu chat</p>
