@@ -268,7 +268,7 @@ const ProductManagement = () => {
       dataIndex: 'name',
       key: 'name'
     },
-    { title: 'Price', dataIndex: 'price', key: 'price', render: v => `$${v.toFixed(2)}` },
+    { title: 'Price', dataIndex: 'price', key: 'price', render: v => `${v.toFixed(2)} VNĐ` },
     {
       title: 'Brand',
       key: 'brand',
@@ -565,7 +565,7 @@ const ProductManagement = () => {
             </div>
             <div style={{ flex: 2 }}>
               <p><strong>Name:</strong> {viewingProduct.name}</p>
-              <p><strong>Price:</strong> ${viewingProduct.price?.toFixed(2)}</p>
+              <p><strong>Price:</strong> {viewingProduct.price?.toFixed(2)} VNĐ</p>
               <p><strong>Brand:</strong> {brands.find(b => b._id === viewingProduct.details?.brandId)?.name || 'N/A'}</p>
               <p><strong>Categories:</strong> {(viewingProduct.categoryId || []).map(id => categories.find(c => c._id === id)?.name).filter(n => n).join(', ') || 'N/A'}</p>
               <p><strong>Rating:</strong> {viewingProduct.rating || 'N/A'}</p>

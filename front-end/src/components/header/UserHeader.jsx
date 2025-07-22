@@ -70,6 +70,7 @@ export default function UserHeader() {
     },
     {
       key: "orders",
+      icon: <ShoppingCartOutlined />,
       label: "Lịch sử đơn hàng",
       onClick: () => navigate("/my-orders"),
     },

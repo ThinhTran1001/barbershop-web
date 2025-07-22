@@ -11,7 +11,7 @@ module.exports.generate = async ({ prompt }) => {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`;
   const body = {
     contents: [
-      { parts: [{ text: prompt }] }
+      { role: "user", parts: [{ text: prompt }] }
     ]
   };
 
