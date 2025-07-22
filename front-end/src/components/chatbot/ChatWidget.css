@@ -1,10 +1,10 @@
-/* src/components/ChatWidget.css */
+/* front-end/src/components/ChatWidget.css */
 
 .chat-widget {
   position: fixed;
   bottom: 20px;
   right: 20px;
-  width: 350px;
+  width: 500px;
   height: 500px;
   background: #fff;
   border-radius: 10px;
@@ -12,10 +12,11 @@
   display: flex;
   flex-direction: column;
   z-index: 1000;
+  overflow: hidden;
 }
 
 .chat-header {
-  padding: 10px;
+  padding: 15px;
   background: #1890ff;
   color: white;
   display: flex;
@@ -31,25 +32,80 @@
 }
 
 .chat-icon {
-  margin-right: 5px;
+  margin-right: 8px;
 }
 
 .chat-close {
   cursor: pointer;
+  font-size: 18px;
+}
+
+.chat-main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.chat-sidebar {
+  width: 150px;
+  background: #f1f1f1;
+  border-right: 1px solid #ddd;
+  overflow-y: auto;
+  padding: 10px 0;
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 15px;
+  color: #333;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.3s;
+}
+
+.sidebar-item:hover,
+.sidebar-item.active {
+  background-color: #e0e0e0;
+  color: #1890ff;
+  font-weight: 500;
+}
+
+.sidebar-item .ant-avatar {
+  margin-right: 8px;
+}
+
+.chat-content-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .chat-content {
   flex: 1;
-  padding: 10px;
+  padding: 15px;
   overflow-y: auto;
   background: #f9f9f9;
 }
 
+.chat-placeholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #888;
+  font-size: 16px;
+  text-align: center;
+  padding: 20px;
+}
+
 .chat-bubble {
-  margin: 5px 0;
-  padding: 10px;
-  border-radius: 5px;
+  margin: 10px 0;
+  padding: 12px;
+  border-radius: 8px;
   max-width: 70%;
+  font-size: 16px;
+  line-height: 1.5;
 }
 
 .user-bubble {
@@ -58,36 +114,36 @@
   margin-left: auto;
 }
 
-.bot-bubble {
-  background: #e9ecef;
-  color: black;
+.admin-bubble {
+  background: #4CAF50;
+  color: white;
+  margin-right: auto;
 }
 
 .message-text {
   margin-bottom: 10px;
-  font-size: 14px;
-  line-height: 1.4;
-  white-space: pre-wrap; /* Đảm bảo xuống dòng theo \n */
+  white-space: pre-wrap;
 }
 
 .scroll-down-btn {
   position: absolute;
-  bottom: 60px;
-  right: 10px;
+  bottom: 70px;
+  right: 15px;
   background: #1890ff;
   border-radius: 50%;
-  padding: 5px;
+  padding: 8px;
   cursor: pointer;
   color: white;
 }
 
 .chat-footer {
-  padding: 10px;
+  padding: 15px;
   border-top: 1px solid #eee;
 }
 
 .send-icon {
   cursor: pointer;
+  font-size: 18px;
 }
 
 .send-icon.loading {
@@ -120,12 +176,12 @@
 .card {
   border: 1px solid #ddd;
   border-radius: 6px;
-  padding: 8px;
-  margin: 5px 0;
+  padding: 10px;
+  margin: 10px 0;
   background: #fff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s;
-  max-width: 250px;
+  max-width: 300px;
 }
 
 .card:hover {
@@ -133,17 +189,17 @@
 }
 
 .product-card h3, .service-card h3, .barber-card h3 {
-  margin: 0 0 5px;
+  margin: 0 0 8px;
   color: #1890ff;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
 }
 
 .product-card p, .service-card p, .barber-card p {
-  margin: 3px 0;
+  margin: 5px 0;
   color: #333;
-  font-size: 12px;
-  line-height: 1.3;
+  font-size: 14px;
+  line-height: 1.4;
 }
 
 /* Đảm bảo text không tràn ra ngoài */

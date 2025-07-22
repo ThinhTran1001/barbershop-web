@@ -25,14 +25,18 @@ const barberAbsenceRoutes = require('./routes/barber-absence.route');
 const barberScheduleRoutes = require('./routes/barberSchedule.route');
 const bookingFeedbackRoutes = require('./routes/booking-feedback.route');
 const feedbackBookingRoutes = require('./routes/feedbackBooking.route');
-const blogRoutes = require('./routes/blog.route')
-const contactRoutes = require('./routes/contact.route')
-const statisticRoutes = require('./routes/statistic.route')
-
+const blogRoutes = require('./routes/blog.route');
+const contactRoutes = require('./routes/contact.route');
+const statisticRoutes = require('./routes/statistic.route');
+const chatRoutes = require('./routes/chat.route');
 
 const cors = require('cors');
 const cookieParser = require("cookie-parser");
+const http = require('http');
+const { initSocket } = require('./services/socket.service');
+
 const app = express();
+const server = http.createServer(app);
 
 app.use(express.json());
 app.use(cookieParser());
@@ -70,12 +74,13 @@ app.use('/api/barber-schedule', barberScheduleRoutes);
 app.use('/api/booking-feedback', bookingFeedbackRoutes);
 app.use('/api/feedback-bookings', feedbackBookingRoutes);
 app.use('/api/news', blogRoutes);
-app.use('/api/contact', contactRoutes)
+app.use('/api/contact', contactRoutes);
 app.use('/api/statistics', statisticRoutes);
-
+app.use('/api/chat', chatRoutes);
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, async () => {
+initSocket(server); 
+server.listen(PORT, async () => {
     console.log(`Server running at http://localhost:${PORT}`);
     connectDB();
 
