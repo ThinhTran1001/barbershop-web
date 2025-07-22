@@ -33,7 +33,7 @@ const BlogCard = ({ image, title, shortDesc, date, category, author }) => {
         <div style={{ fontSize: 13, color: '#888', marginBottom: 10, display: 'flex', gap: 12, alignItems: 'center' }}>
           <span><CalendarOutlined /> {date}</span>
           {author && <span><UserOutlined /> {author.name || 'admin'}</span>}
-          {category && <span>{category}</span>}
+          {Array.isArray(category) ? category.map((cat, idx) => <span key={cat}>{cat}{idx < category.length - 1 ? ', ' : ''}</span>) : (category && <span>{category}</span>)}
         </div>
         <Paragraph ellipsis={{ rows: 3 }} style={{ marginBottom: 18, color: '#444', flex: 1 }}>{shortDesc}</Paragraph>
         <Button size="small" style={{ background: '#b08d57', color: '#fff', border: 'none', fontWeight: 600, letterSpacing: 1, borderRadius: 4, width: 80 }}>

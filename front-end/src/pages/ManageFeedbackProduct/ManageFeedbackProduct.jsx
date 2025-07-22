@@ -4,7 +4,7 @@ import FeedbackProductStats from '../../components/FeedbackProductStats';
 import FeedbackProductFilters from '../../components/FeedbackProductFilters';
 import FeedbackProductTable from '../../components/FeedbackProductTable';
 import FeedbackProductModal from '../../components/FeedbackProductModal';
-import { getAllFeedbacks, approveFeedback, deleteFeedback, unapprovalFeedback } from '../../services/api';
+import { getAllFeedbacks, deleteFeedback } from '../../services/api';
 import dayjs from 'dayjs';
 import './ManageFeedbackProduct.css';
 
@@ -12,7 +12,7 @@ const ManageFeedbackProduct = () => {
   const [feedbacks, setFeedbacks] = useState([]);
   const [filteredFeedbacks, setFilteredFeedbacks] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [searchValue, setSearchValue] = useState('');
+    const [searchValue, setSearchValue] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [dateRange, setDateRange] = useState([]);
   const [ratingFilter, setRatingFilter] = useState('All');
@@ -40,16 +40,33 @@ const ManageFeedbackProduct = () => {
         const uniqueProducts = [];
         const productIds = new Set();
         
+        // Tính toán rating trung bình cho từng sản phẩm
+        const productRatings = {};
+        
         feedbackData.forEach(feedback => {
-          if (feedback.productId && feedback.productId._id && !productIds.has(feedback.productId._id)) {
-            productIds.add(feedback.productId._id);
-            uniqueProducts.push({
-              _id: feedback.productId._id,
-              name: feedback.productId.name || 'Unknown Product',
-              rating: feedback.productId.rating || 0,
-              feedbackCount: feedback.productId.feedbackCount || 0
-            });
+          if (feedback.productId && feedback.productId._id && !feedback.isDeleted) {
+            const productId = feedback.productId._id;
+            if (!productRatings[productId]) {
+              productRatings[productId] = {
+                totalRating: 0,
+                count: 0,
+                name: feedback.productId.name || 'Unknown Product'
+              };
+            }
+            productRatings[productId].totalRating += feedback.rating || 0;
+            productRatings[productId].count += 1;
           }
+        });
+        
+        // Tạo danh sách sản phẩm với rating đã tính
+        Object.keys(productRatings).forEach(productId => {
+          const product = productRatings[productId];
+          uniqueProducts.push({
+            _id: productId,
+            name: product.name,
+            rating: product.count > 0 ? (product.totalRating / product.count) : 0,
+            reviews: product.count
+          });
         });
         
         setProducts(uniqueProducts);
@@ -85,7 +102,7 @@ const ManageFeedbackProduct = () => {
 
     if (statusFilter !== 'All') {
       filtered = filtered.filter(item =>
-        statusFilter === 'Approved' ? item.isApproved : !item.isApproved
+        statusFilter === 'Active' ? !item.isDeleted : item.isDeleted
       );
     }
 
@@ -108,27 +125,7 @@ const ManageFeedbackProduct = () => {
     setFilteredFeedbacks(filtered);
   };
 
-  const handleApproveFeedback = async (id) => {
-    try {
-      await approveFeedback(id);
-      message.success('Feedback approved successfully. Product rating updated.');
-      await fetchFeedbacks();
-    } catch (err) {
-      console.error('Error approving feedback:', err);
-      message.error('An error occurred while approving feedback');
-    }
-  };
 
-  const handleUnapprovalFeedback = async (id) => {
-    try {
-      await unapprovalFeedback(id);
-      message.success('Feedback has been unapproved');
-      fetchFeedbacks();
-    } catch (err) {
-      console.error('Error unapproving feedback:', err);
-      message.error('An error occurred while unapproving feedback');
-    }
-  };
 
   const handleDeleteFeedback = async (id) => {
     try {
@@ -141,6 +138,8 @@ const ManageFeedbackProduct = () => {
     }
   };
 
+
+
   const handleViewFeedback = (record) => {
     setSelectedFeedback(record);
     setViewModalVisible(true);
@@ -148,8 +147,8 @@ const ManageFeedbackProduct = () => {
 
   const stats = {
     total: feedbacks.length,
-    approved: feedbacks.filter(f => f.isApproved).length,
-    pending: feedbacks.filter(f => !f.isApproved).length
+    active: feedbacks.filter(f => !f.isDeleted).length,
+    deleted: feedbacks.filter(f => f.isDeleted).length
   };
 
   return (
@@ -173,8 +172,6 @@ const ManageFeedbackProduct = () => {
           filteredFeedbacks={filteredFeedbacks}
           loading={loading}
           handleViewFeedback={handleViewFeedback}
-          approveFeedback={handleApproveFeedback}
-          unapprovalFeedback={handleUnapprovalFeedback}
           deleteFeedback={handleDeleteFeedback}
         />
       </Card>

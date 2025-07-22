@@ -1,4 +1,5 @@
 const Product = require('../models/product.model');
+const Discount = require('../models/discounts.model');
 const mongoose = require('mongoose');
 
 exports.createProduct = async (req, res) => {
@@ -32,7 +33,27 @@ exports.getAllProducts = async (req, res) => {
     if (price) query.price = { $lte: parseFloat(price) };
 
     const products = await Product.find(query);
-    res.status(200).json(products);
+
+    // Join discount còn hạn, active
+    const productIds = products.map(p => p._id);
+    const discounts = await Discount.find({
+      productId: { $in: productIds },
+      isActive: true,
+      discountEndDate: { $gt: new Date() }
+    });
+
+    const discountMap = {};
+    discounts.forEach(d => {
+      discountMap[d.productId.toString()] = d.discount;
+    });
+
+    const result = products.map(p => {
+      const obj = p.toObject();
+      obj.discount = discountMap[p._id.toString()] || 0;
+      return obj;
+    });
+
+    res.status(200).json(result);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -42,7 +63,18 @@ exports.getProductById = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ message: 'Product not found' });
-    res.status(200).json(product);
+
+    // Join discount còn hạn, active cho product này
+    const discount = await Discount.findOne({
+      productId: product._id,
+      isActive: true,
+      discountEndDate: { $gt: new Date() }
+    });
+
+    const obj = product.toObject();
+    obj.discount = discount ? discount.discount : 0;
+
+    res.status(200).json(obj);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

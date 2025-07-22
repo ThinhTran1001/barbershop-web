@@ -29,7 +29,7 @@ const DiscountTable = ({ discounts, loading, getDiscountStatus, handleEditDiscou
       align: 'right',
       render: discount => (
         <Tag color="red" style={{ fontSize: '12px', padding: '4px 8px' }}>
-          -{formatVND(discount)}
+          -{discount}%
         </Tag>
       ),
       sorter: (a, b) => a.discount - b.discount,

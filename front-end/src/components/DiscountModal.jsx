@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Input, DatePicker, Switch, Space, Select } from 'antd';
+import { Modal, Form, Input, DatePicker, Switch, Space, Select, InputNumber, notification } from 'antd';
 import { Modal as BootstrapModal, Button } from 'react-bootstrap';
 import dayjs from 'dayjs';
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -109,59 +109,35 @@ const DiscountModal = ({
           )}
 
           <Form.Item
-            label="Discount ($)"
+            label="Discount (%)"
             name="discount"
             rules={[
-              { required: true, message: 'Please enter the discount amount!' },
-              {
-                validator: (_, value) => {
-                  const numDiscount = Number(value);
-                  if (isNaN(numDiscount) || numDiscount <= 0) {
-                    return Promise.reject(new Error('Discount must be greater than 0!'));
-                  }
-                  const comparePrice = isAdd
-                    ? availableProducts.find(p => p._id === form.getFieldValue('productId'))?.price
-                    : editingDiscount?.productPrice;
-                  if (comparePrice && numDiscount >= comparePrice) {
-                    return Promise.reject(
-                      new Error('Discount must be less than the original price!')
-                    );
-                  }
-                  return Promise.resolve();
-                },
-              },
+              { required: true, message: 'Please enter a discount percentage!' },
+              { type: 'number', min: 1, max: 100, message: 'Only values from 1% to 100% are allowed!' }
             ]}
           >
-            <Input
-              type="number"
-              min={0.01}
-              step="0.01"
-              placeholder="Enter discount amount"
-              addonBefore="$"
+            <InputNumber
+              min={1}
+              max={100}
+              style={{ width: '100%' }}
+              placeholder="Enter discount percentage (1-100)"
+              addonAfter="%"
             />
           </Form.Item>
 
           <Form.Item
             label="End Date"
             name="discountEndDate"
-            rules={[
-              { required: true, message: 'Please select an end date!' },
-              {
-                validator: (_, value) => {
-                  if (value && value.isBefore(dayjs(), 'minute')) {
-                    return Promise.reject(new Error('End date must be in the future!'));
-                  }
-                  return Promise.resolve();
-                },
-              },
-            ]}
+            rules={[{ required: true, message: 'Please select an end date!' }]}
           >
             <DatePicker
+              showTime
               style={{ width: '100%' }}
               placeholder="Select end date"
-              disabledDate={(current) => current && current < dayjs().endOf('day')}
-              showTime={{ format: 'HH:mm' }}
-              format="DD/MM/YYYY HH:mm"
+              // Cho phép chọn cả ngày hôm nay
+              disabledDate={current => false}
+              // Nếu muốn chỉ cho chọn từ hôm nay trở đi:
+              // disabledDate={current => current && current < dayjs().startOf('day')}
             />
           </Form.Item>
 

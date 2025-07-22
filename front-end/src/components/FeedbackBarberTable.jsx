@@ -11,7 +11,6 @@ const FeedbackBarberTable = ({
   pagination,
   handleTableChange,
   handleViewDetail,
-  toggleApproval,
   handleDelete
 }) => {
   const columns = [
@@ -37,7 +36,7 @@ const FeedbackBarberTable = ({
       key: 'barberId',
       render: (barber) => (
         <span style={{ fontWeight: 500 }}>
-          {barber?.name || 'Unknown Barber'}
+          {barber?.userId?.name || barber?.name || barber?.email || barber?._id || 'Unknown Barber'}
         </span>
       ),
       width: 160,
@@ -49,7 +48,7 @@ const FeedbackBarberTable = ({
       render: (booking) => (
         <Space>
           <FileTextOutlined style={{ color: '#666' }} />
-          <span>{booking?.name || booking?.title || 'Unknown Booking'}</span>
+          <span>{booking?.name || booking?.title || booking?.customerName || booking?._id || 'Unknown Booking'}</span>
         </Space>
       ),
       width: 120,
@@ -61,7 +60,6 @@ const FeedbackBarberTable = ({
       render: (rating) => (
         <Space>
           <Rate disabled allowHalf value={rating || 0} />
-          <span style={{ fontWeight: 'bold', marginLeft: 8 }}>{rating || 0}</span>
         </Space>
       ),
       width: 180,
@@ -148,22 +146,22 @@ const FeedbackBarberTable = ({
     },
     {
       title: 'Status',
-      dataIndex: 'isApproved',
-      key: 'isApproved',
-      render: (isApproved) => (
+      dataIndex: 'isDeleted',
+      key: 'isDeleted',
+      render: (isDeleted, record) => (
         <Tag
-          color={isApproved ? 'success' : 'warning'}
-          icon={isApproved ? <CheckOutlined /> : <CloseOutlined />}
+          color={isDeleted ? 'error' : 'success'}
+          icon={isDeleted ? <CloseOutlined /> : <CheckOutlined />}
         >
-          {isApproved ? 'Approved' : 'Pending'}
+          {isDeleted ? 'Deleted' : 'Active'}
         </Tag>
       ),
       width: 110,
       filters: [
-        { text: 'Approved', value: true },
-        { text: 'Pending', value: false },
+        { text: 'Active', value: false },
+        { text: 'Deleted', value: true },
       ],
-      onFilter: (value, record) => record.isApproved === value,
+      onFilter: (value, record) => record.isDeleted === value,
     },
     {
       title: 'Date',
@@ -185,14 +183,7 @@ const FeedbackBarberTable = ({
               onClick={() => handleViewDetail(record)}
             />
           </Tooltip>
-          <Tooltip title={record.isApproved ? 'Unapprove' : 'Approve'}>
-            <Button
-              type="text"
-              icon={record.isApproved ? <CloseOutlined /> : <CheckOutlined />}
-              onClick={() => toggleApproval(record)}
-              style={{ color: record.isApproved ? '#ff4d4f' : '#52c41a' }}
-            />
-          </Tooltip>
+
           <Tooltip title="Delete">
             <Button
               type="text"
