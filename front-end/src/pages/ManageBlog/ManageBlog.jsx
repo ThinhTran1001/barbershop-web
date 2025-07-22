@@ -26,6 +26,9 @@ const ManageBlog = () => {
   const [confirmModal, setConfirmModal] = useState({ show: false, type: '', data: null });
   const [alert, setAlert] = useState({ show: false, variant: 'success', message: '' });
 
+  // XÓA toàn bộ code liên quan đến add link, kéo link, modal nhập link, handleSubmitLink, state showLinkModal, linkInputValue, blogInitialValues, showBlogModal, và mọi logic gọi API crawl nội dung từ link.
+  // Chỉ giữ lại chức năng thêm blog thủ công thông thường.
+
   const fetchBlogs = async (page = currentPage, filterObj = filter) => {
     setLoading(true);
     try {
@@ -208,7 +211,9 @@ const ManageBlog = () => {
   };
 
   return (
-    <div style={{ padding: 32 }}>
+    <div
+      style={{ padding: 32 }}
+    >
       {alert.show && (
         <div style={{
           position: 'fixed',
@@ -221,16 +226,18 @@ const ManageBlog = () => {
           <Alert variant={alert.variant} style={{ marginBottom: 0 }}>{alert.message}</Alert>
         </div>
       )}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16, flexWrap: 'nowrap' }}>
+      
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
         <BlogFilter
-          onChange={setFilter}
-          authors={authors}
+          filter={filter}
+          setFilter={setFilter}
           categories={categories}
           tags={tags}
+          authors={authors}
         />
-        <Button variant="primary" onClick={handleAdd} style={{ height: 40 }}>
-          + Add Blog
-        </Button>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <Button variant="primary" onClick={handleAdd}>+ Add Blog</Button>
+        </div>
       </div>
       <BlogTable
         data={blogs}

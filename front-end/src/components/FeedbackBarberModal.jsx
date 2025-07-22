@@ -1,122 +1,109 @@
 import React from 'react';
-import { Modal, Image, Rate, Tag, Row, Col, Divider } from 'antd';
-import { CheckOutlined, CloseOutlined, UserOutlined, ScissorOutlined, FileTextOutlined } from '@ant-design/icons';
+import { Modal, Image, Rate, Tag, Typography, Row, Col, Button } from 'antd';
+import { CheckOutlined, CloseOutlined, DeleteOutlined, UserOutlined, ScissorOutlined, FileTextOutlined } from '@ant-design/icons';
+
+const { Text } = Typography;
+
+const renderStatusTag = (status) => {
+  if (status === 'approved') return <Tag color="success" icon={<CheckOutlined />}>Approved</Tag>;
+  if (status === 'unapproved') return <Tag color="warning" icon={<CloseOutlined />}>Unapproved</Tag>;
+  if (status === 'deleted') return <Tag color="error" icon={<DeleteOutlined />}>Deleted</Tag>;
+  return null;
+};
 
 const FeedbackBarberModal = ({ open, onCancel, feedback }) => {
   if (!feedback) return null;
-
-  const formatDate = (date) => {
-    return date ? new Date(date).toLocaleString('en-GB') : 'N/A';
-  };
 
   return (
     <Modal
       title="Feedback Details"
       open={open}
       onCancel={onCancel}
-      footer={null}
-      width={650}
+      footer={[
+        <Button key="close" onClick={onCancel}>
+          Close
+        </Button>
+      ]}
+      width={600}
     >
-      <div style={{ padding: '8px 0' }}>
-        <Row gutter={[16, 16]}>
+      <div>
+        <Row gutter={16} className="feedback-modal-row">
           <Col span={12}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <UserOutlined style={{ color: '#1890ff' }} />
-              <strong>Customer:</strong>
-            </div>
-            <div style={{ marginLeft: 24, marginTop: 4 }}>
-              {feedback.reviewer || feedback.customerId?.name || feedback.customerId?._id || 'Unknown'}
+            <Text strong>Customer:</Text>
+            <div className="feedback-modal-data">{feedback.reviewer || feedback.customerId?.name || feedback.customerId?._id || 'Unknown'}</div>
+          </Col>
+          <Col span={12}>
+            <Text strong>Barber:</Text>
+            <div className="feedback-modal-data">{feedback.barberId?.userId?.name || feedback.barberId?.name || feedback.barberId?._id || 'Unknown Barber'}</div>
+          </Col>
+        </Row>
+
+        <Row gutter={16} className="feedback-modal-row">
+          <Col span={12}>
+            <Text strong>Booking:</Text>
+            <div className="feedback-modal-data">
+              {(() => {
+                const booking = feedback.bookingId;
+                if (!booking) return 'N/A';
+                if (booking.name) return booking.name;
+                if (booking.title) return booking.title;
+                if (booking.bookingDate) return new Date(booking.bookingDate).toLocaleString();
+                if (booking._id) return booking._id.slice(0, 8) + '...';
+                if (typeof booking === 'string') return booking.slice(0, 8) + '...';
+                return 'N/A';
+              })()}
             </div>
           </Col>
-          
           <Col span={12}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <ScissorOutlined style={{ color: '#52c41a' }} />
-              <strong>Barber:</strong>
-            </div>
-            <div style={{ marginLeft: 24, marginTop: 4, color: '#52c41a', fontWeight: 500 }}>
-              {feedback.barberId?.name || feedback.barberId?._id || 'Unknown Barber'}
+            <Text strong>Status:</Text>
+            <div className="feedback-modal-status-container">
+              {renderStatusTag(feedback.status)}
             </div>
           </Col>
         </Row>
 
-        <Divider style={{ margin: '16px 0' }} />
-
-        <Row gutter={[16, 16]}>
-          <Col span={12}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <FileTextOutlined style={{ color: '#722ed1' }} />
-              <strong>Booking ID:</strong>
-            </div>
-            <div style={{ marginLeft: 24, marginTop: 4 }}>
-              {feedback.bookingId?._id || feedback.bookingId || 'N/A'}
-            </div>
-          </Col>
-          
-          <Col span={12}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <strong>Status:</strong>
-            </div>
-            <div style={{ marginLeft: 0, marginTop: 4 }}>
-              <Tag 
-                color={feedback.isApproved ? 'success' : 'warning'} 
-                icon={feedback.isApproved ? <CheckOutlined /> : <CloseOutlined />}
-              >
-                {feedback.isApproved ? 'Approved' : 'Pending'}
-              </Tag>
-            </div>
-          </Col>
-        </Row>
-
-        <Divider style={{ margin: '16px 0' }} />
-
-        <div style={{ marginBottom: 16 }}>
-          <strong>Rating:</strong>
-          <div style={{ marginTop: 8 }}>
+        <div className="feedback-modal-section">
+          <Text strong>Rating:</Text>
+          <div className="feedback-modal-rating">
             <Rate disabled value={feedback.rating || 0} />
-            <span style={{ marginLeft: 8, fontWeight: 'bold', color: '#faad14' }}>
-              {feedback.rating || 0}/5
-            </span>
+            <Text strong className="feedback-modal-rating-text">{feedback.rating || 0}/5</Text>
           </div>
         </div>
 
-        <div style={{ marginBottom: 16 }}>
-          <strong>Comment:</strong>
-          <div style={{ 
-            marginTop: 8, 
-            padding: 12, 
-            backgroundColor: '#f8f9fa', 
-            borderRadius: 6,
-            minHeight: 60,
-            lineHeight: '1.5',
-            wordBreak: 'break-word'
-          }}>
-            {feedback.comment || 'No comment provided'}
+        <div className="feedback-modal-section">
+          <Text strong>Comment:</Text>
+          <div className="feedback-modal-comment-container">
+            {feedback.comment || 'No comment'}
           </div>
         </div>
 
         {feedback.images?.length > 0 && (
-          <div style={{ marginBottom: 16 }}>
-            <strong>Images ({feedback.images.length}):</strong>
-            <Image.PreviewGroup>
-              <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {feedback.images.map((img, index) => (
+          <div className="feedback-modal-section">
+            <Text strong>Images:</Text>
+            <div className="feedback-modal-images-container">
+              <Image.PreviewGroup>
+                {feedback.images.map((url, idx) => (
                   <Image
-                    key={index}
-                    width={80}
-                    height={80}
-                    src={img}
-                    style={{ borderRadius: 6, objectFit: 'cover' }}
+                    key={idx}
+                    width={100}
+                    height={100}
+                    src={url}
+                    className="feedback-modal-image"
                   />
                 ))}
-              </div>
-            </Image.PreviewGroup>
+              </Image.PreviewGroup>
+            </div>
           </div>
         )}
 
-        <div style={{ color: '#666', fontSize: 14 }}>
-          <strong>Created:</strong> {formatDate(feedback.createdAt)}
-        </div>
+        <Row gutter={16} className="feedback-modal-row">
+          <Col span={12}>
+            <Text strong>Created At:</Text>
+            <div className="feedback-modal-date-container">
+              {feedback.createdAt ? new Date(feedback.createdAt).toLocaleString() : 'N/A'}
+            </div>
+          </Col>
+        </Row>
       </div>
     </Modal>
   );

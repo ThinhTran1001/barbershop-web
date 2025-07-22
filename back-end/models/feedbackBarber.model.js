@@ -42,6 +42,11 @@ const feedbackBarberSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  status: {
+    type: String,
+    enum: ['Approved', 'Unapproved', 'Deleted'],
+    default: 'approved',
+  },
   createdAt: {
     type: Date,
     default: Date.now,

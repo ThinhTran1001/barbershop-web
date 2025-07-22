@@ -64,6 +64,7 @@ const FeedbackProductFilters = ({
           options={[
             { label: 'All Status', value: 'All' },
             { label: 'Active', value: 'Active' },
+            { label: 'Inactive', value: 'Inactive' },
             { label: 'Deleted', value: 'Deleted' }
           ]}
         />
