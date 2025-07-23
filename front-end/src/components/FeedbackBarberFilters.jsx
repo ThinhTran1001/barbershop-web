@@ -1,44 +1,40 @@
 import React from 'react';
 import { Row, Col, Select, DatePicker, Input } from 'antd';
-import { SearchOutlined, StarFilled, FileTextOutlined, ScissorOutlined } from '@ant-design/icons';
+import { SearchOutlined, StarFilled, ScissorOutlined, FileTextOutlined } from '@ant-design/icons';
 
 const { RangePicker } = DatePicker;
 
 const FeedbackBarberFilters = ({
+  searchValue,
+  setSearchValue,
   statusFilter,
   setStatusFilter,
+  dateRange,
+  setDateRange,
   ratingFilter,
   setRatingFilter,
   barberFilter,
   setBarberFilter,
   bookingFilter,
   setBookingFilter,
-  searchKeyword,
-  setSearchKeyword,
-  setDateRange,
-  barbersList = [],
-  bookingsList = []
+  barbers = [],
+  bookings = []
 }) => {
-  // Rating options
   const ratingOptions = [
     { label: 'All Stars', value: 'All' },
-    ...Array.from({ length: 5 }, (_, i) => {
-      const val = 5 - i;
-      return {
-        label: (
-          <span>
-            <StarFilled style={{ color: '#faad14' }} /> {val} Star{val > 1 ? 's' : ''}
-          </span>
-        ),
-        value: val
-      };
-    })
+    ...Array.from({ length: 5 }, (_, i) => ({
+      label: (
+        <span>
+          <StarFilled style={{ color: '#faad14' }} /> {5 - i} Star{5 - i > 1 ? 's' : ''}
+        </span>
+      ),
+      value: 5 - i
+    }))
   ];
 
-  // Barber options
   const barberOptions = [
     { label: 'All Barbers', value: 'All' },
-    ...barbersList.map(barber => ({
+    ...barbers.map(barber => ({
       label: (
         <span>
           <ScissorOutlined style={{ marginRight: 8, color: '#52c41a' }} />
@@ -49,14 +45,13 @@ const FeedbackBarberFilters = ({
     }))
   ];
 
-  // Booking options (limited to 50 for performance)
   const bookingOptions = [
     { label: 'All Bookings', value: 'All' },
-    ...bookingsList.slice(0, 50).map(booking => ({
+    ...bookings.slice(0, 50).map(booking => ({
       label: (
         <span>
           <FileTextOutlined style={{ marginRight: 8, color: '#722ed1' }} />
-          {booking._id ? `${booking._id.substring(0, 8)}...` : booking.id}
+          {booking.label || booking._id || booking.id}
         </span>
       ),
       value: booking._id || booking.id
@@ -69,12 +64,11 @@ const FeedbackBarberFilters = ({
         <Input
           placeholder="Search by name or comment..."
           prefix={<SearchOutlined />}
-          value={searchKeyword}
-          onChange={(e) => setSearchKeyword(e.target.value)}
+          value={searchValue}
+          onChange={(e) => setSearchValue(e.target.value)}
           allowClear
         />
       </Col>
-
       <Col xs={12} sm={6} md={4} lg={3}>
         <Select
           style={{ width: '100%' }}
@@ -82,12 +76,12 @@ const FeedbackBarberFilters = ({
           onChange={setStatusFilter}
           options={[
             { label: 'All Status', value: 'All' },
-            { label: 'Active', value: 'Active' },
+            { label: 'Approved', value: 'Approved' },
+            { label: 'Unapproved', value: 'Unapproved' },
             { label: 'Deleted', value: 'Deleted' }
           ]}
         />
       </Col>
-
       <Col xs={12} sm={6} md={4} lg={3}>
         <Select
           style={{ width: '100%' }}
@@ -95,10 +89,8 @@ const FeedbackBarberFilters = ({
           onChange={setRatingFilter}
           placeholder="All Stars"
           options={ratingOptions}
-          optionLabelProp="label" // 👈 THÊM DÒNG NÀY ĐỂ FIX BUG
         />
       </Col>
-
       <Col xs={12} sm={6} md={4} lg={4}>
         <Select
           style={{ width: '100%' }}
@@ -112,7 +104,6 @@ const FeedbackBarberFilters = ({
           }
         />
       </Col>
-
       <Col xs={12} sm={6} md={4} lg={4}>
         <Select
           style={{ width: '100%' }}
@@ -126,11 +117,11 @@ const FeedbackBarberFilters = ({
           }
         />
       </Col>
-
       <Col xs={24} sm={12} md={8} lg={4}>
         <RangePicker
           style={{ width: '100%' }}
           format="DD/MM/YYYY"
+          value={dateRange}
           onChange={setDateRange}
           allowClear
           placeholder={['From', 'To']}

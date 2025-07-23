@@ -7,6 +7,8 @@ const crypto = require('crypto');
 const User = require('../models/user.model');
 const PasswordReset = require('../models/password-reset.model');
 const authService = require('../services/auth.service');
+const Voucher = require('../models/voucher.model');
+const User_Voucher = require('../models/user_voucher.model');
 
 const producer = kafka.producer();
 producer.connect();
@@ -43,6 +45,47 @@ exports.verifyOtp = async (req, res) => {
 
         await User.updateOne({ email }, { $set: { isVerified: true } });
         await redis.del(`otp:${email}`);
+
+        // --- Tạo voucher cá nhân hóa cho user mới xác thực ---
+        const user = await User.findOne({ email });
+        if (user) {
+            // Tạo code voucher cá nhân hóa
+            const code = `VOUCHER10%`;
+            const now = new Date();
+            const endDate = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000); // 3 ngày
+
+            // Kiểm tra trùng voucher code (tránh lỗi unique)
+            let voucher = await Voucher.findOne({ code });
+            if (!voucher) {
+                voucher = new Voucher({
+                    code,
+                    type: 'percent',
+                    value: 10,
+                    usageLimit: 1,
+                    usedCount: 0,
+                    minOrderAmount: 0,
+                    maxDiscountAmount: 0,
+                    totalOrderAmount: 0,
+                    startDate: now,
+                    endDate: endDate,
+                    isActive: true
+                });
+                await voucher.save();
+            }
+
+            // Gán voucher cho user nếu chưa có
+            const existingUserVoucher = await User_Voucher.findOne({ userId: user._id, voucherId: voucher._id });
+            if (!existingUserVoucher) {
+                const userVoucher = new User_Voucher({
+                    userId: user._id,
+                    voucherId: voucher._id,
+                    isUsed: false
+                });
+                await userVoucher.save();
+            }
+        }
+        // --- END tạo voucher cá nhân hóa ---
+
         res.json({ message: 'Email verified successfully' });
     } catch (err) {
         console.error(err);
@@ -91,7 +134,16 @@ exports.login = async (req, res) => {
         const validPassword = await bcrypt.compare(password, user.passwordHash);
         if (!validPassword) return res.status(401).json({ message: 'Password Incorrect' });
 
+        let barberId = undefined;
+        if (user.role === 'barber') {
+            const Barber = require('../models/barber.model');
+            const barber = await Barber.findOne({ userId: user._id });
+            if (barber) barberId = barber._id;
+        }
+
         const payload = { id: user._id, email: user.email, role: user.role, name: user.name, phone: user.phone };
+        if (barberId) payload.barberId = barberId;
+
         const accessToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '15m' });
         const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, { expiresIn: '1d' });
 
@@ -298,7 +350,16 @@ exports.googleOauthHandler = async (req, res) => {
             }
         }
 
+        let barberId = undefined;
+        if (user.role === 'barber') {
+            const Barber = require('../models/barber.model');
+            const barber = await Barber.findOne({ userId: user._id });
+            if (barber) barberId = barber._id;
+        }
+
         const payload = { id: user._id, email: user.email, role: user.role, name: user.name, phone: user.phone };
+        if (barberId) payload.barberId = barberId;
+
         const accessToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '15m' });
         const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, { expiresIn: '1d' });
 

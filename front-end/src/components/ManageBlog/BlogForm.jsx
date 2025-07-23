@@ -23,6 +23,10 @@ const BlogForm = ({ initialValues = {}, onSubmit, authors = [], categories = [],
     } else if (typeof values.image === 'object') {
       values.image = undefined;
     }
+    // Đảm bảo categories luôn là mảng string
+    if (values.categories && !Array.isArray(values.categories)) {
+      values.categories = [values.categories];
+    }
     onSubmit(values);
   };
 

@@ -17,7 +17,7 @@ const cartRoutes = require('./routes/cart.route');
 const chatbotAI = require('./routes/chatbot.route');
 const updaloadRoutes = require('./routes/upload.route');
 const reviewRoutes = require('./routes/productreview.route');
-const feedbackBarberRoutes = require('./routes/feedbackBarber.route');
+const feedbackBarberRoutes = require('./routes/feedback-barber.route');
 const discountRoutes = require('./routes/discounts.route');
 const bookingRoutes = require('./routes/booking.route');
 const feedbackOrderRoutes = require('./routes/feedbackOrder.route');
@@ -29,6 +29,7 @@ const blogRoutes = require('./routes/blog.route');
 const contactRoutes = require('./routes/contact.route');
 const statisticRoutes = require('./routes/statistic.route');
 const chatRoutes = require('./routes/chat.route');
+const barberRoute = require('./routes/barber.route');
 
 const cors = require('cors');
 const cookieParser = require("cookie-parser");
@@ -77,6 +78,7 @@ app.use('/api/news', blogRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/statistics', statisticRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/barbers', barberRoute);
 
 const PORT = process.env.PORT || 3000;
 initSocket(server); 

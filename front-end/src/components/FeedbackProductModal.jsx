@@ -1,8 +1,15 @@
 import React from 'react';
 import { Modal, Image, Rate, Tag, Typography, Row, Col, Button } from 'antd';
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { CheckOutlined, CloseOutlined, DeleteOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
+
+const renderStatusTag = (status) => {
+  if (status === 'active') return <Tag color="success" icon={<CheckOutlined />}>Active</Tag>;
+  if (status === 'inactive') return <Tag color="warning" icon={<CloseOutlined />}>Inactive</Tag>;
+  if (status === 'deleted') return <Tag color="error" icon={<DeleteOutlined />}>Deleted</Tag>;
+  return null;
+};
 
 const FeedbackProductModal = ({ visible, onCancel, feedback }) => {
   if (!feedback) return null;
@@ -69,11 +76,7 @@ const FeedbackProductModal = ({ visible, onCancel, feedback }) => {
           <Col span={12}>
             <Text strong>Status:</Text>
             <div className="feedback-modal-status-container">
-              {feedback.isApproved ? (
-                <Tag color="success" icon={<CheckOutlined />}>Approved</Tag>
-              ) : (
-                <Tag color="warning" icon={<CloseOutlined />}>Pending</Tag>
-              )}
+              {renderStatusTag(feedback.status)}
             </div>
           </Col>
           <Col span={12}>

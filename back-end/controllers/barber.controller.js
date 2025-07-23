@@ -438,3 +438,46 @@ exports.getBarberAvailability = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+exports.getBarberByUserId = async (req, res) => {
+  try {
+    console.log('--- API CALL: /api/barbers/by-user/:userId ---');
+    console.log('userId param:', req.params.userId);
+    const barber = await Barber.findOne({ userId: req.params.userId }).populate('userId', 'name email phone avatarUrl');
+    if (!barber) {
+      console.log('Không tìm thấy barber cho userId:', req.params.userId);
+      return res.status(404).json({ message: 'Không tìm thấy hồ sơ barber cho user này' });
+    }
+    console.log('Barber found:', barber);
+    res.json({ success: true, data: barber });
+  } catch (err) {
+    console.error('Lỗi khi lấy barber theo userId:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getBarberPublicById = async (req, res) => {
+  try {
+    const barber = await Barber.findById(req.params.id)
+      .populate('userId', 'name avatarUrl');
+    if (!barber) {
+      return res.status(404).json({ message: 'Không tìm thấy barber' });
+    }
+    // Chỉ trả về các trường public
+    const publicData = {
+      _id: barber._id,
+      name: barber.userId?.name,
+      avatarUrl: barber.userId?.avatarUrl,
+      specialties: barber.specialties,
+      experienceYears: barber.experienceYears,
+      averageRating: barber.averageRating,
+      totalBookings: barber.totalBookings,
+      bio: barber.bio,
+      image: barber.image,
+      // Thêm các trường public khác nếu muốn
+    };
+    res.json({ success: true, data: publicData });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
