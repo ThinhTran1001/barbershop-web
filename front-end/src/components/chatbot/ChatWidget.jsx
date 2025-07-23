@@ -21,7 +21,7 @@ const ProductCard = ({ product }) => (
 const ServiceCard = ({ service }) => (
   <div className="card service-card">
     <h3>{service.name}</h3>
-    <p>Giá: ${service.price}</p>
+    <p>Giá: {service.price} VNĐ</p>
     <p>Thời gian: {service.duration} phút</p>
     {service.description && <p>Mô tả: {service.description}</p>}
     {service.suggestedFor && <p>Phù hợp cho: {service.suggestedFor}</p>}
