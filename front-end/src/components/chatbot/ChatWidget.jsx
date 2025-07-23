@@ -315,15 +315,19 @@ export default function ChatWidget() {
               >
                 <span>Chatbot AI</span>
               </div>
-              <div
-                className={`sidebar-item ${activeChat === 'admin' ? 'active' : ''}`}
-                onClick={() => {
-                  setActiveChat('admin');
-                  fetchMessages(user.id);
-                }}
-              >
-                <span>Chat với Admin</span>
-              </div>
+              {
+                user && (
+                  <div
+                    className={`sidebar-item ${activeChat === 'admin' ? 'active' : ''}`}
+                    onClick={() => {
+                      setActiveChat('admin');
+                      fetchMessages(user.id);
+                    }}
+                  >
+                    <span>Chat với Admin</span>
+                  </div>
+                )
+              }
             </>
           )}
         </div>

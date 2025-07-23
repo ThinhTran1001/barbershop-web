@@ -49,10 +49,18 @@ export const deleteAbsence = async (absenceId) => {
 };
 
 // Get barber calendar
-export const getBarberCalendar = async (barberId, month, year) => {
+export const getBarberCalendar = async (userId, month, year) => {
   const res = await axios.get(`${API_BASE}/calendar`, {
-    params: { barberId, month, year },
+    params: { userId, month, year },
     withCredentials: true
   });
   return res.data;
 };
+
+export const getBarberSchedule = async (barberId, month, year) => {
+  const res = await axios.get(`${API_BASE}/${barberId}/schedule`, {
+    params: { month, year },
+    withCredentials: true
+  });
+  return res.data;
+}

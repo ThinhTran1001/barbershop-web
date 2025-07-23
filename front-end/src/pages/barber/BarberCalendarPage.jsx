@@ -31,13 +31,14 @@ import { getBarberBookings } from '../../services/barberApi.js';
 import { getBarberCalendar } from '../../services/barberAbsenceApi.js';
 import { updateBookingStatus } from '../../services/serviceApi.js';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { getUserIdFromToken } from '../../utils/tokenUtils.js';
 import dayjs from 'dayjs';
 
 const { Title } = Typography;
 const { Option } = Select;
 
 const BarberCalendarPage = () => {
-  const { user } = useAuth();
+  const { user, getUserId } = useAuth();
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState([]);
   const [calendarData, setCalendarData] = useState(null);
@@ -59,9 +60,13 @@ const BarberCalendarPage = () => {
   const [barberId, setBarberId] = useState(null);
 
   useEffect(() => {
-    // In a real app, you'd get the barber ID from the user profile
-    // For now, we'll assume it's stored in localStorage or user context
-    const storedBarberId = localStorage.getItem('barberId') || user?.barberId;
+    // Get barber ID from multiple sources
+    const storedBarberId = localStorage.getItem('barberId') ||
+                          user?.barberId ||
+                          user?.id ||
+                          getUserId() ||
+                          getUserIdFromToken();
+
     if (storedBarberId) {
       setBarberId(storedBarberId);
       loadCalendarData(storedBarberId);
@@ -70,13 +75,13 @@ const BarberCalendarPage = () => {
       message.error('Barber ID not found. Please contact administrator.');
       setLoading(false);
     }
-  }, [user]);
+  }, [user, getUserId]);
 
-  const loadCalendarData = async (barberId) => {
+  const loadCalendarData = async (userId) => {
     try {
       const currentDate = dayjs();
       const calendarResponse = await getBarberCalendar(
-        barberId,
+        userId,
         currentDate.month() + 1,
         currentDate.year()
       );
@@ -87,14 +92,14 @@ const BarberCalendarPage = () => {
     }
   };
 
-  const loadBookings = async (barberId) => {
+  const loadBookings = async (userId) => {
     setLoading(true);
     try {
       // Load bookings for current month
       const startDate = dayjs().startOf('month').format('YYYY-MM-DD');
       const endDate = dayjs().endOf('month').format('YYYY-MM-DD');
       
-      const response = await getBarberBookings(barberId, {
+      const response = await getBarberBookings(userId, {
         startDate,
         endDate,
         limit: 100
@@ -337,7 +342,7 @@ const BarberCalendarPage = () => {
       {/* Calendar */}
       <Card title="Lịch làm việc" style={{ marginBottom: 24 }}>
         <Calendar
-          dateCellRender={dateCellRender}
+          cellRender={dateCellRender}
           onSelect={onSelect}
           headerRender={({ value, type, onChange, onTypeChange }) => (
             <div style={{ padding: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -437,7 +442,7 @@ const BarberCalendarPage = () => {
       {/* Selected Date Modal */}
       <Modal
         title={`Lịch hẹn ngày ${selectedDate.format('DD/MM/YYYY')}`}
-        visible={modalVisible}
+        open={modalVisible}
         onCancel={() => setModalVisible(false)}
         footer={null}
         width={800}
