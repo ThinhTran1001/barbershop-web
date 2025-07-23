@@ -57,7 +57,7 @@ import UserVouchers from "./pages/user/UserVouchers.jsx";
 import ManageBlog from "./pages/ManageBlog/ManageBlog.jsx";
 import BarberProfile from "./components/profile/baberProfile.jsx";
 import BarberPublicProfile from "./components/profile/BarberPublicProfile.jsx";
-import BarberCustomerView from "./components/profile/BarberCustomerView.jsx";
+import BarberCustomerView from "./components/profile/BarberrCustomerView.jsx";
 
 const router = createBrowserRouter([
   {
