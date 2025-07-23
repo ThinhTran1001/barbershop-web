@@ -82,9 +82,18 @@ const getAllBlogs = async (req, res) => {
 // CREATE a new blog
 const createBlog = async (req, res) => {
   try {
-    const { title, content, author, categories, tags, shortDesc, image, status } = req.body;
-    if (!title || !content || !author)
-      return res.status(400).json({ success: false, message: 'Title, content, author là bắt buộc' });
+    const { title, content, tags, shortDesc, image, status } = req.body;
+    // Đảm bảo categories luôn là mảng string
+    const categories = Array.isArray(req.body.categories)
+      ? req.body.categories
+      : req.body.categories
+        ? [req.body.categories]
+        : [];
+    const author = req.user?._id || req.user?.id;
+    if (!title || !content)
+      return res.status(400).json({ success: false, message: 'Title và content là bắt buộc' });
+    if (!author)
+      return res.status(401).json({ success: false, message: 'Unauthorized: missing user' });
 
     const blog = new Blog({
       title,
@@ -108,9 +117,16 @@ const createBlog = async (req, res) => {
 // UPDATE a blog by ID
 const updateBlog = async (req, res) => {
   try {
+    // Đảm bảo categories luôn là mảng string
+    const categories = Array.isArray(req.body.categories)
+      ? req.body.categories
+      : req.body.categories
+        ? [req.body.categories]
+        : [];
+    const updateData = { ...req.body, categories };
     const updated = await Blog.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      updateData,
       { new: true }
     ).populate('author', 'name avatarUrl');
 

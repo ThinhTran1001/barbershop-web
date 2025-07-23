@@ -41,10 +41,10 @@ export const deleteBarber = (id) => api.delete(`/barbers/${id}`);
 
 // Voucher
 export const getAllVoucher = (params) => api.get('/vouchers', { params });
-export const createVoucher = (data) => api.post('/vouchers', data); 
+export const createVoucher = (data) => api.post('/vouchers', data);
 export const getVoucherById = (id) => api.get(`/vouchers/${id}`);
 export const getVoucherByUser = () => api.get('/vouchers/user');
-export const updateVoucher = (id, data) => api.put(`/vouchers/${id}`, data); 
+export const updateVoucher = (id, data) => api.put(`/vouchers/${id}`, data);
 export const deleteVoucher = (id) => api.delete(`/vouchers/${id}`);
 
 // User Voucher
@@ -115,6 +115,7 @@ export const getFeedbacksByProduct = (productId) => api.get(`/product-reviews/pr
 export const getAllFeedbacks = (params) => api.get('/product-reviews', { params });
 export const createFeedback = (data) => api.post('/product-reviews', data);
 export const deleteFeedback = (id) => api.delete(`/product-reviews/${id}`);
+export const updateFeedbackStatus = (id, status) => api.patch(`/product-reviews/${id}/status`, { status });
 
 
 // Feedback Barber
@@ -123,6 +124,7 @@ export const getBarberFeedbackById = (id) => api.get(`/feedback-barber/${id}`);
 export const createBarberFeedback = (data) => api.post('/feedback-barber', data);
 
 export const deleteBarberFeedback = (id) => api.delete(`/feedback-barber/${id}`);
+export const updateBarberFeedbackStatus = (id, status) => api.patch(`/feedback-barber/${id}/status`, { status });
 
 // Discount
 export const getDiscounts = (params) => api.get('/discounts', { params });

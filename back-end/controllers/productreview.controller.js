@@ -4,7 +4,8 @@ const Product = require('../models/product.model');
 // Hàm tính toán và cập nhật rating của sản phẩm
 const updateProductRating = async (productId) => {
   try {
-    const activeReviews = await ProductReview.find({ productId, isDeleted: false });
+    // Chỉ tính feedback có status: 'active'
+    const activeReviews = await ProductReview.find({ productId, status: 'active' });
     if (activeReviews.length === 0) {
       await Product.findByIdAndUpdate(productId, { rating: 0, reviews: 0 });
       return;
@@ -62,16 +63,12 @@ const getAllReviews = async (req, res) => {
 const getReviewsByProduct = async (req, res) => {
   try {
     const { productId } = req.params;
-    const { isDeleted } = req.query;
-    const query = { productId };
-    if (typeof isDeleted !== 'undefined') {
-      query.isDeleted = isDeleted === 'true';
-    }
+    // Chỉ lấy feedback active cho user
+    const query = { productId, status: 'active' };
     const reviews = await ProductReview.find(query)
       .populate('userId', 'name email')
       .populate('productId', 'name rating reviews')
       .sort({ createdAt: -1 });
-    
     res.status(200).json({
       success: true,
       data: reviews
@@ -103,7 +100,8 @@ const createReview = async (req, res) => {
       productId,
       rating,
       comment: comment || '',
-      images: images || []
+      images: images || [],
+      status: 'active'
     });
 
     const savedReview = await newReview.save();
@@ -144,6 +142,7 @@ const deleteReview = async (req, res) => {
       });
     }
     // Soft delete: set isDeleted to true
+    deletedReview.status = 'deleted';
     deletedReview.isDeleted = true;
     await deletedReview.save();
     // Cập nhật rating của sản phẩm sau khi xóa review
@@ -162,11 +161,35 @@ const deleteReview = async (req, res) => {
   }
 };
 
+// PATCH - Cập nhật trạng thái status (active/inactive/deleted)
+const updateReviewStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    if (!['active', 'inactive', 'deleted'].includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid status' });
+    }
+    const review = await ProductReview.findById(id);
+    if (!review) {
+      return res.status(404).json({ success: false, message: 'Review not found' });
+    }
+    review.status = status;
+    // Nếu chuyển sang deleted thì cũng set isDeleted=true để tương thích cũ
+    if (status === 'deleted') review.isDeleted = true;
+    await review.save();
+    await updateProductRating(review.productId);
+    res.status(200).json({ success: true, message: `Review status updated to ${status}` });
+  } catch (error) {
+    console.error('Error updating review status:', error);
+    res.status(500).json({ success: false, message: 'Failed to update review status', error: error.message });
+  }
+};
 
 
 module.exports = {
   getAllReviews,
   getReviewsByProduct,
   createReview,
-  deleteReview
+  deleteReview,
+  updateReviewStatus
 };

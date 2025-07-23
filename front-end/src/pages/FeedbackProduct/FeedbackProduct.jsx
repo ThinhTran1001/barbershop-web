@@ -76,7 +76,11 @@ const FeedbackProduct = () => {
         const comment = values[`${fieldPrefix}_comment`];
         const images = values[`${fieldPrefix}_images`] || [];
 
-        if (!rating || existingReviews.find(r => r.productId === productId)?.reviews.some(r => r.userId === order.userId)) {
+        if (!rating || existingReviews.find(r => r.productId === productId)?.reviews.some(r => {
+          if (!r.userId) return false;
+          if (typeof r.userId === 'object') return r.userId._id === order.userId;
+          return r.userId === order.userId;
+        })) {
           return null;
         }
 
@@ -210,7 +214,11 @@ const FeedbackProduct = () => {
               itemLayout="horizontal"
               dataSource={order.items}
               renderItem={(item) => {
-                const hasReview = existingReviews.find(r => r.productId === item.productId)?.reviews.some(r => r.userId === order.userId);
+                const hasReview = existingReviews.find(r => r.productId === item.productId)?.reviews.some(r => {
+                  if (!r.userId) return false;
+                  if (typeof r.userId === 'object') return r.userId._id === order.userId;
+                  return r.userId === order.userId;
+                });
                 const fieldPrefix = `feedback_${item.productId}`;
 
                 return (

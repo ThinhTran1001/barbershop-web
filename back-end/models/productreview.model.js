@@ -8,6 +8,7 @@ const ProductReviewSchema = new mongoose.Schema({
   }, 
   comment: { type: String, required: false },
   images: [{ type: String }],
+  status: { type: String, enum: ['active', 'inactive', 'deleted'], default: 'active' },
   isDeleted: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
 });
