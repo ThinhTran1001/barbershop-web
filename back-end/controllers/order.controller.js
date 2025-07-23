@@ -234,21 +234,24 @@ exports.createOrder = async (req, res) => {
         }
       }
 
-      // Nếu frontend không gửi voucher discount, tính lại
-      if (!finalVoucherDiscount) {
-        const value = parseFloat(voucher.value);
-        finalVoucherDiscount = voucher.type === 'percent'
-          ? (finalDiscountedSubtotal || finalOriginalTotal) * (value / 100)
-          : value;
-
-        if (finalVoucherDiscount > (finalDiscountedSubtotal || finalOriginalTotal)) {
-          finalVoucherDiscount = finalDiscountedSubtotal || finalOriginalTotal;
+      const subtotal = finalDiscountedSubtotal || finalOriginalTotal;
+      let discount = 0;
+      if (voucher.type === 'percent') {
+        if (voucher.maxDiscountAmount > 0) {
+          discount = voucher.maxDiscountAmount;
+        } else {
+          discount = subtotal * (voucher.value / 100);
         }
+      } else {
+        discount = voucher.value;
       }
+      discount = Math.min(discount, subtotal);
+
+      finalVoucherDiscount = discount;
     }
 
     // Sử dụng giá từ frontend hoặc tính lại
-    order.totalAmount = Number(finalTotalAmount || (finalDiscountedSubtotal - finalVoucherDiscount)).toFixed(2);
+    order.totalAmount = Number(finalTotalAmount || (subtotal - finalVoucherDiscount)).toFixed(2);
     order.discountAmount = Number(finalVoucherDiscount.toFixed(2));
 
     const savedOrder = await order.save();

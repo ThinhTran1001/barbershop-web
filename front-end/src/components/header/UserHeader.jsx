@@ -5,6 +5,7 @@ import {
   UserOutlined,
   CalendarOutlined,
   StarOutlined,
+  GiftOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "../../context/AuthContext";
 import { useUserCart } from "../../context/UserCartContext";
@@ -73,6 +74,12 @@ export default function UserHeader() {
       icon: <ShoppingCartOutlined />,
       label: "Lịch sử đơn hàng",
       onClick: () => navigate("/my-orders"),
+    },
+    {
+      key: "vouchers",
+      icon: <GiftOutlined />,
+      label: "Voucher của tôi",
+      onClick: () => navigate("/my-vouchers"),
     },
     {
       key: "bookings",

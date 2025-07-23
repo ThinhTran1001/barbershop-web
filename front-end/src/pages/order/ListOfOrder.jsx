@@ -10,15 +10,15 @@ const { Title, Text } = Typography;
 const getStatusTag = (status) => {
     switch (status) {
         case 'pending':
-            return <Tag color="gold">Pending</Tag>;
+            return <Tag color="gold">Chờ xác nhận</Tag>;
         case 'processing':
-            return <Tag color="blue">Processing</Tag>;
+            return <Tag color="blue">Đang xử lý đơn</Tag>;
         case 'shipped':
-            return <Tag color="cyan">Shipped</Tag>;
+            return <Tag color="cyan">Đang vận chuyển</Tag>;
         case 'delivered':
-            return <Tag color="green">Delivered</Tag>;
+            return <Tag color="green">Giao hàng thành công</Tag>;
         case 'cancelled':
-            return <Tag color="red">Cancelled</Tag>;
+            return <Tag color="red">Đã bị hủy</Tag>;
         default:
             return <Tag>{status}</Tag>;
     }
@@ -93,6 +93,18 @@ const ListOfOrder = () => {
                             <div className="order-card-footer">
                                 <Text>Thành tiền:</Text>
                                 <Text strong className="total-amount">{order.totalAmount.toLocaleString('vi-VN')} VND</Text>
+                                {order.discountAmount > 0 && (
+                                    <div>
+                                        <Text>Giảm giá voucher:</Text>
+                                        <Text type="danger" style={{ marginLeft: 8 }}>- {order.discountAmount.toLocaleString('vi-VN')} VND</Text>
+                                    </div>
+                                )}
+                                {order.voucherId && order.voucherId.code && (
+                                    <div>
+                                        <Text>Voucher đã sử dụng:</Text>
+                                        <Tag color="blue" style={{ marginLeft: 8 }}>{order.voucherId.code}</Tag>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ))}

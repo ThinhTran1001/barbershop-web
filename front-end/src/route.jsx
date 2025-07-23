@@ -53,6 +53,7 @@ import TimeSlotPickerPage from "./pages/ServiceBooking/TimeSlotPickerPage.jsx";
 import BookingPage from "./pages/barber/BookingPage.jsx";
 import BookingInfoPage from "./pages/ServiceBooking/BookingInfoPage.jsx";
 import MyBookingsPage from "./pages/ServiceBooking/MyBookingsPage.jsx";
+import UserVouchers from "./pages/user/UserVouchers.jsx";
 
 const router = createBrowserRouter([
   {
@@ -91,6 +92,7 @@ const router = createBrowserRouter([
           { path: "/my-orders", element: <ListOfOrder /> },
           { path: "/my-orders/:id", element: <OrderDetail /> },
           { path: "/feedback/:orderId", element: <FeedbackProduct /> },
+          { path: "/my-vouchers", element: <UserVouchers /> },
         ],
       },
     ],
