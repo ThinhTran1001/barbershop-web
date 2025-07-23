@@ -53,8 +53,12 @@ import TimeSlotPickerPage from "./pages/ServiceBooking/TimeSlotPickerPage.jsx";
 import BookingPage from "./pages/barber/BookingPage.jsx";
 import BookingInfoPage from "./pages/ServiceBooking/BookingInfoPage.jsx";
 import MyBookingsPage from "./pages/ServiceBooking/MyBookingsPage.jsx";
+import UserVouchers from "./pages/user/UserVouchers.jsx";
 import ManageBlog from "./pages/ManageBlog/ManageBlog.jsx";
 import BarberProfile from "./components/profile/baberProfile.jsx";
+
+
+
 
 const router = createBrowserRouter([
   {
@@ -92,7 +96,8 @@ const router = createBrowserRouter([
         children: [
           { path: "/my-orders", element: <ListOfOrder /> },
           { path: "/my-orders/:id", element: <OrderDetail /> },
-          
+          { path: "/feedback/:orderId", element: <FeedbackProduct /> },
+          { path: "/my-vouchers", element: <UserVouchers /> },
         ],
       },
     ],
@@ -116,7 +121,7 @@ const router = createBrowserRouter([
           { path: "voucher", element: <VoucherManagement /> },
           { path: "user-vouchers", element: <UserVoucherManagement /> },
           { path: "order", element: <OrderManagement /> },
-          { path: "feedback-product", element: <ManageFeedbackProduct /> },
+          { path: "-product", element: <ManageFeedbackProduct /> },
           { path: "feedback-barber", element: <ManageFeedbackBarber /> },
           { path: "discount-product", element: <ManageDiscountProduct /> },
           { path: "appointment", element: <Appointment /> },

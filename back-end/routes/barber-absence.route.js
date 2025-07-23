@@ -13,4 +13,6 @@ router.delete('/:absenceId', authenticate, barberAbsenceController.deleteAbsence
 // Barber calendar view
 router.get('/calendar', authenticate, barberAbsenceController.getBarberCalendar);
 
+router.get('/:barberId/schedule', authenticate, barberAbsenceController.getBarberSchedule);
+
 module.exports = router;

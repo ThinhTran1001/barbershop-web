@@ -8,6 +8,8 @@ import {
   notification,
   Empty,
   Select,
+  Modal,
+  Tag,
 } from "antd";
 import { ShoppingCartOutlined } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -36,6 +38,47 @@ const Checkout = () => {
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [vouchers, setVouchers] = useState([]);
   const [selectedVoucher, setSelectedVoucher] = useState(null);
+  const [voucherModalOpen, setVoucherModalOpen] = useState(false);
+  const [provinces, setProvinces] = useState([]);
+  const [districts, setDistricts] = useState([]);
+  const [wards, setWards] = useState([]);
+  const [selectedProvince, setSelectedProvince] = useState(null);
+  const [selectedDistrict, setSelectedDistrict] = useState(null);
+  const [selectedWard, setSelectedWard] = useState(null);
+  const [addressDetail, setAddressDetail] = useState("");
+
+  // Fetch provinces on mount
+  useEffect(() => {
+    fetch('https://provinces.open-api.vn/api/p/')
+      .then(res => res.json())
+      .then(data => setProvinces(data));
+  }, []);
+
+  // Fetch districts when province changes
+  useEffect(() => {
+    if (selectedProvince) {
+      fetch(`https://provinces.open-api.vn/api/p/${selectedProvince.code}?depth=2`)
+        .then(res => res.json())
+        .then(data => setDistricts(data.districts || []));
+    } else {
+      setDistricts([]);
+      setWards([]);
+    }
+    setSelectedDistrict(null);
+    setSelectedWard(null);
+  }, [selectedProvince]);
+
+  // Fetch wards when district changes
+  useEffect(() => {
+    if (selectedDistrict) {
+      fetch(`https://provinces.open-api.vn/api/d/${selectedDistrict.code}?depth=2`)
+        .then(res => res.json())
+        .then(data => setWards(data.wards || []));
+    } else {
+      setWards([]);
+    }
+    setSelectedWard(null);
+  }, [selectedDistrict]);
 
   /* ----------------------------- Derived values ------------------------------ */
   const buyNowItems = location.state?.products;
@@ -54,22 +97,22 @@ const Checkout = () => {
 
   const voucherDiscount = useMemo(() => {
     if (!selectedVoucher) return 0;
-    
     // Kiểm tra điều kiện áp dụng voucher
     if (selectedVoucher.minOrderAmount && subtotal < selectedVoucher.minOrderAmount) {
       return 0;
     }
-    
     // Kiểm tra giới hạn sử dụng
     if (selectedVoucher.usageLimit && selectedVoucher.usedCount >= selectedVoucher.usageLimit) {
       return 0;
     }
-    
     // Tính giảm giá
-    const discount = selectedVoucher.type === "percent"
+    let discount = selectedVoucher.type === "percent"
       ? (subtotal * selectedVoucher.value) / 100
       : selectedVoucher.value;
-    
+    // Áp dụng maxDiscountAmount cho percent
+    if (selectedVoucher.type === "percent" && selectedVoucher.maxDiscountAmount > 0) {
+      discount = Math.min(discount, selectedVoucher.maxDiscountAmount);
+    }
     // Đảm bảo không giảm quá subtotal
     return Math.min(discount, subtotal);
   }, [selectedVoucher, subtotal]);
@@ -131,10 +174,13 @@ const Checkout = () => {
           return;
         }
 
-        finalVoucherDiscount = selectedVoucher.type === "percent"
-          ? (discountedSubtotal * selectedVoucher.value) / 100
-          : selectedVoucher.value;
-        
+        if (selectedVoucher.type === "percent" && selectedVoucher.maxDiscountAmount > 0) {
+          finalVoucherDiscount = selectedVoucher.maxDiscountAmount;
+        } else if (selectedVoucher.type === "percent") {
+          finalVoucherDiscount = (discountedSubtotal * selectedVoucher.value) / 100;
+        } else {
+          finalVoucherDiscount = selectedVoucher.value;
+        }
         finalVoucherDiscount = Math.min(finalVoucherDiscount, discountedSubtotal);
       }
 
@@ -159,7 +205,9 @@ const Checkout = () => {
         customerName: values.name,
         customerEmail: values.email,
         customerPhone: values.phone,
-        shippingAddress: values.address,
+        // Khi submit, đảm bảo shippingAddress luôn theo thứ tự đầy đủ:
+        // Số nhà, Phường/Xã, Quận/Huyện, Tỉnh/Thành phố
+        shippingAddress: `${addressDetail}, ${selectedWard?.name}, ${selectedDistrict?.name}, ${selectedProvince?.name}`,
         paymentMethod: values.paymentMethod,
         items: orderItems,
         voucherId: selectedVoucher ? selectedVoucher._id || selectedVoucher.id : undefined,
@@ -229,6 +277,9 @@ const Checkout = () => {
   useEffect(() => {
     fetchCart();
   }, []);
+
+  // Hàm hiển thị chi tiết voucher
+  const [viewingVoucher, setViewingVoucher] = useState(null);
 
   /* ------------------------------ Empty / Success --------------------------- */
   if (orderSuccess) {
@@ -300,60 +351,165 @@ const Checkout = () => {
 
               {/* Địa chỉ */}
               <Form.Item
-                name="address"
-                label="Địa chỉ giao hàng"
-                rules={[{ required: true, message: "Vui lòng nhập địa chỉ!" }]}
+                name="province"
+                label="Tỉnh/Thành phố"
+                rules={[{ required: true, message: "Chọn tỉnh/thành phố!" }]}
               >
-                <TextArea placeholder="Nhập địa chỉ chi tiết" rows={3} />
+                <Select
+                  placeholder="Chọn tỉnh/thành phố"
+                  onChange={code => {
+                    const province = provinces.find(p => p.code === code);
+                    setSelectedProvince(province);
+                  }}
+                  value={selectedProvince?.code}
+                  showSearch
+                  optionFilterProp="children"
+                >
+                  {provinces.map(p => <Option key={p.code} value={p.code}>{p.name}</Option>)}
+                </Select>
+              </Form.Item>
+              <Form.Item
+                name="district"
+                label="Quận/Huyện"
+                rules={[{ required: true, message: "Chọn quận/huyện!" }]}
+              >
+                <Select
+                  placeholder="Chọn quận/huyện"
+                  onChange={code => {
+                    const district = districts.find(d => d.code === code);
+                    setSelectedDistrict(district);
+                  }}
+                  value={selectedDistrict?.code}
+                  disabled={!selectedProvince}
+                  showSearch
+                  optionFilterProp="children"
+                >
+                  {districts.map(d => <Option key={d.code} value={d.code}>{d.name}</Option>)}
+                </Select>
+              </Form.Item>
+              <Form.Item
+                name="ward"
+                label="Phường/Xã"
+                rules={[{ required: true, message: "Chọn phường/xã!" }]}
+              >
+                <Select
+                  placeholder="Chọn phường/xã"
+                  onChange={code => {
+                    const ward = wards.find(w => w.code === code);
+                    setSelectedWard(ward);
+                  }}
+                  value={selectedWard?.code}
+                  disabled={!selectedDistrict}
+                  showSearch
+                  optionFilterProp="children"
+                >
+                  {wards.map(w => <Option key={w.code} value={w.code}>{w.name}</Option>)}
+                </Select>
+              </Form.Item>
+              <Form.Item
+                name="addressDetail"
+                label="Địa chỉ chi tiết"
+                rules={[{ required: true, message: "Nhập địa chỉ chi tiết!" }]}
+              >
+                <Input
+                  placeholder="Số nhà, tên đường..."
+                  value={addressDetail}
+                  onChange={e => setAddressDetail(e.target.value)}
+                />
               </Form.Item>
 
               {/* Voucher */}
-              <Form.Item name="voucher" label="Mã giảm giá (Voucher)">
-                <Select
-                  placeholder="Chọn voucher nếu có"
-                  allowClear
-                  showSearch
-                  optionFilterProp="children"
-                  onChange={(code) => {
-                    const found = vouchers.find((v) => v.code === code) || null;
-                    setSelectedVoucher(found);
-                    
-                    // Thông báo nếu voucher không hợp lệ
-                    if (found) {
-                      if (found.minOrderAmount && subtotal < found.minOrderAmount) {
-                        notification.warning({
-                          message: "Voucher không hợp lệ",
-                          description: `Đơn hàng tối thiểu phải ${formatPrice(found.minOrderAmount)} để sử dụng voucher này`,
-                          placement: "topRight",
-                        });
-                      } else if (found.usageLimit && found.usedCount >= found.usageLimit) {
-                        notification.warning({
-                          message: "Voucher đã hết lượt sử dụng",
-                          description: "Voucher này đã được sử dụng hết số lượt cho phép",
-                          placement: "topRight",
-                        });
-                      }
-                    }
-                  }}
-                >
-                  {vouchers.length === 0 ? (
-                    <Option value="__none__" disabled>
-                      Không có voucher khả dụng
-                    </Option>
-                  ) : (
-                    vouchers.map((v) => {
-                      const isValid = (!v.minOrderAmount || subtotal >= v.minOrderAmount) && 
-                                     (!v.usageLimit || !v.usedCount || v.usedCount < v.usageLimit);
-                      return (
-                        <Option key={v._id || v.id} value={v.code} disabled={!isValid}>
-                          {v.code} - {v.type === "percent" ? `${v.value}%` : `${v.value.toLocaleString("vi-VN")} VND`}
-                          {!isValid && " (Không khả dụng)"}
-                        </Option>
-                      );
-                    })
-                  )}
-                </Select>
+              <Form.Item label="Mã giảm giá (Voucher)">
+                <Button onClick={() => setVoucherModalOpen(true)} block>
+                  {selectedVoucher ? `${selectedVoucher.code} - ${selectedVoucher.type === "percent" ? selectedVoucher.value + "%" : selectedVoucher.value.toLocaleString("vi-VN") + " VND"}` : "Chọn voucher"}
+                </Button>
+                {selectedVoucher && (
+                  <div style={{ marginTop: 8, color: '#888', fontSize: 13 }}>
+                    <span>Đang áp dụng: </span>
+                    <Tag color={selectedVoucher.type === 'percent' ? 'blue' : 'green'}>{selectedVoucher.type?.toUpperCase()}</Tag>
+                    {selectedVoucher.type === 'percent' && selectedVoucher.maxDiscountAmount > 0 && (
+                      <span> (Tối đa {selectedVoucher.maxDiscountAmount.toLocaleString('vi-VN')}đ)</span>
+                    )}
+                    <Button size="small" style={{ marginLeft: 8 }} onClick={() => setSelectedVoucher(null)}>Bỏ chọn</Button>
+                  </div>
+                )}
               </Form.Item>
+
+              {/* Modal chọn voucher */}
+              <Modal
+                open={voucherModalOpen}
+                onCancel={() => setVoucherModalOpen(false)}
+                title="Chọn voucher khả dụng"
+                footer={null}
+                width={600}
+              >
+                {vouchers.length === 0 ? (
+                  <Empty description="Không có voucher khả dụng" />
+                ) : (
+                  vouchers.map((voucher) => {
+                    const isValid = (!voucher.minOrderAmount || subtotal >= voucher.minOrderAmount) &&
+                                   (!voucher.usageLimit || !voucher.usedCount || voucher.usedCount < voucher.usageLimit);
+                    return (
+                      <Card
+                        key={voucher._id || voucher.id}
+                        style={{ marginBottom: 16, border: selectedVoucher && selectedVoucher.code === voucher.code ? '2px solid #1890ff' : '#eee', borderRadius: 8 }}
+                        bodyStyle={{ padding: 16 }}
+                        hoverable
+                        onClick={() => isValid && setSelectedVoucher(voucher)}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <b>{voucher.name || voucher.code}</b>
+                          </div>
+                        </div>
+                        <div>Giảm: {voucher.type === 'percent' ? `${voucher.value}%` : `${voucher.value.toLocaleString()}đ`}</div>
+                        {voucher.type === 'percent' && voucher.maxDiscountAmount > 0 && (
+                          <div>Giảm tối đa: {voucher.maxDiscountAmount.toLocaleString()}đ</div>
+                        )}
+                        <div>Đơn từ: {(voucher.minOrderAmount || 0).toLocaleString('vi-VN')}đ</div>
+                        <div>Hạn dùng: {new Date(voucher.endDate).toLocaleDateString()}</div>
+                        {!isValid && <div style={{ color: '#ff4d4f' }}>Không khả dụng cho đơn này</div>}
+                        {selectedVoucher && selectedVoucher.code === voucher.code && <div style={{ color: '#1890ff' }}>Đang chọn</div>}
+                        <Button
+                          type="primary"
+                          style={{ marginTop: 8 }}
+                          disabled={!isValid}
+                          onClick={e => { e.stopPropagation(); setSelectedVoucher(voucher); setVoucherModalOpen(false); }}
+                        >Chọn voucher này</Button>
+                      </Card>
+                    );
+                  })
+                )}
+              </Modal>
+
+              {/* Modal xem chi tiết voucher */}
+              <Modal
+                open={!!viewingVoucher}
+                onCancel={() => setViewingVoucher(null)}
+                title="Chi tiết voucher"
+                footer={null}
+                width={500}
+              >
+                {viewingVoucher && (
+                  <div>
+                    <div><b>Mã giảm giá:</b> {viewingVoucher.code}</div>
+                    {/* <div><b>Type:</b> <Tag color={viewingVoucher.type === 'percent' ? 'blue' : 'green'}>{viewingVoucher.type?.toUpperCase()}</Tag></div> */}
+                    <div><b>Giá trị:</b> {viewingVoucher.type === 'percent' ? `${viewingVoucher.value}%` : `${viewingVoucher.value?.toLocaleString('vi-VN')} VND`}</div>
+                    <div><b>Đơn hàng bắt đầu từ:</b> {(viewingVoucher.minOrderAmount || 0).toLocaleString('vi-VN')} VND</div>
+                    {/* <div><b>Total Order Amount:</b> {(viewingVoucher?.totalOrderAmount ?? 0).toLocaleString('vi-VN')} VND</div> */}
+                    {/* Ẩn Usage Limit và Used Count */}
+                    {/* {viewingVoucher.usageLimit !== undefined && <div><b>Usage Limit:</b> {viewingVoucher.usageLimit || 'Unlimited'}</div>} */}
+                    {/* {viewingVoucher.usedCount !== undefined && <div><b>Used Count:</b> {viewingVoucher.usedCount}</div>} */}
+                    {/* <div><b>Start Date:</b> {new Date(viewingVoucher.startDate).toLocaleDateString()}</div> */}
+                    <div><b>Ngày hết hạn:</b> {new Date(viewingVoucher.endDate).toLocaleDateString()}</div>
+                    <div><b>Khả dụng:</b> {viewingVoucher.isActive ? <Tag color="green">Active</Tag> : <Tag color="red">Inactive</Tag>}</div>
+                    {/* Chỉ hiển thị Max Discount Amount nếu > 0 */}
+                    {viewingVoucher.type === 'percent' && viewingVoucher.maxDiscountAmount > 0 && (
+                      <div><b>Max Discount Amount:</b> {viewingVoucher.maxDiscountAmount.toLocaleString('vi-VN')} VND</div>
+                    )}
+                  </div>
+                )}
+              </Modal>
 
               {/* Payment */}
               <Form.Item

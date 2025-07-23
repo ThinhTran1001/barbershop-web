@@ -267,23 +267,109 @@ exports.deleteAbsence = async (req, res) => {
 // Get barber availability calendar
 exports.getBarberCalendar = async (req, res) => {
   try {
-    const { barberId, month, year } = req.query;
+    const { userId, month, year } = req.query;
 
-    if (!barberId || !month || !year) {
-      return res.status(400).json({ 
-        message: 'Barber ID, month, and year are required' 
+    if (!userId || !month || !year) {
+      return res.status(400).json({
+        message: 'User ID, month, and year are required'
       });
     }
 
+    // Find the barber record using userId
+    const barber = await Barber.findOne({ userId: userId });
+    if (!barber) {
+      return res.status(404).json({
+        message: 'Barber profile not found for this user'
+      });
+    }
+
+    const barberId = barber._id;
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0);
 
-    // Get absences for the month
+    // Get absences for the month using barberId
     const absences = await BarberAbsence.getBarberAbsences(barberId, startDate, endDate);
 
-    // Get bookings for the month
+    // Get bookings for the month using barberId
     const bookings = await Booking.find({
+      barberId: barberId,
+      bookingDate: { $gte: startDate, $lte: endDate },
+      status: { $in: ['pending', 'confirmed'] }
+    }).select('bookingDate durationMinutes status');
+
+    // Generate calendar
+    const calendar = [];
+    const currentDate = new Date(startDate);
+
+    while (currentDate <= endDate) {
+      const dateStr = currentDate.toISOString().split('T')[0];
+      
+      // Check if barber is absent
+      const isAbsent = absences.some(absence => 
+        currentDate >= absence.startDate && currentDate <= absence.endDate
+      );
+
+      // Count bookings for this date
+      const dayBookings = bookings.filter(booking => 
+        booking.bookingDate.toISOString().split('T')[0] === dateStr
+      );
+
+      calendar.push({
+        date: dateStr,
+        isAbsent,
+        absenceReason: isAbsent ? absences.find(absence => 
+          currentDate >= absence.startDate && currentDate <= absence.endDate
+        )?.reason : null,
+        bookingsCount: dayBookings.length,
+        totalBookedMinutes: dayBookings.reduce((sum, booking) => 
+          sum + booking.durationMinutes, 0
+        )
+      });
+
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    res.json({
+      userId,
       barberId,
+      month: Number(month),
+      year: Number(year),
+      calendar,
+      absences: absences.map(absence => ({
+        startDate: absence.startDate,
+        endDate: absence.endDate,
+        reason: absence.reason,
+        description: absence.description
+      }))
+    });
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getBarberSchedule = async (req, res) => {
+  try {
+    const { month, year } = req.query;
+    const barberId  = req.params.barberId;
+    console.log('barberId', barberId);
+
+    if (!barberId || !month || !year) {
+      return res.status(400).json({
+        message: 'barber ID, month, and year are required'
+      });
+    }
+
+  
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0);
+
+    // Get absences for the month using barberId
+    const absences = await BarberAbsence.getBarberAbsences(barberId, startDate, endDate);
+
+    // Get bookings for the month using barberId
+    const bookings = await Booking.find({
+      barberId: barberId,
       bookingDate: { $gte: startDate, $lte: endDate },
       status: { $in: ['pending', 'confirmed'] }
     }).select('bookingDate durationMinutes status');
@@ -336,4 +422,4 @@ exports.getBarberCalendar = async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
-};
+}

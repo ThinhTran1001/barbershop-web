@@ -17,6 +17,7 @@ router.post('/auto-assign', barberController.autoAssignBarber);
 router.get('/availability', barberController.getBarberAvailability);
 
 // Barber bookings
+router.get('/:userId/bookings', barberController.getBarberBookings);
 router.get('/:barberId/bookings', barberController.getBarberBookings);
 router.get("/by-user/:userId", barberController.getBarberByUserId);
 router.get("/public/:id", barberController.getBarberPublicById);

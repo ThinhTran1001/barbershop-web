@@ -8,7 +8,8 @@ const updateBarberRating = async (barberId) => {
   try {
     const activeFeedbacks = await FeedbackBarber.find({ 
       barberId, 
-      isDeleted: false
+      isDeleted: false,
+      status: 'Approved'
     });
 
     if (activeFeedbacks.length === 0) {
@@ -34,53 +35,47 @@ const updateBarberRating = async (barberId) => {
 
 exports.getAllFeedbacks = async (req, res) => {
   try {
-    const { page = 1, limit = 10, search, status, startDate, endDate, rating, isDeleted } = req.query;
+    const { page = 1, limit = 10, search, status, startDate, endDate, rating, isDeleted, isApproved } = req.query;
 
-    // Chỉ filter isDeleted nếu có truyền tham số, mặc định lấy tất cả
     const query = {};
     if (typeof isDeleted !== 'undefined') {
       query.isDeleted = isDeleted === 'true';
     }
-    
-
-    
+    if (typeof isApproved !== 'undefined') {
+      query.isApproved = isApproved === 'true';
+    }
     if (startDate && endDate) {
       query.createdAt = {
         $gte: new Date(startDate),
         $lte: new Date(endDate),
       };
     }
-    
     if (search) {
       query.comment = { $regex: search, $options: 'i' };
     }
-
     if (rating && rating !== 'All') {
       query.rating = Number(rating);
     }
-
+    if (status) {
+      query.status = status;
+    }
     const feedbacks = await FeedbackBarber.find(query)
       .populate({ path: 'barberId', populate: { path: 'userId', select: 'name' } })
       .populate('customerId', 'name email')
-      .populate('bookingId')
+      .populate('bookingId', 'bookingDate name title _id')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(Number(limit));
-
     const total = await FeedbackBarber.countDocuments(query);
-
     const transformedFeedbacks = feedbacks.map(fb => ({
       ...fb.toObject(),
       reviewer: fb.customerId?.name || fb.customerId?.email || 'Unknown',
       product: fb.bookingId?._id || 'Service',
     }));
-
-    // Tự động cập nhật rating cho tất cả barber có feedback
     const allBarberIds = await FeedbackBarber.distinct('barberId');
     for (const barberId of allBarberIds) {
       await updateBarberRating(barberId);
     }
-
     res.json({ 
       data: transformedFeedbacks, 
       total,
@@ -104,7 +99,7 @@ exports.getBarberFeedbackById = async (req, res) => {
     const feedback = await FeedbackBarber.findById(id)
       .populate({ path: 'barberId', populate: { path: 'userId', select: 'name' } })
       .populate('customerId', 'name email')  
-      .populate('bookingId');
+      .populate('bookingId', 'bookingDate name title _id');
 
     if (!feedback) {
       return res.status(404).json({ message: 'Không tìm thấy phản hồi' });
@@ -175,7 +170,7 @@ exports.createBarberFeedback = async (req, res) => {
     const populatedFeedback = await FeedbackBarber.findById(feedback._id)
       .populate({ path: 'barberId', populate: { path: 'userId', select: 'name' } })
       .populate('customerId', 'name email')
-      .populate('bookingId');
+      .populate('bookingId', 'bookingDate name title _id');
 
     const transformedFeedback = {
       ...populatedFeedback.toObject(),
@@ -192,9 +187,6 @@ exports.createBarberFeedback = async (req, res) => {
     res.status(500).json({ message: 'Không thể tạo phản hồi' });
   }
 };
-
-
-
 
 
 exports.deleteBarberFeedback = async (req, res) => {
@@ -239,5 +231,28 @@ exports.deleteBarberFeedback = async (req, res) => {
       message: 'Không thể xoá mềm phản hồi',
       error: error.message 
     });
+  }
+};
+
+exports.updateFeedbackStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    if (!['Approved', 'Unapproved', 'Deleted'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status' });
+    }
+    const feedback = await FeedbackBarber.findById(id);
+    if (!feedback) {
+      return res.status(404).json({ message: 'Feedback not found' });
+    }
+    feedback.status = status;
+    if (status === 'Deleted') feedback.isDeleted = true;
+    else feedback.isDeleted = false;
+    await feedback.save();
+    // Update barber rating after status change
+    await updateBarberRating(feedback.barberId);
+    res.json({ success: true, message: 'Status updated successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };

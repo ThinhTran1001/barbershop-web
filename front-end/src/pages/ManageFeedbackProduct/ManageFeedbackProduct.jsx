@@ -4,7 +4,7 @@ import FeedbackProductStats from '../../components/FeedbackProductStats';
 import FeedbackProductFilters from '../../components/FeedbackProductFilters';
 import FeedbackProductTable from '../../components/FeedbackProductTable';
 import FeedbackProductModal from '../../components/FeedbackProductModal';
-import { getAllFeedbacks, deleteFeedback } from '../../services/api';
+import { getAllFeedbacks, deleteFeedback, getProducts } from '../../services/api';
 import dayjs from 'dayjs';
 import './ManageFeedbackProduct.css';
 
@@ -18,6 +18,7 @@ const ManageFeedbackProduct = () => {
   const [ratingFilter, setRatingFilter] = useState('All');
   const [productFilter, setProductFilter] = useState('All');
   const [products, setProducts] = useState([]);
+  const [allProducts, setAllProducts] = useState([]);
   const [viewModalVisible, setViewModalVisible] = useState(false);
   const [selectedFeedback, setSelectedFeedback] = useState(null);
 
@@ -83,6 +84,19 @@ const ManageFeedbackProduct = () => {
     }
   };
 
+  const fetchProducts = async () => {
+    try {
+      const res = await getProducts();
+      setAllProducts(res.data?.data || []);
+    } catch (err) {
+      setAllProducts([]);
+    }
+  };
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
   const applyFilters = () => {
     if (!Array.isArray(feedbacks)) {
       setFilteredFeedbacks([]);
@@ -101,9 +115,12 @@ const ManageFeedbackProduct = () => {
     }
 
     if (statusFilter !== 'All') {
-      filtered = filtered.filter(item =>
-        statusFilter === 'Active' ? !item.isDeleted : item.isDeleted
-      );
+      filtered = filtered.filter(item => {
+        if (statusFilter === 'Active') return item.status === 'active';
+        if (statusFilter === 'Inactive') return item.status === 'inactive';
+        if (statusFilter === 'Deleted') return item.status === 'deleted';
+        return true;
+      });
     }
 
     if (ratingFilter !== 'All') {
@@ -125,6 +142,14 @@ const ManageFeedbackProduct = () => {
     setFilteredFeedbacks(filtered);
   };
 
+  // Tạo danh sách sản phẩm filter dựa trên feedbacks đang hiển thị
+  const productsFilter = Array.from(
+    new Map(
+      feedbacks
+        .filter(fb => fb.productId && fb.productId._id && fb.productId.name)
+        .map(fb => [fb.productId._id, { _id: fb.productId._id, name: fb.productId.name }])
+    ).values()
+  );
 
 
   const handleDeleteFeedback = async (id) => {
@@ -147,8 +172,9 @@ const ManageFeedbackProduct = () => {
 
   const stats = {
     total: feedbacks.length,
-    active: feedbacks.filter(f => !f.isDeleted).length,
-    deleted: feedbacks.filter(f => f.isDeleted).length
+    active: feedbacks.filter(f => f.status === 'active').length,
+    inactive: feedbacks.filter(f => f.status === 'inactive').length,
+    deleted: feedbacks.filter(f => f.status === 'deleted').length
   };
 
   return (
@@ -166,7 +192,7 @@ const ManageFeedbackProduct = () => {
           setRatingFilter={setRatingFilter}
           productFilter={productFilter}
           setProductFilter={setProductFilter}
-          products={products}
+          products={productsFilter}
         />
         <FeedbackProductTable
           filteredFeedbacks={filteredFeedbacks}

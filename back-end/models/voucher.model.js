@@ -5,7 +5,6 @@ const voucherSchema = new mongoose.Schema({
   code: {
     type: String,
     required: true,
-    unique: true
   },
   type: {
     type: String,
@@ -31,6 +30,11 @@ const voucherSchema = new mongoose.Schema({
   totalOrderAmount: {
     type: Number,
     default: 0
+  },
+  maxDiscountAmount: {
+    type: Number,
+    default: 0,
+    // Chỉ áp dụng cho voucher percent
   },
   startDate: {
     type: Date,
