@@ -55,8 +55,6 @@ import BookingInfoPage from "./pages/ServiceBooking/BookingInfoPage.jsx";
 import MyBookingsPage from "./pages/ServiceBooking/MyBookingsPage.jsx";
 import ManageBlog from "./pages/ManageBlog/ManageBlog.jsx";
 import BarberProfile from "./components/profile/baberProfile.jsx";
-import BarberPublicProfile from "./components/profile/BarberPublicProfile.jsx";
-import BarberCustomerView from "./components/profile/BarberCustomerView.jsx";
 
 const router = createBrowserRouter([
   {
@@ -88,8 +86,6 @@ const router = createBrowserRouter([
       { path: "/news/:id", element: <BlogDetail /> },
       { path: "/contact", element: <ContactPage /> },
       { path: "/feedback-order/:orderId", element: <FeedbackProduct /> },
-      { path: "/barbers/:id", element: <BarberPublicProfile /> },
-      { path: "/barbers/customer-view/:id", element: <BarberCustomerView /> },
       // Protected Customer Routes
       {
         element: <RequireAuth allowedRoles={["customer"]} />,
