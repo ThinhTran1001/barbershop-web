@@ -328,6 +328,29 @@ async function callFunction(fnName, entities, req, chatHistory = [], userMessage
       };
     }
     case 'book_appointment': {
+
+      let userId = req.userId;
+        if (!userId) {
+          let token;
+          if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+            token = req.headers.authorization.split(' ')[1];
+          } else if (req.cookies?.accessToken) {
+            token = req.cookies.accessToken;
+          }
+
+          if (token) {
+            try {
+              const decoded = jwt.verify(token, process.env.JWT_SECRET);
+              userId = decoded.id;
+            } catch (err) {
+              console.error('Token không hợp lệ:', err.message);
+              return { error: 'Vui lòng đăng nhập để đặt lịch.' };
+            }
+          } else {
+            return { error: 'Vui lòng đăng nhập để đặt lịch.' };
+          }
+        }
+
       // Tổng hợp thông tin từ chatHistory và ưu tiên entities mới nhất
       let bookingData = {};
       chatHistory.forEach(entry => {
@@ -431,27 +454,6 @@ async function callFunction(fnName, entities, req, chatHistory = [], userMessage
         userMessage.toLowerCase().includes('xác nhan') ||
         userMessage.toLowerCase().includes('xác nhân')
       )) {
-        let userId = req.userId;
-        if (!userId) {
-          let token;
-          if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-            token = req.headers.authorization.split(' ')[1];
-          } else if (req.cookies?.accessToken) {
-            token = req.cookies.accessToken;
-          }
-
-          if (token) {
-            try {
-              const decoded = jwt.verify(token, process.env.JWT_SECRET);
-              userId = decoded.id;
-            } catch (err) {
-              console.error('Token không hợp lệ:', err.message);
-              return { error: 'Vui lòng đăng nhập để đặt lịch.' };
-            }
-          } else {
-            return { error: 'Vui lòng đăng nhập để đặt lịch.' };
-          }
-        }
 
         // Chuyển đổi barber và service sang ObjectId
         const barberUser = await User.findOne({ name: new RegExp(bookingData.barber, 'i') });
