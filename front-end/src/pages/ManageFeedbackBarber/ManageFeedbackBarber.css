@@ -173,6 +173,33 @@
   background-color: rgba(255, 77, 79, 0.1);
 }
 
+/* Chống tràn bảng ngang */
+.fb-table-responsive {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.fb-manage-container .ant-table {
+  min-width: 900px;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.fb-manage-container .ant-table-thead > tr > th,
+.fb-manage-container .ant-table-tbody > tr > td {
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.fb-table-wrapper {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  margin-bottom: 24px;
+}
+
 /* Responsive */
 @media (max-width: 1200px) {
   .fb-manage-container {
@@ -208,6 +235,10 @@
 
   .fb-header-row .ant-space {
     flex-wrap: wrap;
+  }
+
+  .fb-manage-container .ant-table {
+    min-width: 700px;
   }
 }
 

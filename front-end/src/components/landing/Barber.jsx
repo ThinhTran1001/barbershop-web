@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import "../../css/landing/barber.css";
 import { getAllUser } from "../../services/api";
 import { useNavigate } from 'react-router-dom';
+import BarberProfileModal from '../profile/BarberProfileModal';
 
 // import ảnh tĩnh...
 import barber1 from "../../assets/images/barber1.jpg";
@@ -19,6 +20,8 @@ export default function Barbers() {
   const [users, setUsers]     = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
+  // Thêm state cho modal
+  const [selectedBarberId, setSelectedBarberId] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -97,7 +100,7 @@ export default function Barbers() {
           {barbers.map((b) => {
             const avatar = users.find(u => u._id === b.userId._id)?.avatarUrl;
             return (
-              <div key={b.id} className="barber-card" onClick={() => navigate(`/barbers/customer-view/${b._id}`)} style={{ cursor: 'pointer' }}>
+              <div key={b.id} className="barber-card" onClick={() => setSelectedBarberId(b._id)} style={{ cursor: 'pointer' }}>
                 <div className="barber-image-container">
                   <img
                     src={avatar || getImage(b.image)}
@@ -115,6 +118,12 @@ export default function Barbers() {
             );
           })}
         </div>
+        {/* Modal hiển thị profile barber */}
+        <BarberProfileModal
+          barberId={selectedBarberId}
+          open={!!selectedBarberId}
+          onClose={() => setSelectedBarberId(null)}
+        />
       </div>
     </section>
   );

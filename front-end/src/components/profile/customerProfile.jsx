@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { getProfile, updateProfile } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
-import { Spin, Button, Input } from 'antd';
+import { Spin, Button, Input, Modal, Form } from 'antd';
 import { toast, ToastContainer, Zoom } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import '../../css/profile/customerprofile.css';
@@ -29,6 +29,11 @@ const CustomerProfile = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+
+  // State cho modal đổi mật khẩu
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordForm] = Form.useForm();
 
   useEffect(() => {
     if (authLoading) return;
@@ -81,6 +86,29 @@ const CustomerProfile = () => {
     setFieldValue('');
   };
 
+  // Xử lý đổi mật khẩu
+  const handleChangePassword = async () => {
+    try {
+      setPasswordLoading(true);
+      const values = await passwordForm.validateFields();
+      if (values.newPassword !== values.confirmPassword) {
+        toast.error('Mật khẩu mới và xác nhận không khớp');
+        setPasswordLoading(false);
+        return;
+      }
+      // Gửi password mới qua API
+      await updateProfile({ password: values.newPassword });
+      toast.success('Đổi mật khẩu thành công');
+      setShowPasswordModal(false);
+      passwordForm.resetFields();
+    } catch (err) {
+      if (err.errorFields) return; // Lỗi validate form
+      toast.error('Đổi mật khẩu thất bại');
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
   const renderAvatar = () => {
     const src = getImage(profile?.avatarUrl || profile?.profileImage);
     return (
@@ -127,6 +155,18 @@ const CustomerProfile = () => {
     );
   };
 
+  const renderPasswordField = () => (
+    <div className="customer-profile__field" key="password">
+      <span className="customer-profile__field-label"><b>Mật khẩu:</b></span>
+      <span className="customer-profile__field-value">
+        <Input.Password value={"********"} disabled style={{ width: 180, fontWeight: 'bold' }} />
+        <Button size="small" type="link" onClick={() => setShowPasswordModal(true)} style={{ marginLeft: 8 }}>
+          Đổi mật khẩu
+        </Button>
+      </span>
+    </div>
+  );
+
   if (authLoading || loading) return <Spin tip="Đang tải thông tin..." />;
   if (error) {
     return (
@@ -154,10 +194,55 @@ const CustomerProfile = () => {
         {renderField('Họ tên', name, 'name')}
         {renderField('Email', email, 'email')}
         {renderField('Số điện thoại', phone, 'phone')}
-    
+        {renderPasswordField()}
         {renderField('Vai trò', role || 'customer', 'role')}
         {renderField('Trạng thái', status === 'active' ? 'Đang hoạt động' : 'Chưa kích hoạt', 'status')}
       </div>
+      {/* Modal đổi mật khẩu */}
+      <Modal
+        open={showPasswordModal}
+        title="Đổi mật khẩu"
+        onCancel={() => { setShowPasswordModal(false); passwordForm.resetFields(); }}
+        onOk={handleChangePassword}
+        confirmLoading={passwordLoading}
+        okText="Đổi mật khẩu"
+        cancelText="Huỷ"
+      >
+        <Form form={passwordForm} layout="vertical">
+          <Form.Item
+            label="Mật khẩu cũ"
+            name="oldPassword"
+            rules={[{ required: true, message: 'Vui lòng nhập mật khẩu cũ' }]}
+          >
+            <Input.Password autoComplete="current-password" />
+          </Form.Item>
+          <Form.Item
+            label="Mật khẩu mới"
+            name="newPassword"
+            rules={[{ required: true, message: 'Vui lòng nhập mật khẩu mới' }, { min: 6, message: 'Tối thiểu 6 ký tự' }]}
+          >
+            <Input.Password autoComplete="new-password" />
+          </Form.Item>
+          <Form.Item
+            label="Xác nhận mật khẩu mới"
+            name="confirmPassword"
+            dependencies={["newPassword"]}
+            rules={[
+              { required: true, message: 'Vui lòng xác nhận mật khẩu mới' },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || getFieldValue('newPassword') === value) {
+                    return Promise.resolve();
+                  }
+                  return Promise.reject(new Error('Mật khẩu xác nhận không khớp!'));
+                },
+              }),
+            ]}
+          >
+            <Input.Password autoComplete="new-password" />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };

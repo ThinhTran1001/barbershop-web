@@ -291,35 +291,34 @@ const ManageFeedbackBarber = () => {
   };
 
   return (
-    <div style={{ padding: 24, width: '100%' }}>
+    <>
       <FeedbackBarberStats stats={stats} />
 
-      <FeedbackBarberFilters
-        statusFilter={statusFilter}
-        setStatusFilter={setStatusFilter}
-        ratingFilter={ratingFilter}
-        setRatingFilter={setRatingFilter}
-        barberFilter={barberFilter}
-        setBarberFilter={setBarberFilter}
-        bookingFilter={bookingFilter}
-        setBookingFilter={setBookingFilter}
-        searchKeyword={searchKeyword}
-        setSearchKeyword={setSearchKeyword}
-        dateRange={dateRange}
-        setDateRange={setDateRange}
-        barbers={uniqueBarbers}
-        bookings={uniqueBookings}
-      />
-
-      <div style={{ background: '#fff', borderRadius: 12, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-        <Card style={{ background: 'transparent', boxShadow: 'none', margin: 0 }}>
+      <div className="fb-table-wrapper">
+        <FeedbackBarberFilters
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+          ratingFilter={ratingFilter}
+          setRatingFilter={setRatingFilter}
+          barberFilter={barberFilter}
+          setBarberFilter={setBarberFilter}
+          bookingFilter={bookingFilter}
+          setBookingFilter={setBookingFilter}
+          searchKeyword={searchKeyword}
+          setSearchKeyword={setSearchKeyword}
+          dateRange={dateRange}
+          setDateRange={setDateRange}
+          barbers={uniqueBarbers}
+          bookings={uniqueBookings}
+        />
+        <div className="fb-table-responsive">
           <FeedbackBarberTable
             filteredFeedbacks={filteredFeedbacks}
             loading={loading}
             handleViewFeedback={handleViewDetail}
             handleSetStatus={handleSetStatus}
           />
-        </Card>
+        </div>
       </div>
 
       <FeedbackBarberModal
@@ -351,7 +350,7 @@ const ManageFeedbackBarber = () => {
           <Toast.Body className="text-white">{toast.message}</Toast.Body>
         </Toast>
       </ToastContainer>
-    </div>
+    </>
   );
 };
 
