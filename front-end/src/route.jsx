@@ -122,7 +122,7 @@ const router = createBrowserRouter([
           { path: "voucher", element: <VoucherManagement /> },
           { path: "user-vouchers", element: <UserVoucherManagement /> },
           { path: "order", element: <OrderManagement /> },
-          { path: "-product", element: <ManageFeedbackProduct /> },
+          { path: "feedback-product", element: <ManageFeedbackProduct /> },
           { path: "feedback-barber", element: <ManageFeedbackBarber /> },
           { path: "discount-product", element: <ManageDiscountProduct /> },
           { path: "appointment", element: <Appointment /> },
