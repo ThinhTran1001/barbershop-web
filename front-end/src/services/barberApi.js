@@ -51,7 +51,7 @@ export const fetchBarberById = async (barberId) => {
 };
 
 // Get barber bookings
-export const getBarberBookings = async (barberId, filters = {}) => {
+export const getBarberBookings = async (userId, filters = {}) => {
   const params = new URLSearchParams();
   Object.entries(filters).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== '') {
@@ -59,7 +59,7 @@ export const getBarberBookings = async (barberId, filters = {}) => {
     }
   });
 
-  const res = await axios.get(`${API_BASE}/${barberId}/bookings?${params.toString()}`);
+  const res = await axios.get(`${API_BASE}/${userId}/bookings?${params.toString()}`);
   return res.data;
 };
 

@@ -30,9 +30,8 @@ import {
   createBarberAbsence,
   getAllAbsences,
   updateAbsenceApproval,
-  rescheduleAffectedBookings,
   deleteAbsence,
-  getBarberCalendar
+  getBarberSchedule
 } from '../../services/barberAbsenceApi.js';
 import { fetchAllBarbers } from '../../services/barberApi.js';
 import dayjs from 'dayjs';
@@ -129,9 +128,9 @@ const BarberScheduleManagement = () => {
   const showBarberCalendar = async (barber) => {
     setSelectedBarber(barber);
     const currentDate = dayjs();
-    
+    console.log('Fetching calendar for barber:', barber._id, 'Date:', currentDate.format('YYYY-MM-DD'));
     try {
-      const calendarResponse = await getBarberCalendar(
+      const calendarResponse = await getBarberSchedule(
         barber._id,
         currentDate.month() + 1,
         currentDate.year()

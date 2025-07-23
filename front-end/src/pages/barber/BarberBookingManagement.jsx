@@ -30,6 +30,7 @@ import {
 import { getBarberBookings } from '../../services/barberApi.js';
 import { updateBookingStatus } from '../../services/serviceApi.js';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { getUserIdFromToken } from '../../utils/tokenUtils.js';
 import dayjs from 'dayjs';
 
 const { Title } = Typography;
@@ -37,7 +38,7 @@ const { Option } = Select;
 const { RangePicker } = DatePicker;
 
 const BarberBookingManagement = () => {
-  const { user } = useAuth();
+  const { user, getUserId } = useAuth();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -72,22 +73,24 @@ const BarberBookingManagement = () => {
   });
 
   // Get barber ID from user context
-  const [barberId, setBarberId] = useState(null);
+  const [userId, setUserId] = useState(null);
 
   useEffect(() => {
-    const storedBarberId = localStorage.getItem('barberId') || user?.barberId;
-    if (storedBarberId) {
-      setBarberId(storedBarberId);
-      loadBookings(storedBarberId);
+    const currentUserId = user?.id ||
+                         getUserId() ||
+                         getUserIdFromToken();
+    if (currentUserId) {
+      setUserId(currentUserId);
+      loadBookings(currentUserId);
     } else {
       message.error('Barber ID not found. Please contact administrator.');
     }
-  }, [user]);
+  }, [user, getUserId]);
 
-  const loadBookings = async (barberId, newFilters = filters) => {
+  const loadBookings = async (userId, newFilters = filters) => {
     setLoading(true);
     try {
-      const response = await getBarberBookings(barberId, newFilters);
+      const response = await getBarberBookings(userId, newFilters);
       const data = response.bookings || response;
       const paginationData = response.pagination;
       
@@ -127,8 +130,8 @@ const BarberBookingManagement = () => {
   const handleFilterChange = (key, value) => {
     const newFilters = { ...filters, [key]: value, page: 1 };
     setFilters(newFilters);
-    if (barberId) {
-      loadBookings(barberId, newFilters);
+    if (userId) {
+      loadBookings(userId, newFilters);
     }
   };
 
@@ -139,8 +142,8 @@ const BarberBookingManagement = () => {
       limit: pagination.pageSize 
     };
     setFilters(newFilters);
-    if (barberId) {
-      loadBookings(barberId, newFilters);
+    if (userId) {
+      loadBookings(userId, newFilters);
     }
   };
 
@@ -152,8 +155,8 @@ const BarberBookingManagement = () => {
       page: 1
     };
     setFilters(newFilters);
-    if (barberId) {
-      loadBookings(barberId, newFilters);
+    if (userId) {
+      loadBookings(userId, newFilters);
     }
   };
 
@@ -164,8 +167,8 @@ const BarberBookingManagement = () => {
       message.success(`Booking status updated to ${newStatus}`);
       
       // Reload bookings
-      if (barberId) {
-        loadBookings(barberId);
+      if (userId) {
+        loadBookings(userId);
       }
       
     } catch (error) {

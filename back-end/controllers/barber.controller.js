@@ -200,8 +200,14 @@ exports.getBarbersBySpecialty = async (req, res) => {
 
 exports.getBarberBookings = async (req, res) => {
   try {
-    const barberId = req.params.barberId;
+    const userId = req.params.userId;
+    console.log(`Fetching bookings for barber with userId: ${userId}`);
     const { date, status } = req.query;
+    const barber = await Barber.findOne({ userId });
+    if (!barber) {
+      return res.status(404).json({ message: 'Barber not found' });
+    }
+    const barberId = barber._id;
     const query = { barberId };
     if (date) {
       // Lọc theo ngày (YYYY-MM-DD)
@@ -215,7 +221,7 @@ exports.getBarberBookings = async (req, res) => {
     }
     const bookings = await Booking.find(query)
       .populate('customerId', 'name email')
-      .populate('serviceId', 'name')
+      .populate('serviceId')
       .sort({ bookingDate: 1 });
     res.json(bookings);
   } catch (err) {
