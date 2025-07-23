@@ -11,8 +11,16 @@ const BlogSidebarFilter = ({ onCategorySelect, onTagsSelect }) => {
   const [selectedTags, setSelectedTags] = useState([]);
 
   useEffect(() => {
-    // Lấy categories từ API
-    getCategories().then(res => setCategories(res.data || []));
+    // Luôn gọi API lấy danh mục mới nhất mỗi lần vào trang
+    const fetchCategories = async () => {
+      try {
+        const res = await getCategories();
+        setCategories(res.data || []);
+      } catch {
+        setCategories([]);
+      }
+    };
+    fetchCategories();
     // Lấy tags từ tất cả blogs
     getAllBlogs({ limit: 1000 }).then(res => {
       const allTags = (res.data?.data || []).flatMap(blog => blog.tags || []);
