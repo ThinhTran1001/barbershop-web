@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "../../css/landing/barber.css";
 import { getAllUser } from "../../services/api";
+import { useNavigate } from 'react-router-dom';
 
 // import ảnh tĩnh...
 import barber1 from "../../assets/images/barber1.jpg";
@@ -18,6 +19,7 @@ export default function Barbers() {
   const [users, setUsers]     = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -95,7 +97,7 @@ export default function Barbers() {
           {barbers.map((b) => {
             const avatar = users.find(u => u._id === b.userId._id)?.avatarUrl;
             return (
-              <div key={b.id} className="barber-card">
+              <div key={b.id} className="barber-card" onClick={() => navigate(`/barbers/customer-view/${b._id}`)} style={{ cursor: 'pointer' }}>
                 <div className="barber-image-container">
                   <img
                     src={avatar || getImage(b.image)}

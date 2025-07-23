@@ -63,3 +63,12 @@ export const getBarberBookings = async (barberId, filters = {}) => {
   return res.data;
 };
 
+export const getBarberByUserId = async (userId) => {
+  const res = await axios.get(`${API_BASE}/by-user/${userId}`);
+  return res.data;
+};
+
+export const getBarberPublicById = async (barberId) => {
+  const res = await axios.get(`${API_BASE}/public/${barberId}`);
+  return res.data;
+};
