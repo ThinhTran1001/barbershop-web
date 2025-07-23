@@ -114,15 +114,20 @@ exports.getProfile = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
   try {
-    const { name, email, phone, address, avatarUrl } = req.body;
+    const { name, email, phone, address, avatarUrl, password } = req.body;
     const updateData = {};
 
     if (name) updateData.name = name;
     if (email) updateData.email = email;
     if (phone) updateData.phone = phone;
     if (address) updateData.address = address;
-    if (avatarUrl) updateData.avatarUrl = avatarUrl
+    if (avatarUrl) updateData.avatarUrl = avatarUrl;
 
+    // Nếu có password mới, hash và cập nhật
+    if (password) {
+      const hashed = await bcrypt.hash(password, 10);
+      updateData.passwordHash = hashed;
+    }
 
     if (req.file) {
       const result = await cloudinary.uploader.upload(req.file.path, {

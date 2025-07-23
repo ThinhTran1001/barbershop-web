@@ -109,3 +109,6 @@ export const getBarberPublicById = async (barberId) => {
   const res = await axios.get(`${API_BASE}/public/${barberId}`);
   return res.data;
 };
+
+export const getBarberFeedbackById = (id) => axios.get(`${API_BASE}/feedback-barber/${id}`);
+
