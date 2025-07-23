@@ -9,14 +9,16 @@ import {
   Spin,
   message,
   Breadcrumb,
-  Card
+  Card,
+  Avatar
 } from 'antd';
 import {
   EyeOutlined,
-
+  UserOutlined
 } from '@ant-design/icons';
 import { getBlogById } from '../../../services/api';
 import { useParams, Link } from 'react-router-dom';
+import RelatedPosts from './RelatedPosts';
 
 const { Content } = Layout;
 const { Title, Text, Paragraph } = Typography;
@@ -215,6 +217,16 @@ const BlogDetail = () => {
             </Card>
           </Col>
         </Row>
+        <div style={{ borderTop: '1px solid #eee', paddingTop: 24, display: 'flex', alignItems: 'center', gap: 16 }}>
+          <Avatar size={56} icon={<UserOutlined />} />
+          <div>
+            <Text strong>About admin</Text>
+            <Paragraph style={{ margin: 0, color: '#888', fontSize: 15 }}>
+              Admin là người chia sẻ các kiến thức, kinh nghiệm về barber, chăm sóc tóc và làm đẹp nam giới.
+            </Paragraph>
+          </div>
+        </div>
+        <RelatedPosts currentBlog={blog} />
       </Content>
     </Layout>
   );

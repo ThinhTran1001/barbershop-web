@@ -11,7 +11,7 @@ exports.getAllServices = async (req, res) => {
       expertiseRequired,
       minPrice,
       maxPrice,
-      isActive = true,
+      isActive,
       sortBy = 'popularity',
       sortOrder = 'desc',
       page = 1,
@@ -19,8 +19,10 @@ exports.getAllServices = async (req, res) => {
     } = req.query;
 
     // Build filter object
-    const filter = { isActive };
-
+    const filter = {};
+    if (isActive !== undefined && isActive !== null && isActive !== "") {
+      filter.isActive = isActive === 'true' || isActive === true;
+    }
     if (category) filter.category = category;
     if (hairType) filter.hairTypes = { $in: Array.isArray(hairType) ? hairType : [hairType] };
     if (styleCompatibility) filter.styleCompatibility = { $in: Array.isArray(styleCompatibility) ? styleCompatibility : [styleCompatibility] };
@@ -44,6 +46,10 @@ exports.getAllServices = async (req, res) => {
       .limit(Number(limit));
 
     const total = await Service.countDocuments(filter);
+
+    // Log filter và số lượng trả về để debug
+    console.log('Service filter:', filter);
+    console.log('Service count:', services.length);
 
     res.json({
       services,

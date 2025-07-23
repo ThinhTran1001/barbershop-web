@@ -99,3 +99,13 @@ export const getBarberBookings = async (barberId, filters = {}) => {
   const res = await api.get(`/${barberId}/bookings?${params.toString()}`); // Use the 'api' instance
   return res.data;
 };
+
+export const getBarberByUserId = async (userId) => {
+  const res = await axios.get(`${API_BASE}/by-user/${userId}`);
+  return res.data;
+};
+
+export const getBarberPublicById = async (barberId) => {
+  const res = await axios.get(`${API_BASE}/public/${barberId}`);
+  return res.data;
+};

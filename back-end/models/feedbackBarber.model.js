@@ -37,9 +37,15 @@ const feedbackBarberSchema = new mongoose.Schema({
       message: 'All images must be URLs in string format.',
     },
   },
-  isApproved: {
+
+  isDeleted: {
     type: Boolean,
-    default: true,
+    default: false,
+  },
+  status: {
+    type: String,
+    enum: ['Approved', 'Unapproved', 'Deleted'],
+    default: 'approved',
   },
   createdAt: {
     type: Date,

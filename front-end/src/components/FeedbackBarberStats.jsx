@@ -1,36 +1,46 @@
 import React from 'react';
 import { Row, Col, Card, Statistic } from 'antd';
-import { StarFilled, CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { StarOutlined, CheckOutlined, CloseOutlined, DeleteOutlined } from '@ant-design/icons';
 
 const FeedbackBarberStats = ({ stats }) => {
   return (
-    <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-      <Col xs={24} sm={8}>
+    <Row gutter={16} className="feedback-stats-row">
+      <Col xs={24} sm={12} lg={6}>
         <Card>
           <Statistic
-            title="Total Feedbacks"
-            value={stats.total || 0}
-            prefix={<StarFilled style={{ color: '#1890ff' }} />}
+            title="Total Feedback"
+            value={stats.total}
+            prefix={<StarOutlined />}
             valueStyle={{ color: '#1890ff' }}
           />
         </Card>
       </Col>
-      <Col xs={24} sm={8}>
+      <Col xs={24} sm={12} lg={6}>
         <Card>
           <Statistic
             title="Approved"
-            value={stats.approved || 0}
-            prefix={<CheckOutlined style={{ color: '#52c41a' }} />}
+            value={stats.approved}
+            prefix={<CheckOutlined />}
             valueStyle={{ color: '#52c41a' }}
           />
         </Card>
       </Col>
-      <Col xs={24} sm={8}>
+      <Col xs={24} sm={12} lg={6}>
         <Card>
           <Statistic
-            title="Pending"
-            value={stats.pending || 0}
-            prefix={<CloseOutlined style={{ color: '#ff4d4f' }} />}
+            title="Unapproved"
+            value={stats.unapproved}
+            prefix={<CloseOutlined />}
+            valueStyle={{ color: '#faad14' }}
+          />
+        </Card>
+      </Col>
+      <Col xs={24} sm={12} lg={6}>
+        <Card>
+          <Statistic
+            title="Deleted"
+            value={stats.deleted}
+            prefix={<DeleteOutlined />}
             valueStyle={{ color: '#ff4d4f' }}
           />
         </Card>

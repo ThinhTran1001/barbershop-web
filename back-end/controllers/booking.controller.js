@@ -654,3 +654,117 @@ exports.getBookingChartStats = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+// Use for chatbot ai
+exports.createBookingFromBot = async (payload, userId) => {
+  try {
+    const {
+      barberId,
+      serviceId,
+      bookingDate,
+      timeSlot,
+      durationMinutes,
+      note,
+      notificationMethods,
+      autoAssignedBarber,
+      customerName,
+      customerEmail,
+      customerPhone
+    } = payload;
+
+    // Validate 30 phút trước lịch hẹn
+    const now = new Date();
+    const requestedDateTime = new Date(bookingDate);
+    const minutesDiff = (requestedDateTime - now) / (1000 * 60);
+    if (minutesDiff < 30) {
+      return { statusCode: 400, message: 'Lịch đặt phải cách thời điểm hiện tại ít nhất 30 phút.' };
+    }
+
+    // Check no-show
+    const NoShow = require('../models/no-show.model');
+    const noShowCount = await NoShow.countDocuments({ customerId: userId });
+    if (noShowCount >= 3) {
+      return {
+        statusCode: 403,
+        message: 'Tài khoản của bạn bị chặn đặt lịch do có nhiều lần không đến. Vui lòng liên hệ hỗ trợ.'
+      };
+    }
+
+    // Check nghỉ
+    const BarberAbsence = require('../models/barber-absence.model');
+    const isAbsent = await BarberAbsence.isBarberAbsent(barberId, requestedDateTime);
+    if (isAbsent) {
+      return { statusCode: 400, message: 'Thợ được chọn không làm việc vào ngày này.' };
+    }
+
+    // Check trùng lịch
+    const Booking = require('../models/booking.model');
+    const dateStr = requestedDateTime.toISOString().split('T')[0];
+    const existingBookings = await Booking.find({
+      barberId,
+      bookingDate: {
+        $gte: new Date(`${dateStr}T00:00:00.000Z`),
+        $lt: new Date(`${dateStr}T23:59:59.999Z`)
+      },
+      status: { $in: ['pending', 'confirmed'] }
+    });
+
+    const newStart = new Date(bookingDate);
+    const newEnd = new Date(newStart.getTime() + durationMinutes * 60000);
+    const hasConflict = existingBookings.some(b => {
+      const start = new Date(b.bookingDate);
+      const end = new Date(start.getTime() + b.durationMinutes * 60000);
+      return newStart < end && newEnd > start;
+    });
+
+    if (hasConflict) {
+      return {
+        statusCode: 409,
+        message: 'Khung giờ bạn chọn đã bị trùng với lịch đặt trước đó.'
+      };
+    }
+
+    // Check giới hạn booking mỗi ngày
+    const Barber = require('../models/barber.model');
+    const barber = await Barber.findById(barberId);
+    if (!barber) {
+      return { statusCode: 404, message: 'Không tìm thấy thợ.' };
+    }
+
+    if (existingBookings.length >= barber.maxDailyBookings) {
+      return {
+        statusCode: 400,
+        message: 'Thợ đã đạt giới hạn số lượng đặt lịch trong ngày.'
+      };
+    }
+
+    // Tạo booking
+    const booking = new Booking({
+      customerId: userId,
+      barberId,
+      serviceId,
+      bookingDate: new Date(bookingDate),
+      durationMinutes,
+      note,
+      notificationMethods,
+      autoAssignedBarber,
+      customerName,
+      customerEmail,
+      customerPhone
+    });
+
+    await booking.save();
+
+    // Cập nhật totalBookings
+    await Barber.findByIdAndUpdate(barberId, { $inc: { totalBookings: 1 } });
+
+    return {
+      statusCode: 201,
+      booking
+    };
+
+  } catch (err) {
+    console.error('Lỗi trong createBookingFromBot:', err.message);
+    return { statusCode: 500, message: 'Đã xảy ra lỗi nội bộ khi tạo booking.' };
+  }
+};

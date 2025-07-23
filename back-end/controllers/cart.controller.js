@@ -1,5 +1,6 @@
 const Cart = require('../models/cart.model');
 const mongoose = require('mongoose');
+const Discount = require('../models/discounts.model');
 
 /** Lấy (hoặc khởi tạo) giỏ hàng của user */
 exports.getCart = async (req, res) => {
@@ -9,6 +10,8 @@ exports.getCart = async (req, res) => {
   if (!cart) {
     cart = await Cart.create({ userId, items: [] });
   }
+  // Join discount cho từng productId
+  await attachDiscountToCartItems(cart.items);
   return res.json({ message: 'Success', data: cart });
 };
 
@@ -35,6 +38,7 @@ exports.addItem = async (req, res) => {
   }
 
   const updated = await Cart.findOne({ userId }).populate('items.productId');
+  await attachDiscountToCartItems(updated.items);
   return res.json({ message: 'Added/Updated', data: updated });
 };
 
@@ -52,6 +56,7 @@ exports.updateItem = async (req, res) => {
   );
 
   const cart = await Cart.findOne({ userId }).populate('items.productId');
+  await attachDiscountToCartItems(cart.items);
   return res.json({ message: 'Quantity updated', data: cart });
 };
 
@@ -66,6 +71,7 @@ exports.removeItem = async (req, res) => {
   );
 
   const cart = await Cart.findOne({ userId }).populate('items.productId');
+  await attachDiscountToCartItems(cart.items);
   return res.json({ message: 'Item removed', data: cart });
 };
 
@@ -75,3 +81,24 @@ exports.clearCart = async (req, res) => {
   await Cart.deleteMany({ userId });
   return res.json({ message: 'Cart cleared' });
 };
+
+// Hàm phụ trợ: join discount cho từng productId trong cart
+async function attachDiscountToCartItems(items) {
+  const now = new Date();
+  const productIds = items.map(i => i.productId && i.productId._id ? i.productId._id : i.productId).filter(Boolean);
+  if (productIds.length === 0) return;
+  const discounts = await Discount.find({
+    productId: { $in: productIds },
+    isActive: true,
+    discountEndDate: { $gt: now }
+  });
+  const discountMap = {};
+  discounts.forEach(d => {
+    discountMap[d.productId.toString()] = d.discount;
+  });
+  for (const item of items) {
+    if (item.productId && typeof item.productId === 'object') {
+      item.productId.discount = discountMap[item.productId._id?.toString()] || 0;
+    }
+  }
+}

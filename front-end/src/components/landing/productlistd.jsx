@@ -76,8 +76,26 @@ export default function ShopItems() {
           <>
             <div className="shop-grid-full">
               {paginatedProducts.map((product) => (
-                <div key={product.id} className="shop-item">
-                  <div className="item-image-wrapper">
+                <div key={product.id || product._id} className="shop-item">
+                  <div className="item-image-wrapper" style={{ position: 'relative' }}>
+                    {Number(product.discount) > 0 && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: 8,
+                          right: 8,
+                          background: '#ff4d4f',
+                          color: '#fff',
+                          padding: '2px 8px',
+                          borderRadius: 4,
+                          fontWeight: 'bold',
+                          fontSize: 12,
+                          zIndex: 2
+                        }}
+                      >
+                        -{product.discount}%
+                      </div>
+                    )}
                     <img
                       src={getImage(product.image)}
                       alt={product.name}
@@ -90,7 +108,20 @@ export default function ShopItems() {
                   </div>
                   <div className="item-details">
                     <h3 className="item-name">{product.name}</h3>
-                    <p className="item-price">{product.price}</p>
+                    <div className="item-price">
+                      {Number(product.discount) > 0 ? (
+                        <>
+                          <span style={{ textDecoration: 'line-through', color: '#888', marginRight: 8 }}>
+                            {product.price.toLocaleString("vi-VN")} VND
+                          </span>
+                          <span style={{ color: '#ff4d4f', fontWeight: 'bold' }}>
+                            {(product.price * (1 - Number(product.discount) / 100)).toLocaleString("vi-VN")} VND
+                          </span>
+                        </>
+                      ) : (
+                        <span>{product.price.toLocaleString("vi-VN")} VND</span>
+                      )}
+                    </div>
                     <div className="item-buttons">
                       <button className="purchase-button">Mua hàng</button>
                       <button

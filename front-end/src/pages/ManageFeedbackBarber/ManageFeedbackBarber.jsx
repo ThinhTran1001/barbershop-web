@@ -10,8 +10,8 @@ import FeedbackBarberModal from '../../components/FeedbackBarberModal';
 import {
   getBarberFeedbacks,
   getBarberFeedbackById,
-  updateBarberFeedbackApproval,
-  deleteBarberFeedback
+  deleteBarberFeedback,
+  updateBarberFeedbackStatus
 } from '../../services/api';
 
 const ManageFeedbackBarber = () => {
@@ -29,8 +29,7 @@ const ManageFeedbackBarber = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
 
-  const [showApproveModal, setShowApproveModal] = useState(false);
-  const [itemToToggle, setItemToToggle] = useState(null);
+
 
   const [toast, setToast] = useState({ show: false, message: '', variant: 'success' });
 
@@ -41,11 +40,80 @@ const ManageFeedbackBarber = () => {
     }, 3000);
   };
 
-  const stats = {
-    total: feedbacks.length,
-    approved: feedbacks.filter(fb => fb.isApproved).length,
-    pending: feedbacks.filter(fb => !fb.isApproved).length
+  // Tính toán filteredFeedbacks giống như bảng
+  const filteredFeedbacks = React.useMemo(() => {
+    let data = Array.isArray(feedbacks) ? feedbacks : [];
+    if (statusFilter === 'Approved') data = data.filter(fb => fb.status === 'Approved');
+    else if (statusFilter === 'Unapproved') data = data.filter(fb => fb.status === 'Unapproved');
+    else if (statusFilter === 'Deleted') data = data.filter(fb => fb.isDeleted || String(fb.status) === 'Deleted');
+    // Không loại bỏ feedback đã xóa ở filter All
+    if (ratingFilter !== 'All') {
+      data = data.filter(fb => {
+        const rating = fb.rating || fb.stars || fb.score;
+        return rating && parseInt(rating) === parseInt(ratingFilter);
+      });
+    }
+    if (barberFilter !== 'All') {
+      data = data.filter(fb => fb.barberId?._id === barberFilter);
+    }
+    if (bookingFilter !== 'All') {
+      data = data.filter(fb => (fb.bookingId?._id || fb.bookingId) === bookingFilter);
+    }
+    if (searchKeyword?.trim()) {
+      const keyword = searchKeyword.trim().toLowerCase();
+      data = data.filter(fb =>
+        (fb.comment && fb.comment.toLowerCase().includes(keyword)) ||
+        (fb.customerId?.name && fb.customerId.name.toLowerCase().includes(keyword))
+      );
+    }
+    if (dateRange && dateRange[0] && dateRange[1]) {
+      const start = dateRange[0].startOf('day');
+      const end = dateRange[1].endOf('day');
+      data = data.filter(fb => {
+        const created = fb.createdAt ? new Date(fb.createdAt) : null;
+        return created && created >= start.toDate() && created <= end.toDate();
+      });
+    }
+    return data;
+  }, [feedbacks, statusFilter, ratingFilter, barberFilter, bookingFilter, searchKeyword, dateRange]);
+
+  // Hàm kiểm tra có đang filter không
+  const isDefaultFilter =
+    statusFilter === 'All' &&
+    ratingFilter === 'All' &&
+    barberFilter === 'All' &&
+    bookingFilter === 'All' &&
+    (!searchKeyword || searchKeyword.trim() === '') &&
+    (!dateRange || !dateRange[0] || !dateRange[1]);
+
+  // State lưu toàn bộ feedbacks để tính stats tổng quát
+  const [allFeedbacks, setAllFeedbacks] = useState([]);
+
+  // Fetch toàn bộ feedbacks khi load lần đầu hoặc khi cần thống kê tổng quát
+  const fetchAllFeedbacks = async () => {
+    try {
+      const response = await getBarberFeedbacks({});
+      const rawData = response.data;
+      let data = Array.isArray(rawData?.data) ? rawData.data : Array.isArray(rawData) ? rawData : [];
+      setAllFeedbacks(data);
+    } catch (error) {
+      setAllFeedbacks([]);
+    }
   };
+
+  useEffect(() => {
+    fetchAllFeedbacks();
+  }, []);
+
+  // Stats đồng bộ enum
+  const stats = React.useMemo(() => {
+    return {
+      total: filteredFeedbacks.length,
+      approved: filteredFeedbacks.filter(fb => String(fb.status) === 'Approved').length,
+      unapproved: filteredFeedbacks.filter(fb => String(fb.status) === 'Unapproved').length,
+      deleted: filteredFeedbacks.filter(fb => fb.isDeleted || String(fb.status) === 'Deleted').length
+    };
+  }, [filteredFeedbacks]);
 
   const fetchFeedbacks = async (params = {}) => {
     setLoading(true);
@@ -53,10 +121,9 @@ const ManageFeedbackBarber = () => {
       const page = params.page || pagination.current;
       const limit = params.limit || pagination.pageSize;
 
-      const queryParams = {
+      let queryParams = {
         page,
         limit,
-        ...(statusFilter !== 'All' && { status: statusFilter.toLowerCase() }),
         ...(ratingFilter !== 'All' && { rating: parseInt(ratingFilter) }),
         ...(barberFilter !== 'All' && { barberId: barberFilter }),
         ...(bookingFilter !== 'All' && { bookingId: bookingFilter }),
@@ -66,6 +133,14 @@ const ManageFeedbackBarber = () => {
           endDate: dateRange[1]?.format('YYYY-MM-DD')
         })
       };
+
+      if (statusFilter === 'Approved') {
+        queryParams.status = 'Approved';
+      } else if (statusFilter === 'Unapproved') {
+        queryParams.status = 'Unapproved';
+      } else if (statusFilter === 'Deleted') {
+        queryParams.status = 'Deleted';
+      }
 
       const response = await getBarberFeedbacks(queryParams);
       const rawData = response.data;
@@ -94,40 +169,45 @@ const ManageFeedbackBarber = () => {
   };
 
   useEffect(() => {
-    fetchFeedbacks();
-  }, []);
-
-  useEffect(() => {
     fetchFeedbacks({ page: 1, limit: pagination.pageSize });
   }, [statusFilter, ratingFilter, barberFilter, bookingFilter, searchKeyword, dateRange]);
 
-  const handleToggleApproval = (record) => {
-    if (!record?._id) {
-      showToast('Invalid feedback data', 'danger');
-      return;
-    }
-    setItemToToggle(record);
-    setShowApproveModal(true);
-  };
+  // Lấy danh sách barber duy nhất từ feedbacks
+  const uniqueBarbers = React.useMemo(() => {
+    const map = new Map();
+    feedbacks.forEach(fb => {
+      if (fb.barberId && fb.barberId.userId && fb.barberId.userId.name) {
+        map.set(fb.barberId._id, {
+          _id: fb.barberId._id,
+          name: fb.barberId.userId.name
+        });
+      }
+    });
+    return Array.from(map.values());
+  }, [feedbacks]);
 
-  const confirmToggleApproval = async () => {
-    if (!itemToToggle?._id) return;
+  // Lấy danh sách booking duy nhất từ feedbacks
+  const uniqueBookings = React.useMemo(() => {
+    const map = new Map();
+    feedbacks.forEach(fb => {
+      const booking = fb.bookingId;
+      if (booking) {
+        let label = '';
+        if (booking.bookingDate) label = new Date(booking.bookingDate).toLocaleString();
+        else if (booking.name) label = booking.name;
+        else if (booking.title) label = booking.title;
+        else if (booking._id) label = booking._id.slice(0, 8) + '...';
+        else if (typeof booking === 'string') label = booking.slice(0, 8) + '...';
+        else label = 'Unknown Booking';
+        map.set(booking._id || booking, {
+          _id: booking._id || booking,
+          label
+        });
+      }
+    });
+    return Array.from(map.values());
+  }, [feedbacks]);
 
-    const newStatus = !itemToToggle.isApproved;
-    const action = newStatus ? 'approved' : 'unapproved';
-
-    try {
-      await updateBarberFeedbackApproval(itemToToggle._id, newStatus);
-      showToast(`Feedback ${action} successfully`, 'success');
-      fetchFeedbacks({ page: pagination.current, limit: pagination.pageSize });
-    } catch (error) {
-      console.error(`Error ${action} feedback:`, error);
-      showToast(`Failed to ${action} feedback`, 'danger');
-    } finally {
-      setItemToToggle(null);
-      setShowApproveModal(false);
-    }
-  };
 
   const handleDelete = (record) => {
     if (!record?._id) {
@@ -170,6 +250,40 @@ const ManageFeedbackBarber = () => {
     }
   };
 
+  // Hàm cập nhật trạng thái feedback barber
+  const handleSetStatus = async (record, status) => {
+    try {
+      await updateBarberFeedbackStatus(record._id, status);
+      setToast({ show: true, message: 'Feedback status updated!', variant: 'success' });
+      await fetchFeedbacks();
+      await fetchAllFeedbacks(); // Đảm bảo thống kê luôn cập nhật
+      if (selectedFeedback && selectedFeedback._id === record._id) {
+        try {
+          const response = await getBarberFeedbackById(record._id);
+          const detail = response.data?.data || response.data;
+          setSelectedFeedback(detail);
+        } catch {
+          setSelectedFeedback(null);
+        }
+      }
+    } catch (err) {
+      setToast({ show: true, message: 'Error updating feedback status!', variant: 'danger' });
+    }
+  };
+
+  const toggleApproval = async (record) => {
+    try {
+      await updateBarberFeedbackStatus(record._id, !record.isApproved);
+      showToast('Cập nhật trạng thái thành công!');
+      fetchFeedbacks();
+      if (selectedFeedback && selectedFeedback._id === record._id) {
+        setSelectedFeedback({ ...selectedFeedback, isApproved: !record.isApproved });
+      }
+    } catch (err) {
+      showToast('Có lỗi khi cập nhật trạng thái!');
+    }
+  };
+
   const handleTableChange = (paginationConfig) => {
     const { current, pageSize } = paginationConfig;
     setPagination(prev => ({ ...prev, current, pageSize }));
@@ -177,7 +291,7 @@ const ManageFeedbackBarber = () => {
   };
 
   return (
-    <div style={{ padding: 24, maxWidth: 1400, margin: '0 auto' }}>
+    <div style={{ padding: 24, width: '100%' }}>
       <FeedbackBarberStats stats={stats} />
 
       <FeedbackBarberFilters
@@ -193,21 +307,20 @@ const ManageFeedbackBarber = () => {
         setSearchKeyword={setSearchKeyword}
         dateRange={dateRange}
         setDateRange={setDateRange}
-        barbersList={[]}
-        bookingsList={[]}
+        barbers={uniqueBarbers}
+        bookings={uniqueBookings}
       />
 
-      <Card>
-        <FeedbackBarberTable
-          feedbacks={feedbacks}
-          loading={loading}
-          pagination={pagination}
-          handleTableChange={handleTableChange}
-          handleViewDetail={handleViewDetail}
-          toggleApproval={handleToggleApproval}
-          handleDelete={handleDelete}
-        />
-      </Card>
+      <div style={{ background: '#fff', borderRadius: 12, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+        <Card style={{ background: 'transparent', boxShadow: 'none', margin: 0 }}>
+          <FeedbackBarberTable
+            filteredFeedbacks={filteredFeedbacks}
+            loading={loading}
+            handleViewFeedback={handleViewDetail}
+            handleSetStatus={handleSetStatus}
+          />
+        </Card>
+      </div>
 
       <FeedbackBarberModal
         open={!!selectedFeedback}
@@ -231,23 +344,7 @@ const ManageFeedbackBarber = () => {
         </Modal.Footer>
       </Modal>
 
-      <Modal show={showApproveModal} onHide={() => setShowApproveModal(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>
-            <ExclamationTriangle className="text-warning me-2" />
-            {itemToToggle?.isApproved ? 'Unapprove' : 'Approve'} Feedback
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          Are you sure you want to {itemToToggle?.isApproved ? 'unapprove' : 'approve'} this feedback?
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowApproveModal(false)}>Cancel</Button>
-          <Button variant="primary" onClick={confirmToggleApproval}>
-            Yes, {itemToToggle?.isApproved ? 'Unapprove' : 'Approve'}
-          </Button>
-        </Modal.Footer>
-      </Modal>
+
 
       <ToastContainer position="top-end" className="p-3">
         <Toast show={toast.show} bg={toast.variant} onClose={() => setToast({ ...toast, show: false })} delay={3000} autohide>

@@ -1,11 +1,11 @@
 import React from 'react';
 import { Row, Col, Card, Statistic } from 'antd';
-import { StarOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { StarOutlined, CheckOutlined, CloseOutlined, DeleteOutlined } from '@ant-design/icons';
 
 const FeedbackProductStats = ({ stats }) => {
   return (
     <Row gutter={16} className="feedback-stats-row">
-      <Col xs={24} sm={12} lg={8}>
+      <Col xs={24} sm={12} lg={6}>
         <Card>
           <Statistic
             title="Total Feedback"
@@ -15,23 +15,33 @@ const FeedbackProductStats = ({ stats }) => {
           />
         </Card>
       </Col>
-      <Col xs={24} sm={12} lg={8}>
+      <Col xs={24} sm={12} lg={6}>
         <Card>
           <Statistic
-            title="Approved"
-            value={stats.approved}
+            title="Active"
+            value={stats.active}
             prefix={<CheckOutlined />}
             valueStyle={{ color: '#52c41a' }}
           />
         </Card>
       </Col>
-      <Col xs={24} sm={12} lg={8}>
+      <Col xs={24} sm={12} lg={6}>
         <Card>
           <Statistic
-            title="Pending"
-            value={stats.pending}
+            title="Inactive"
+            value={stats.inactive}
             prefix={<CloseOutlined />}
             valueStyle={{ color: '#faad14' }}
+          />
+        </Card>
+      </Col>
+      <Col xs={24} sm={12} lg={6}>
+        <Card>
+          <Statistic
+            title="Deleted"
+            value={stats.deleted}
+            prefix={<DeleteOutlined />}
+            valueStyle={{ color: '#ff4d4f' }}
           />
         </Card>
       </Col>

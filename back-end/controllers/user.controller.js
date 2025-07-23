@@ -1,5 +1,6 @@
 const User = require('../models/user.model')
 const cloudinary = require('../config/cloudinary');
+ const Barber = require('../models/barber.model');
 const bcrypt = require('bcrypt');
 
 
@@ -82,12 +83,24 @@ exports.deleteUser = async (req, res) => {
 exports.getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('-passwordHash');
-    console.log(req);
-
     if (!user) {
       return res.status(404).json({
         success: false,
         message: 'User not found'
+      });
+    }
+    if (user.role === 'barber') {
+     
+      const barber = await Barber.findOne({ userId: user._id }).populate('userId', 'name email phone avatarUrl');
+      if (!barber) {
+        return res.status(404).json({
+          success: false,
+          message: 'Barber profile not found'
+        });
+      }
+      return res.status(200).json({
+        success: true,
+        data: barber
       });
     }
     res.status(200).json({

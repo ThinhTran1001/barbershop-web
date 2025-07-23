@@ -80,8 +80,8 @@ const ServiceListPage = () => {
 
         // setAllServices(servicesData.services || servicesData);
         // setDisplayedServices(servicesData.services || servicesData);
-        setAllServices(Array.isArray(servicesData.services) ? servicesData.services : []);
-        setDisplayedServices(Array.isArray(servicesData.services) ? servicesData.services : []);
+        setAllServices(Array.isArray(servicesData.services) ? servicesData.services : Array.isArray(servicesData) ? servicesData : []);
+        setDisplayedServices(Array.isArray(servicesData.services) ? servicesData.services : Array.isArray(servicesData) ? servicesData : []);
         setFilterOptions({
           categories: categoriesData,
           hairTypes: hairTypesData,

@@ -1,26 +1,46 @@
 import React from 'react';
-import { Row, Col, Typography } from 'antd';
+import { Typography, Button } from 'antd';
+import { UserOutlined, CalendarOutlined } from '@ant-design/icons';
 
 const { Title, Text, Paragraph } = Typography;
 
-const BlogCard = ({ image, title, shortDesc, date, category }) => {
+const BlogCard = ({ image, title, shortDesc, date, category, author }) => {
   return (
-    <Row gutter={16} style={{ marginBottom: 24 }}>
-      <Col xs={24} md={8}>
+    <div
+      style={{
+        background: '#fff',
+        borderRadius: 10,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+        overflow: 'hidden',
+        marginBottom: 32,
+        border: '1px solid #f0f0f0',
+        transition: 'box-shadow 0.2s',
+        cursor: 'pointer',
+        minHeight: 340,
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      {image && (
         <img
           src={image}
           alt={title}
-          style={{ width: '100%', height: 'auto', objectFit: 'cover', borderRadius: 4 }}
+          style={{ width: '100%', height: 220, objectFit: 'cover', display: 'block', borderTopLeftRadius: 10, borderTopRightRadius: 10 }}
         />
-      </Col>
-      <Col xs={24} md={16}>
-        <Title level={4} style={{ marginBottom: 8 }}>{title}</Title>
-        <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
-          {date} — {category}
-        </Text>
-        <Paragraph ellipsis={{ rows: 3 }}>{shortDesc}</Paragraph>
-      </Col>
-    </Row>
+      )}
+      <div style={{ padding: 24, flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <Title level={4} style={{ marginBottom: 10, color: '#b08d57', fontWeight: 700, fontSize: 22, lineHeight: 1.2 }}>{title}</Title>
+        <div style={{ fontSize: 13, color: '#888', marginBottom: 10, display: 'flex', gap: 12, alignItems: 'center' }}>
+          <span><CalendarOutlined /> {date}</span>
+          {author && <span><UserOutlined /> {author.name || 'admin'}</span>}
+          {Array.isArray(category) ? category.map((cat, idx) => <span key={cat}>{cat}{idx < category.length - 1 ? ', ' : ''}</span>) : (category && <span>{category}</span>)}
+        </div>
+        <Paragraph ellipsis={{ rows: 3 }} style={{ marginBottom: 18, color: '#444', flex: 1 }}>{shortDesc}</Paragraph>
+        <Button size="small" style={{ background: '#b08d57', color: '#fff', border: 'none', fontWeight: 600, letterSpacing: 1, borderRadius: 4, width: 80 }}>
+          + MORE
+        </Button>
+      </div>
+    </div>
   );
 };
 

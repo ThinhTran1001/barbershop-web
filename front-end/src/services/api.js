@@ -41,10 +41,10 @@ export const deleteBarber = (id) => api.delete(`/barbers/${id}`);
 
 // Voucher
 export const getAllVoucher = (params) => api.get('/vouchers', { params });
-export const createVoucher = (data) => api.post('/vouchers', data); 
+export const createVoucher = (data) => api.post('/vouchers', data);
 export const getVoucherById = (id) => api.get(`/vouchers/${id}`);
 export const getVoucherByUser = () => api.get('/vouchers/user');
-export const updateVoucher = (id, data) => api.put(`/vouchers/${id}`, data); 
+export const updateVoucher = (id, data) => api.put(`/vouchers/${id}`, data);
 export const deleteVoucher = (id) => api.delete(`/vouchers/${id}`);
 
 // User Voucher
@@ -114,16 +114,17 @@ export const uploadImage = (file) => {
 export const getFeedbacksByProduct = (productId) => api.get(`/product-reviews/product/${productId}`);
 export const getAllFeedbacks = (params) => api.get('/product-reviews', { params });
 export const createFeedback = (data) => api.post('/product-reviews', data);
-export const approveFeedback = (id) => api.patch(`/product-reviews/${id}/approve`);
-export const unapprovalFeedback = (id) => api.patch(`/product-reviews/${id}/unapprove`);
 export const deleteFeedback = (id) => api.delete(`/product-reviews/${id}`);
+export const updateFeedbackStatus = (id, status) => api.patch(`/product-reviews/${id}/status`, { status });
+
 
 // Feedback Barber
 export const getBarberFeedbacks = (params) => api.get('/feedback-barber', { params });
 export const getBarberFeedbackById = (id) => api.get(`/feedback-barber/${id}`);
 export const createBarberFeedback = (data) => api.post('/feedback-barber', data);
-export const updateBarberFeedbackApproval = (id, isApproved) => api.patch(`/feedback-barber/${id}/approve`, { isApproved });
+
 export const deleteBarberFeedback = (id) => api.delete(`/feedback-barber/${id}`);
+export const updateBarberFeedbackStatus = (id, status) => api.patch(`/feedback-barber/${id}/status`, { status });
 
 // Discount
 export const getDiscounts = (params) => api.get('/discounts', { params });
@@ -133,8 +134,8 @@ export const updateDiscount = (id, data) => api.put(`/discounts/${id}`, data);
 export const deleteDiscount = (id) => api.delete(`/discounts/${id}`);
 export const getProductDiscounts = (productId) => api.get(`/discounts/product/${productId}`);
 export const toggleDiscountStatus = (id) => api.patch(`/discounts/${id}/toggle-status`);
-export const getDiscountStats = () => api.get('/discounts/stats');
-export const cleanupExpiredDiscounts = () => api.post('/discounts/cleanup-expired');
+
+
 
 // Booking
 export const getAllBookings = (params) => api.get('/bookings/all', { params });
@@ -154,5 +155,8 @@ export const getFeedbackBookingByBookingId = (bookingId) => api.get(`/feedback-b
 // Blog
 export const getAllBlogs = (params) => api.get('/news', { params });
 export const getBlogById = (id) => api.get(`/news/${id}`);
+export const createBlog = (data) => api.post('/news', data);
+export const updateBlog = (id, data) => api.put(`/news/${id}`, data);
+export const deleteBlog = (id) => api.delete(`/news/${id}`);
 
 export default api;

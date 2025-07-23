@@ -134,7 +134,16 @@ exports.login = async (req, res) => {
         const validPassword = await bcrypt.compare(password, user.passwordHash);
         if (!validPassword) return res.status(401).json({ message: 'Password Incorrect' });
 
+        let barberId = undefined;
+        if (user.role === 'barber') {
+            const Barber = require('../models/barber.model');
+            const barber = await Barber.findOne({ userId: user._id });
+            if (barber) barberId = barber._id;
+        }
+
         const payload = { id: user._id, email: user.email, role: user.role, name: user.name, phone: user.phone };
+        if (barberId) payload.barberId = barberId;
+
         const accessToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '15m' });
         const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, { expiresIn: '1d' });
 
@@ -341,7 +350,16 @@ exports.googleOauthHandler = async (req, res) => {
             }
         }
 
+        let barberId = undefined;
+        if (user.role === 'barber') {
+            const Barber = require('../models/barber.model');
+            const barber = await Barber.findOne({ userId: user._id });
+            if (barber) barberId = barber._id;
+        }
+
         const payload = { id: user._id, email: user.email, role: user.role, name: user.name, phone: user.phone };
+        if (barberId) payload.barberId = barberId;
+
         const accessToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '15m' });
         const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, { expiresIn: '1d' });
 

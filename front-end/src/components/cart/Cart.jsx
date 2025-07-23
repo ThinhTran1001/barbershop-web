@@ -17,7 +17,7 @@ const Cart = () => {
 
   const calculateDiscountPrice = (price, discount) => {
     const priceNumber = parseFloat(price.toString().replace(/[^\d]/g, ""));
-    const result = priceNumber - (priceNumber * discount) / 100;
+    const result = priceNumber * (1 - Number(discount) / 100);
     return formatPrice(result);
   };
 
@@ -116,7 +116,7 @@ const Cart = () => {
               <div className="item-info">
                 <h3 className="item-name">{item.name}</h3>
                 <div className="item-price">
-                  {item.discount > 0 ? (
+                  {Number(item.discount) > 0 ? (
                     <>
                       <span className="original-price">{formatPrice(item.price)}</span>
                       <span className="discounted-price">
@@ -142,7 +142,7 @@ const Cart = () => {
               <div className="item-total">
                 <span className="total-label">Tổng:</span>
                 <span className="total-price">
-                  {item.discount > 0 
+                  {Number(item.discount) > 0
                     ? calculateDiscountPrice(item.price * item.quantity, item.discount)
                     : formatPrice(item.price * item.quantity)
                   }

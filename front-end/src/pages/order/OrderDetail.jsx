@@ -135,10 +135,26 @@ const OrderDetail = () => {
 
   const handleStartFeedback = async () => {
     try {
-      await createFeedbackOrder({ orderId: id, userId: order.userId });
-      navigate(`/feedback/${id}`);
+      const existing = await getFeedbackOrderByOrderId(id);
+      if (existing?.data) {
+        navigate(`/feedback-order/${id}`);
+        return;
+      }
     } catch (err) {
-      message.error('Không thể bắt đầu đánh giá.');
+      if (err.response?.status === 404) {
+        try {
+          await createFeedbackOrder({ orderId: id, userId: order.userId });
+          navigate(`/feedback-order/${id}`);
+          return;
+        } catch (createError) {
+          console.error('Lỗi tạo mới feedback:', createError);
+          message.error('Không thể tạo feedback mới.');
+          return;
+        }
+      } else {
+        console.error('Lỗi kiểm tra feedback:', err);
+        message.error('Không thể kiểm tra trạng thái feedback.');
+      }
     }
   };
 

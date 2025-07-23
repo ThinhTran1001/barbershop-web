@@ -22,8 +22,12 @@ const serviceSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Index for efficient filtering
-serviceSchema.index({ hairTypes: 1, styleCompatibility: 1, category: 1 });
+// Tạo index cho các trường mảng riêng biệt
+serviceSchema.index({ hairTypes: 1 });
+serviceSchema.index({ styleCompatibility: 1 });
+
+// Tạo index cho các thuộc tính khác
+serviceSchema.index({ category: 1 });
 serviceSchema.index({ isActive: 1, popularity: -1 });
 
 module.exports = mongoose.model("Service", serviceSchema);

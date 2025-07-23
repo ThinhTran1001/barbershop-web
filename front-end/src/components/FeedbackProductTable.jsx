@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
-import { Table, Space, Tag, Image, Tooltip, Button, Spin, Empty, Typography, Badge, Rate } from 'antd';
+import { Table, Space, Tag, Image, Tooltip, Button, Spin, Empty, Typography, Badge, Rate, message } from 'antd';
 import {
   UserOutlined, ShoppingOutlined, EyeOutlined, DeleteOutlined,
-  CheckOutlined, CloseOutlined
+  CheckOutlined, CloseOutlined, UndoOutlined
 } from '@ant-design/icons';
 import PropTypes from 'prop-types';
+import { updateFeedbackStatus } from '../services/api';
+import { Modal, Button as BsButton, Toast, ToastContainer } from 'react-bootstrap';
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 const { Text } = Typography;
 
@@ -12,8 +15,6 @@ const FeedbackProductTable = ({
   filteredFeedbacks,
   loading,
   handleViewFeedback,
-  approveFeedback,
-  unapprovalFeedback,
   deleteFeedback
 }) => {
   const [showModal, setShowModal] = useState(false);
@@ -49,19 +50,46 @@ const FeedbackProductTable = ({
       let toastMessage = '';
       let toastType = 'success';
 
-      if (modalConfig.title.includes('Approve')) {
-        toastMessage = 'Feedback approved successfully. Product rating updated.';
-      } else if (modalConfig.title.includes('Unapprove')) {
-        toastMessage = 'Feedback unapproved successfully!';
-        toastType = 'warning';
-      } else if (modalConfig.title.includes('Delete')) {
+      if (modalConfig.title.includes('Delete')) {
         toastMessage = 'Feedback deleted successfully!';
         toastType = 'danger';
+      } else {
+        toastMessage = 'Feedback status updated!';
+        toastType = 'success';
       }
 
       showToast(toastMessage, toastType);
     }
     setShowModal(false);
+  };
+
+  // Helper để render status tag
+  const renderStatusTag = (status) => {
+    if (status === 'active') return <Tag color="success" icon={<CheckOutlined />}>Active</Tag>;
+    if (status === 'inactive') return <Tag color="warning" icon={<CloseOutlined />}>Inactive</Tag>;
+    if (status === 'deleted') return <Tag color="error">Deleted</Tag>;
+    return null;
+  };
+
+  const handleSetStatus = async (record, status) => {
+    let statusText = status.charAt(0).toUpperCase() + status.slice(1);
+    showConfirmModal(
+      `Are you sure you want to change feedback status to "${statusText}"?`,
+      `This action will change the status of the feedback.`,
+      async () => {
+        try {
+          await updateFeedbackStatus(record._id, status);
+          if (typeof record.onStatusChange === 'function') {
+            record.onStatusChange();
+          } else {
+            window.location.reload();
+          }
+        } catch (error) {
+          showToast('An error occurred while updating status!', 'danger');
+        }
+      },
+      status === 'deleted' ? 'danger' : 'primary'
+    );
   };
 
   const columns = [
@@ -72,7 +100,7 @@ const FeedbackProductTable = ({
       render: (text) => (
         <Space>
           <UserOutlined />
-          <Text>{text || 'Anonymous'}</Text>
+          <div style={{ whiteSpace: 'normal', wordBreak: 'break-word', maxWidth: 150 }}>{text || 'Anonymous'}</div>
         </Space>
       ),
       width: 180,
@@ -85,9 +113,7 @@ const FeedbackProductTable = ({
         <Space>
           <ShoppingOutlined />
           <Tooltip title={text || 'Unknown Product'}>
-            <Text ellipsis className="feedback-table-product-name">
-              {text || 'Unknown Product'}
-            </Text>
+            <div style={{ whiteSpace: 'normal', wordBreak: 'break-word', maxWidth: 180 }}>{text || 'Unknown Product'}</div>
           </Tooltip>
         </Space>
       ),
@@ -100,7 +126,6 @@ const FeedbackProductTable = ({
       render: (rating) => (
         <Space>
           <Rate disabled allowHalf value={rating || 0} />
-          <Text strong>{(rating ?? 'N/A') !== 'N/A' ? rating.toFixed(1) : 'N/A'}</Text>
         </Space>
       ),
       sorter: (a, b) => (a.rating || 0) - (b.rating || 0),
@@ -112,7 +137,7 @@ const FeedbackProductTable = ({
       key: 'comment',
       render: (text) => (
         <Tooltip title={text}>
-          <Text ellipsis className="feedback-table-comment">{text || 'No comment'}</Text>
+          <div style={{ whiteSpace: 'normal', wordBreak: 'break-word', maxWidth: 220 }}>{text || 'No comment'}</div>
         </Tooltip>
       ),
       width: 250,
@@ -171,19 +196,15 @@ const FeedbackProductTable = ({
     },
     {
       title: 'Status',
-      dataIndex: 'isApproved',
-      key: 'isApproved',
-      render: (approved) =>
-        approved ? (
-          <Tag color="success" icon={<CheckOutlined />}>Approved</Tag>
-        ) : (
-          <Tag color="warning" icon={<CloseOutlined />}>Pending</Tag>
-        ),
+      dataIndex: 'status',
+      key: 'status',
+      render: (status) => renderStatusTag(status),
       filters: [
-        { text: 'Approved', value: true },
-        { text: 'Pending', value: false }
+        { text: 'Active', value: 'active' },
+        { text: 'Inactive', value: 'inactive' },
+        { text: 'Deleted', value: 'deleted' }
       ],
-      onFilter: (value, record) => record.isApproved === value,
+      onFilter: (value, record) => record.status === value,
       width: 130,
     },
     {
@@ -208,56 +229,38 @@ const FeedbackProductTable = ({
               size="small"
             />
           </Tooltip>
-
-          {record.isApproved ? (
-            <Tooltip title="Unapprove">
+          {(['active', 'deleted'].includes(record.status)) && (
+            <Tooltip title="Inactive">
               <Button
                 type="text"
-                icon={<CloseOutlined />}
-                onClick={() => showConfirmModal(
-                  'Unapprove Feedback',
-                  'Are you sure you want to unapprove this feedback?',
-                  () => unapprovalFeedback?.(record._id),
-                  'warning'
-                )}
+                icon={<CloseOutlined style={{ color: 'orange' }} />}
+                onClick={() => handleSetStatus(record, 'inactive')}
                 size="small"
-                className="feedback-table-unapprove-btn"
-              />
-            </Tooltip>
-          ) : (
-            <Tooltip title="Approve">
-              <Button
-                type="text"
-                icon={<CheckOutlined />}
-                onClick={() => showConfirmModal(
-                  'Approve Feedback',
-                  'Are you sure you want to approve this feedback?',
-                  () => approveFeedback?.(record._id),
-                  'success'
-                )}
-                size="small"
-                className="feedback-table-approve-btn"
               />
             </Tooltip>
           )}
-
+          {record.status === 'inactive' && (
+            <Tooltip title="Active">
+              <Button
+                type="text"
+                icon={<CheckOutlined style={{ color: 'green' }} />}
+                onClick={() => handleSetStatus(record, 'active')}
+                size="small"
+              />
+            </Tooltip>
+          )}
           <Tooltip title="Delete">
             <Button
               type="text"
               icon={<DeleteOutlined />}
-              onClick={() => showConfirmModal(
-                'Delete Feedback',
-                'Are you sure you want to delete this feedback?',
-                () => deleteFeedback?.(record._id),
-                'danger'
-              )}
+              onClick={() => handleSetStatus(record, 'deleted')}
               danger
               size="small"
             />
           </Tooltip>
         </Space>
       ),
-      width: 160,
+      width: 180,
       fixed: 'right',
     },
   ];
@@ -286,82 +289,36 @@ const FeedbackProductTable = ({
               `${range[0]}-${range[1]} of ${total} feedbacks`
           }}
           bordered
-          scroll={{ x: 1000 }}
+          scroll={{ x: 1200 }}
           size="middle"
+          style={{ minWidth: 1200 }}
         />
       )}
 
       {showModal && (
-        <>
-          <div
-            className="modal-backdrop fade show"
-            onClick={() => setShowModal(false)}
-          ></div>
-
-          <div
-            className="modal fade show"
-            style={{ display: 'block' }}
-            tabIndex="-1"
-            onClick={() => setShowModal(false)}
-          >
-            <div
-              className="modal-dialog modal-dialog-centered"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="modal-content">
-                <div className="modal-header">
-                  <h5 className="modal-title">{modalConfig.title}</h5>
-                  <button
-                    type="button"
-                    className="btn-close"
-                    onClick={() => setShowModal(false)}
-                  ></button>
-                </div>
-                <div className="modal-body">
-                  <p>{modalConfig.message}</p>
-                </div>
-                <div className="modal-footer">
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={() => setShowModal(false)}
-                  >
-                    No
-                  </button>
-                  <button
-                    type="button"
-                    className={`btn btn-${modalConfig.variant}`}
-                    onClick={handleConfirm}
-                  >
-                    Yes
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
+        <Modal show={showModal} onHide={() => setShowModal(false)} centered>
+          <Modal.Header closeButton>
+            <Modal.Title>{modalConfig.title}</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>{modalConfig.message}</Modal.Body>
+          <Modal.Footer>
+            <BsButton variant="secondary" onClick={() => setShowModal(false)}>
+              Cancel
+            </BsButton>
+            <BsButton variant={modalConfig.variant} onClick={handleConfirm}>
+              Confirm
+            </BsButton>
+          </Modal.Footer>
+        </Modal>
       )}
 
-      <div className="toast-container position-fixed top-0 end-0 p-3" style={{ zIndex: 9999 }}>
+      <ToastContainer position="top-end" className="p-3" style={{ position: 'fixed', top: 16, right: 16, zIndex: 9999 }}>
         {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={`toast show align-items-center text-bg-${toast.type} border-0`}
-            role="alert"
-          >
-            <div className="d-flex">
-              <div className="toast-body">
-                {toast.message}
-              </div>
-              <button
-                type="button"
-                className="btn-close btn-close-white me-2 m-auto"
-                onClick={() => removeToast(toast.id)}
-              ></button>
-            </div>
-          </div>
+          <Toast key={toast.id} bg={toast.type} onClose={() => removeToast(toast.id)} delay={3000} autohide>
+            <Toast.Body className="text-white">{toast.message}</Toast.Body>
+          </Toast>
         ))}
-      </div>
+      </ToastContainer>
     </>
   );
 };
@@ -370,8 +327,6 @@ FeedbackProductTable.propTypes = {
   filteredFeedbacks: PropTypes.array.isRequired,
   loading: PropTypes.bool.isRequired,
   handleViewFeedback: PropTypes.func,
-  approveFeedback: PropTypes.func,
-  unapprovalFeedback: PropTypes.func,
   deleteFeedback: PropTypes.func,
 };
 

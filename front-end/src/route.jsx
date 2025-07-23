@@ -54,6 +54,10 @@ import BookingPage from "./pages/barber/BookingPage.jsx";
 import BookingInfoPage from "./pages/ServiceBooking/BookingInfoPage.jsx";
 import MyBookingsPage from "./pages/ServiceBooking/MyBookingsPage.jsx";
 import UserVouchers from "./pages/user/UserVouchers.jsx";
+import ManageBlog from "./pages/ManageBlog/ManageBlog.jsx";
+import BarberProfile from "./components/profile/baberProfile.jsx";
+import BarberPublicProfile from "./components/profile/BarberPublicProfile.jsx";
+import BarberCustomerView from "./components/profile/BarberCustomerView.jsx";
 
 const router = createBrowserRouter([
   {
@@ -84,7 +88,9 @@ const router = createBrowserRouter([
       { path: "/news", element: <BlogPage /> },
       { path: "/news/:id", element: <BlogDetail /> },
       { path: "/contact", element: <ContactPage /> },
-
+      { path: "/feedback-order/:orderId", element: <FeedbackProduct /> },
+      { path: "/barbers/:id", element: <BarberPublicProfile /> },
+      { path: "/barbers/customer-view/:id", element: <BarberCustomerView /> },
       // Protected Customer Routes
       {
         element: <RequireAuth allowedRoles={["customer"]} />,
@@ -116,12 +122,13 @@ const router = createBrowserRouter([
           { path: "voucher", element: <VoucherManagement /> },
           { path: "user-vouchers", element: <UserVoucherManagement /> },
           { path: "order", element: <OrderManagement /> },
-          { path: "feedback-product", element: <ManageFeedbackProduct /> },
+          { path: "-product", element: <ManageFeedbackProduct /> },
           { path: "feedback-barber", element: <ManageFeedbackBarber /> },
           { path: "discount-product", element: <ManageDiscountProduct /> },
           { path: "appointment", element: <Appointment /> },
           { path: "barber-schedule", element: <BarberScheduleManagement /> },
           { path: "statistics", element: <Statistics /> },
+          { path: "manage-blog", element: <ManageBlog /> },
         ],
       },
     ],
@@ -143,6 +150,7 @@ const router = createBrowserRouter([
           { path: "customers", element: <BarberBookingManagement /> },
           { path: "feedback", element: <BarberBookingManagement /> },
           { path: "performance", element: <BarberBookingManagement /> },
+          { path: "profile", element: <BarberProfile /> },
         ],
       },
     ],

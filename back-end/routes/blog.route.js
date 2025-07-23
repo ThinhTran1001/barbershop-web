@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const blogController = require('../controllers/blog.controller');
+const { authenticate } = require('../middlewares/auth.middleware');
 
 // GET all blogs
 router.get('/', blogController.getAllBlogs);
@@ -9,7 +10,7 @@ router.get('/', blogController.getAllBlogs);
 router.get('/:id', blogController.getBlogById);
 
 // CREATE new blog
-router.post('/', blogController.createBlog);
+router.post('/', authenticate, blogController.createBlog);
 
 // UPDATE blog
 router.put('/:id', blogController.updateBlog);

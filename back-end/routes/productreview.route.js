@@ -11,13 +11,12 @@ router.get('/', reviewController.getAllReviews);
 // GET - Reviews by productId
 router.get('/product/:productId', reviewController.getReviewsByProduct);
 
-// PATCH - Approve review
-router.patch('/:id/approve', reviewController.approveReview);
+// PATCH - Update review status (isDeleted)
+router.patch('/:id/status', reviewController.updateReviewStatus);
 
-// PATCH - Unapprove review
-router.patch('/:id/unapprove', reviewController.unapproveReview);
 
 // DELETE - Delete review
 router.delete('/:id', reviewController.deleteReview);
+
 
 module.exports = router;
