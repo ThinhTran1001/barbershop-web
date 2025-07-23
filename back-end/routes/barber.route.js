@@ -18,5 +18,7 @@ router.get('/availability', barberController.getBarberAvailability);
 
 // Barber bookings
 router.get('/:barberId/bookings', barberController.getBarberBookings);
+router.get("/by-user/:userId", barberController.getBarberByUserId);
+router.get("/public/:id", barberController.getBarberPublicById);
 
 module.exports = router;
