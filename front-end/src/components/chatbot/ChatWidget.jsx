@@ -87,17 +87,14 @@ export default function ChatWidget() {
       const { roomId } = message;
       const isOwnMessage = String(message.senderId) === String(user?.id);
 
-      // ✅ Luôn cập nhật tin nhắn vào chatMessages
-      setChatMessages(prev => ({
-        ...prev,
-        [roomId]: [...(prev[roomId] || []), message],
-      }));
-
+      // ⛏ FIX: xác định room đang mở phải tính cả `open === true`
       const isRoomOpen =
-        (user?.role === 'admin' && selectedRoom === roomId) ||
-        (user?.role === 'customer' && activeChat === 'admin' && roomId === user?.id);
+        open && (
+          (user?.role === 'admin' && selectedRoom === roomId) ||
+          (user?.role === 'customer' && activeChat === 'admin' && roomId === user?.id)
+        );
 
-      // Nếu không phải tin nhắn của mình và KHÔNG đang ở đúng phòng → tăng badge
+      // Nếu không phải tin của mình và KHÔNG mở đúng phòng → tăng badge
       if (!isOwnMessage && !isRoomOpen) {
         setUnreadCounts(prev => ({
           ...prev,
@@ -105,12 +102,17 @@ export default function ChatWidget() {
         }));
       }
 
-      // ✅ Nếu ĐANG ở đúng room → refresh message UI
+      // Nếu ĐANG ở đúng phòng → cập nhật
       if (isRoomOpen) {
-        setMessageRefreshKey((prev) => prev + 1);
+        setMessageRefreshKey(prev => prev + 1);
       }
-    });
 
+      // Luôn cập nhật message
+      setChatMessages(prev => ({
+        ...prev,
+        [roomId]: [...(prev[roomId] || []), message],
+      }));
+    });
 
     newSocket.on("updateRooms", () => {
       if (user?.role === 'admin') {
