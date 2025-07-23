@@ -290,7 +290,13 @@ const OrderDetail = () => {
               </div>
               <div className="summary-item">
                 <Text>Địa chỉ giao hàng:</Text>
-                <Text>{order.shippingAddress}</Text>
+                {order.shippingAddress && (
+                  <div>
+                    {order.shippingAddress.split(',').map((part, idx) => (
+                      <div key={idx}>{part.trim()}</div>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="summary-item">
                 <Text>Ngày đặt:</Text>
@@ -381,10 +387,14 @@ const OrderDetail = () => {
               <Text>Tổng tiền hàng:</Text>
               <Text>{subtotal.toLocaleString('vi-VN')} VND</Text>
             </div>
-            {discount > 0 && (
+            <div className="summary-item">
+              <Text>Giảm giá:</Text>
+              <Text style={{ marginLeft: 8, color: '#e74c3c' }}>- {discount > 0 ? discount.toLocaleString('vi-VN') : '0'} VND</Text>
+            </div>
+            {order.voucherId && order.voucherId.code && order.discountAmount <= 0 && (
               <div className="summary-item">
-                <Text>Giảm giá voucher:</Text>
-                <Text>-{discount.toLocaleString('vi-VN')} VND</Text>
+                <Text>Voucher đã sử dụng:</Text>
+                <Tag color="blue" style={{ marginLeft: 8 }}>{order.voucherId.code}</Tag>
               </div>
             )}
             <div className="summary-item">

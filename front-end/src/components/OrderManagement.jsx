@@ -28,11 +28,11 @@ const OrderManagement = () => {
       case 'pending':
         return ['processing', 'cancelled'];
       case 'processing':
-        return ['shipped', 'cancelled'];
+        return ['shipped'];
       case 'shipped':
         return ['delivered', 'cancelled'];
       case 'delivered':
-        return []; // Cannot change status once delivered
+        return []; 
       case 'cancelled':
         return []; // Cannot change status once cancelled
       default:
@@ -241,7 +241,7 @@ const OrderManagement = () => {
               'Chỉnh sửa trạng thái đơn hàng'
             }
           />
-          <Button icon={<DeleteFilled />} onClick={() => handleDeleteOrder(record._id)} danger />
+          {/* <Button icon={<DeleteFilled />} onClick={() => handleDeleteOrder(record._id)} danger /> */}
         </Space>
       ),
     },
@@ -358,22 +358,23 @@ const OrderManagement = () => {
       >
         <Form form={form} onFinish={handleUpdateOrder} layout="vertical">
           <Form.Item name="status" label="Status" rules={[{ required: true, message: 'Please select status' }]}> 
-            <Select>
-              {editingOrder && getAllowedStatusTransitions(editingOrder.status).length > 0 ? (
-                getAllowedStatusTransitions(editingOrder.status).map(status => {
+            {editingOrder && getAllowedStatusTransitions(editingOrder.status).length > 0 ? (
+              <Select optionLabelProp="children">
+                {getAllowedStatusTransitions(editingOrder.status).map(status => {
                   const option = STATUS_OPTIONS.find(opt => opt.value === status);
                   return (
                     <Select.Option key={option.value} value={option.value}>
                       {option.label}
                     </Select.Option>
                   );
-                })
-              ) : (
-                <Select.Option value={editingOrder?.status || 'pending'}>
-                  {STATUS_OPTIONS.find(opt => opt.value === editingOrder?.status)?.label || 'Current Status'}
-                </Select.Option>
-              )}
-            </Select>
+                })}
+              </Select>
+            ) : (
+              <Input
+                value={STATUS_OPTIONS.find(opt => opt.value === editingOrder?.status)?.label || 'Pending'}
+                disabled
+              />
+            )}
           </Form.Item>
           {editingOrder && getAllowedStatusTransitions(editingOrder.status).length === 0 && (
             <div style={{ color: '#ff4d4f', fontSize: '12px', marginTop: '8px' }}>

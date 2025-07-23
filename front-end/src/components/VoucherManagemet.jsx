@@ -280,6 +280,15 @@ const VoucherManagement = () => {
             ),
         },
         {
+            title: 'Max Discount Amount',
+            dataIndex: 'maxDiscountAmount',
+            key: 'maxDiscountAmount',
+            render: (amount, record) =>
+                record.type === 'percent' && amount > 0
+                    ? amount.toLocaleString('vi-VN') + ' VND'
+                    : '-',
+        },
+        {
             title: 'Actions',
             key: 'actions',
             render: (_, record) => (
@@ -499,6 +508,28 @@ const VoucherManagement = () => {
                             unCheckedChildren="Inactive"
                         />
                     </Form.Item>
+
+                    {form.getFieldValue('type') === 'percent' && (
+                        <Form.Item
+                            name="maxDiscountAmount"
+                            label="Max Discount Amount (for percent type)"
+                            rules={[
+                                ({ getFieldValue }) => ({
+                                    validator(_, value) {
+                                        if (getFieldValue('type') === 'percent' && (value === undefined || value === null)) {
+                                            return Promise.reject('Please enter max discount amount for percent voucher!');
+                                        }
+                                        if (value !== undefined && value < 0) {
+                                            return Promise.reject('Max discount amount must be >= 0');
+                                        }
+                                        return Promise.resolve();
+                                    },
+                                }),
+                            ]}
+                        >
+                            <Input type="number" min={0} placeholder="Enter max discount amount (VND)" />
+                        </Form.Item>
+                    )}
                     
                     <Form.Item style={{ marginTop: '24px', textAlign: 'right' }}>
                         <Button onClick={() => setIsModalVisible(false)} style={{ marginRight: '8px' }}>
@@ -547,6 +578,11 @@ const VoucherManagement = () => {
                             <Tag color={viewingVoucher.isActive ? 'green' : 'red'}>
                                 {viewingVoucher.isActive ? 'Active' : 'Inactive'}
                             </Tag>
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Max Discount Amount">
+                            {viewingVoucher.type === 'percent' && viewingVoucher.maxDiscountAmount > 0
+                                ? viewingVoucher.maxDiscountAmount.toLocaleString('vi-VN') + ' VND'
+                                : '-'}
                         </Descriptions.Item>
                         <Descriptions.Item label="Created At">{dayjs(viewingVoucher.createdAt).format('DD/MM/YYYY HH:mm')}
                         </Descriptions.Item>

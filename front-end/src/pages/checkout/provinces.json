@@ -1,0 +1,28 @@
+[
+  {
+    "name": "Hà Nội",
+    "districts": [
+      {
+        "name": "Quận Ba Đình",
+        "wards": ["Phường Phúc Xá", "Phường Trúc Bạch", "Phường Vĩnh Phúc"]
+      },
+      {
+        "name": "Quận Hoàn Kiếm",
+        "wards": ["Phường Chương Dương", "Phường Hàng Bạc", "Phường Hàng Buồm"]
+      }
+    ]
+  },
+  {
+    "name": "TP Hồ Chí Minh",
+    "districts": [
+      {
+        "name": "Quận 1",
+        "wards": ["Phường Bến Nghé", "Phường Bến Thành", "Phường Cầu Kho"]
+      },
+      {
+        "name": "Quận 3",
+        "wards": ["Phường 1", "Phường 2", "Phường 3"]
+      }
+    ]
+  }
+] 
