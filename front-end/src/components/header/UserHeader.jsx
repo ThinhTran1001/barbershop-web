@@ -31,9 +31,6 @@ export default function UserHeader() {
   const navigate = useNavigate();
   const cartCount = user ? getUserCartCount() : getGuestCartCount();
 
-  // Force re-render khi version thay đổi (cart thay đổi)
-  React.useEffect(() => { }, [version]);
-
   console.log("UserHeader render, cart count:", cartCount);
 
   const handleLogout = async () => {
