@@ -257,6 +257,31 @@ exports.createOrder = async (req, res) => {
     const savedOrder = await order.save();
     await Order_Item.insertMany(orderItems);
 
+    const orderObj = savedOrder.toObject ? savedOrder.toObject() : savedOrder;
+    console.log('orderObj:', orderObj);
+
+    // Gửi email xác nhận đơn hàng cho guest
+    if (customerEmail) {
+      try {
+        await sendOrderCodeToGuestEmail(
+          customerEmail,
+          {
+            orderCode: orderObj.orderCode,
+            orderDate: orderObj.createdAt,
+            items: orderItems.map(item => ({
+              productName: item.productName,
+              quantity: item.quantity
+            })),
+            totalAmount: orderObj.totalAmount,
+            customerName
+          }
+        );
+      } catch (emailError) {
+        console.error('Gửi email đơn hàng cho guest thất bại:', emailError);
+        // Không return lỗi, chỉ log để không cản luồng xử lý đơn hàng
+      }
+    }
+
     if (voucherId) {
       const updatedVoucher = await Voucher.findByIdAndUpdate(
         voucherId,
@@ -455,7 +480,18 @@ exports.updateOrder = async (req, res) => {
           const existingUser = await User.findOne({ email: order.customerEmail });
           if (!existingUser) {
             try {
-              await sendOrderCodeToGuestEmail(order.customerEmail, order.orderCode);
+              const orderItems = await Order_Item.find({ orderId: order._id });
+              await sendOrderCodeToGuestEmail(order.customerEmail, {
+                orderCode: order.orderCode,
+                orderDate: order.createdAt,
+                items: orderItems.map(item => ({
+                  productName: item.productName,
+                  quantity: item.quantity,
+                  productImage: item.productImage
+                })),
+                totalAmount: order.totalAmount,
+                customerName: order.customerName
+              });
             } catch (emailError) {
               console.error('Gửi email thất bại:', emailError);
               // Không return lỗi, chỉ log để không cản luồng xử lý đơn hàng

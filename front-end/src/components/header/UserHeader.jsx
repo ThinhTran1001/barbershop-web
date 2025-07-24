@@ -9,6 +9,7 @@ import {
 } from "@ant-design/icons";
 import { useAuth } from "../../context/AuthContext";
 import { useUserCart } from "../../context/UserCartContext";
+import { useCart } from "../../context/CartContext";
 import { useNavigate } from "react-router-dom";
 import "../../css/landing/common-header.css";
 
@@ -25,16 +26,19 @@ const navItems = [
 
 export default function UserHeader() {
   const { user, logout } = useAuth();
-  const { getCartCount, version } = useUserCart();
+  const { getCartCount: getGuestCartCount } = useCart();
+  const { getCartCount: getUserCartCount, clearCart } = useUserCart();
   const navigate = useNavigate();
+  const cartCount = user ? getUserCartCount() : getGuestCartCount();
 
   // Force re-render khi version thay đổi (cart thay đổi)
   React.useEffect(() => { }, [version]);
 
-  console.log("UserHeader render, cart count:", getCartCount());
+  console.log("UserHeader render, cart count:", cartCount);
 
   const handleLogout = async () => {
     await logout();
+    await clearCart(); // Reset cart khi logout
     navigate("/login");
   };
 
@@ -157,7 +161,7 @@ export default function UserHeader() {
 
       {/* Giỏ hàng & user dropdown */}
       <div className="d-flex align-items-center gap-2 ms-auto">
-        <Badge count={getCartCount()} showZero={false}>
+        <Badge count={cartCount} showZero={false}>
           <Button
             type="text"
             icon={<ShoppingCartOutlined />}

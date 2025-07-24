@@ -12,13 +12,13 @@ const getStatusTag = (status) => {
         case 'pending':
             return <Tag color="gold">Chờ xác nhận</Tag>;
         case 'processing':
-            return <Tag color="blue">Đang xử lý đơn</Tag>;
+            return <Tag color="blue">Đang xử lý</Tag>;
         case 'shipped':
-            return <Tag color="cyan">Đang vận chuyển</Tag>;
+            return <Tag color="cyan">Đang giao hàng</Tag>;
         case 'delivered':
-            return <Tag color="green">Giao hàng thành công</Tag>;
+            return <Tag color="green">Đã giao</Tag>;
         case 'cancelled':
-            return <Tag color="red">Đã bị hủy</Tag>;
+            return <Tag color="red">Đã hủy</Tag>;
         default:
             return <Tag>{status}</Tag>;
     }

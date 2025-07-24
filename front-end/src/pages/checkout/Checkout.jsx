@@ -311,6 +311,9 @@ const Checkout = () => {
   /* --------------------------------- Render --------------------------------- */
   return (
     <div className="checkout-container">
+      <div className="checkout-header">
+        <h1>Thanh toán</h1>
+      </div>
       <div className="checkout-content">
         {/* ================= FORM ================= */}
         <div className="checkout-form-section">

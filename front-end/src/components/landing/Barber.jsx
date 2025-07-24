@@ -98,7 +98,7 @@ export default function Barbers() {
 
         <div className="barbers-grid">
           {barbers.map((b) => {
-            const avatar = users.find(u => u._id === b.userId._id)?.avatarUrl;
+            const avatar = b.userId ? users.find(u => u._id === b.userId._id)?.avatarUrl : undefined;
             return (
               <div key={b.id} className="barber-card" onClick={() => setSelectedBarberId(b._id)} style={{ cursor: 'pointer' }}>
                 <div className="barber-image-container">
@@ -112,7 +112,7 @@ export default function Barbers() {
                     }}
                   />
                 </div>
-                <h3 className="barber-name">{b.userId.name}</h3>
+                <h3 className="barber-name">{b.userId ? b.userId.name : 'No Name'}</h3>
                 <p className="barber-specialty">{b.specialties.join(", ")}</p>
               </div>
             );
