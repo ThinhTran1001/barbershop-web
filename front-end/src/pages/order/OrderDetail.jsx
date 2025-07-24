@@ -419,7 +419,8 @@ const OrderDetail = () => {
               <Button type="primary" danger>Hủy đơn hàng</Button>
             </Popconfirm>
           )}
-          {order.status === 'delivered' && order.payment?.status === 'paid' && !feedbackStatus && (
+          {/* {order.status === 'delivered' && order.payment?.status === 'paid' && !feedbackStatus && ( */}
+          {order.status === 'delivered' && !feedbackStatus && (
             <Button 
               type="primary" 
               onClick={handleStartFeedback}
