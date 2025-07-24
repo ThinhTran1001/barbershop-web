@@ -56,9 +56,7 @@ import MyBookingsPage from "./pages/ServiceBooking/MyBookingsPage.jsx";
 import UserVouchers from "./pages/user/UserVouchers.jsx";
 import ManageBlog from "./pages/ManageBlog/ManageBlog.jsx";
 import BarberProfile from "./components/profile/baberProfile.jsx";
-
-
-
+import FeedbackBarber from "./pages/FeedbackBarber/FeedbackBarber.jsx";
 
 const router = createBrowserRouter([
   {
@@ -90,10 +88,12 @@ const router = createBrowserRouter([
       { path: "/news/:id", element: <BlogDetail /> },
       { path: "/contact", element: <ContactPage /> },
       { path: "/feedback-order/:orderId", element: <FeedbackProduct /> },
+      { path: "/feedback-barber/:bookingId", element: <FeedbackBarber/> },
       // Protected Customer Routes
       {
         element: <RequireAuth allowedRoles={["customer"]} />,
         children: [
+          
           { path: "/my-orders", element: <ListOfOrder /> },
           { path: "/my-orders/:id", element: <OrderDetail /> },
           { path: "/feedback/:orderId", element: <FeedbackProduct /> },

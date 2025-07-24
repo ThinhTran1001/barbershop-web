@@ -640,7 +640,7 @@ function generateNaturalResponse(fnName, data, userMessage, entities) {
       products.forEach(p => {
         reply += '✦ ' + p.name + '\n';
         reply += '  Thương hiệu: ' + p.brand + '\n';
-        reply += '  Giá: $' + p.price + '\n';
+        reply += '  Giá: ' + p.price + 'VNĐ' + '\n';
         reply += '  Đánh giá: ' + p.rating + '/5\n';
         if (p.categories.length > 0) {
           reply += '  Danh mục: ' + p.categories.join(', ') + '\n';

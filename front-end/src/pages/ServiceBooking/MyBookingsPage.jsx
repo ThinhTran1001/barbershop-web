@@ -24,10 +24,12 @@ import {
   updateBookingStatus,
   cancelBooking
 } from '../../services/serviceApi.js';
-import {
-  getFeedbackBookingByBookingId,
-  createFeedbackBooking
-} from '../../services/api';
+// import {
+//   getFeedbackBookingByBookingId,
+//   createFeedbackBooking,
+//   getBarberFeedbackById,
+//   createBarberFeedback
+// } from '../../services/api';
 import {
   CalendarOutlined,
   ClockCircleOutlined,
@@ -39,6 +41,8 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
+import { getBookingFeedback } from '../../services/bookingFeedbackApi';
+import { getBarberFeedbackByBookingId } from '../../services/api';
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -50,7 +54,9 @@ const MyBookingsPage = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
-  const [feedbackStatuses, setFeedbackStatuses] = useState({});
+  // const [feedbackStatuses, setFeedbackStatuses] = useState({});
+  // const [barberFeedbackStatuses, setBarberFeedbackStatuses] = useState({});
+  const [reviewableBookings, setReviewableBookings] = useState({});
 
   // Filter state
   const [filters, setFilters] = useState({
@@ -85,16 +91,35 @@ const MyBookingsPage = () => {
       setBookings(Array.isArray(data) ? data : []);
 
       // Fetch feedback status for each booking
-      const statuses = {};
+      const reviewMap = {};
       for (const booking of data) {
-        try {
-          const feedbackResponse = await getFeedbackBookingByBookingId(booking._id);
-          statuses[booking._id] = feedbackResponse.data.status;
-        } catch (feedbackError) {
-          statuses[booking._id] = null; // Chưa có feedback hoặc lỗi
-        }
-      }
-      setFeedbackStatuses(statuses);
+  let hasServiceFeedback = false;
+  let hasBarberFeedback = false;
+
+  try {
+    await getBookingFeedback(booking._id);
+    hasServiceFeedback = true;
+  } catch (err) {
+    if (err.response?.status === 404) hasServiceFeedback = false;
+    else console.error('Error checking booking feedback:', err);
+  }
+
+  try {
+    const res = await getBarberFeedbackByBookingId(booking._id);
+    hasBarberFeedback = !!res?.data; // <-- CHỈ CẦN DÒNG NÀY!
+  } catch (err) {
+    console.error('Error checking barber feedback:', err);
+    hasBarberFeedback = false;
+  }
+
+  reviewMap[booking._id] = {
+    hasServiceFeedback,
+    hasBarberFeedback
+  };
+}
+
+      setReviewableBookings(reviewMap);
+
 
       if (paginationData) {
         setPagination({
@@ -205,34 +230,39 @@ const MyBookingsPage = () => {
   };
 
   // Check if booking can be reviewed
-  const canReviewBooking = (booking) => {
-    return booking.status === 'completed' && !feedbackStatuses[booking._id];
+  //   const canReviewBooking = async (bookingId) => {
+  //   try {
+  //     const res = await getFeedbackBookingByBookingId(bookingId);
+  //     return !res?.data;
+  //   } catch {
+  //     return true; // Nếu không có feedback => cho phép đánh giá
+  //   }
+  // };
+
+  // const canReviewBarber = async (bookingId) => {
+  //   try {
+  //     const res = await getBarberFeedbackById(bookingId);
+  //     return !res?.data;
+  //   } catch {
+  //     return true; // Nếu không có feedback => cho phép đánh giá
+  //   }
+  // };
+
+
+  // Handle feedback navigation for service
+  const handleServiceFeedback = async (booking) => {
+    try {
+      navigate(`/feedback/${booking._id}`);
+      return;
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  // Handle feedback navigation (giống OrderDetail)
-  const handleFeedback = async (booking) => {
-    try {
-      const existing = await getFeedbackBookingByBookingId(booking._id);
-      if (existing?.data) {
-        navigate(`/feedback/${booking._id}`);
-        return;
-      }
-    } catch (err) {
-      if (err.response?.status === 404) {
-        try {
-          await createFeedbackBooking({ bookingId: booking._id, userId: booking.customerId });
-          navigate(`/feedback/${booking._id}`);
-          return;
-        } catch (createError) {
-          console.error('Lỗi tạo mới feedback:', createError);
-          message.error('Không thể tạo feedback mới.');
-          return;
-        }
-      } else {
-        console.error('Lỗi kiểm tra feedback:', err);
-        message.error('Không thể kiểm tra trạng thái feedback.');
-      }
-    }
+  // Handle feedback navigation for barber
+  const handleBarberFeedback = async (booking) => {
+    navigate(`/feedback-barber/${booking._id}`);
+    return;
   };
 
   const columns = [
@@ -330,16 +360,28 @@ const MyBookingsPage = () => {
               Hủy lịch
             </Button>
           )}
-          {canReviewBooking(record) && (
+          {record.status === 'completed' && !reviewableBookings[record._id]?.hasServiceFeedback && (
             <Button
               size="small"
               type="primary"
               icon={<StarOutlined />}
-              onClick={() => handleFeedback(record)}
+              onClick={() => handleServiceFeedback(record)}
             >
-              Đánh giá
+              Đánh giá dịch vụ
             </Button>
           )}
+
+          {record.status === 'completed' && !reviewableBookings[record._id]?.hasBarberFeedback && (
+            <Button
+              size="small"
+              type="primary"
+              icon={<StarOutlined />}
+              onClick={() => handleBarberFeedback(record)}
+            >
+              Đánh giá barber
+            </Button>
+          )}
+
         </Space>
       )
     }
@@ -558,17 +600,30 @@ const MyBookingsPage = () => {
                 ))}
               </Descriptions.Item>
             )}
-            {canReviewBooking(selectedBooking) && (
-              <Descriptions.Item label="Đánh giá">
+            {selectedBooking.status === 'completed' && !reviewableBookings[selectedBooking._id]?.hasServiceFeedback && (
+              <Descriptions.Item label="Đánh giá dịch vụ">
                 <Button
                   type="primary"
                   icon={<StarOutlined />}
-                  onClick={() => handleFeedback(selectedBooking)}
+                  onClick={() => handleServiceFeedback(selectedBooking)}
+                >
+                  Đánh giá dịch vụ
+                </Button>
+              </Descriptions.Item>
+            )}
+
+            {selectedBooking.status === 'completed' && !reviewableBookings[selectedBooking._id]?.hasBarberFeedback && (
+              <Descriptions.Item label="Đánh giá barber">
+                <Button
+                  type="primary"
+                  icon={<StarOutlined />}
+                  onClick={() => handleBarberFeedback(selectedBooking)}
                 >
                   Đánh giá barber
                 </Button>
               </Descriptions.Item>
             )}
+
           </Descriptions>
         )}
       </Modal>
