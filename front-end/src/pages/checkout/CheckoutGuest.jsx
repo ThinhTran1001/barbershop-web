@@ -1,5 +1,5 @@
 // src/pages/checkout/CheckoutGuest.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Button,
   Form,
@@ -26,6 +26,44 @@ export default function CheckoutGuest() {
   const [orderSuccess, setOrderSuccess] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+
+  const [provinces, setProvinces] = useState([]);
+  const [districts, setDistricts] = useState([]);
+  const [wards, setWards] = useState([]);
+  const [selectedProvince, setSelectedProvince] = useState(null);
+  const [selectedDistrict, setSelectedDistrict] = useState(null);
+  const [selectedWard, setSelectedWard] = useState(null);
+  const [addressDetail, setAddressDetail] = useState("");
+
+  useEffect(() => {
+    fetch('https://provinces.open-api.vn/api/p/')
+      .then(res => res.json())
+      .then(data => setProvinces(data));
+  }, []);
+
+  useEffect(() => {
+    if (selectedProvince) {
+      fetch(`https://provinces.open-api.vn/api/p/${selectedProvince.code}?depth=2`)
+        .then(res => res.json())
+        .then(data => setDistricts(data.districts || []));
+    } else {
+      setDistricts([]);
+      setWards([]);
+    }
+    setSelectedDistrict(null);
+    setSelectedWard(null);
+  }, [selectedProvince]);
+
+  useEffect(() => {
+    if (selectedDistrict) {
+      fetch(`https://provinces.open-api.vn/api/d/${selectedDistrict.code}?depth=2`)
+        .then(res => res.json())
+        .then(data => setWards(data.wards || []));
+    } else {
+      setWards([]);
+    }
+    setSelectedWard(null);
+  }, [selectedDistrict]);
 
   /* ------------------ Lấy danh sách sản phẩm cần thanh toán ------------------ */
   const buyNowItems = location.state?.products;
@@ -54,6 +92,15 @@ export default function CheckoutGuest() {
       return;
     }
 
+    if (!selectedProvince || !selectedDistrict || !selectedWard || !addressDetail) {
+      notification.warning({
+        message: 'Thiếu thông tin địa chỉ',
+        description: 'Vui lòng chọn đầy đủ Tỉnh/Thành, Quận/Huyện, Phường/Xã và nhập địa chỉ chi tiết!',
+        placement: 'topRight'
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const orderItems = itemsToCheckout.map((i) => ({
@@ -61,19 +108,20 @@ export default function CheckoutGuest() {
         quantity: i.quantity
       }));
 
+      const fullAddress = `${addressDetail}, ${selectedWard?.name}, ${selectedDistrict?.name}, ${selectedProvince?.name}`;
+
       const orderData = {
-        // Thông tin khách (login rồi thì backend sẽ tự lấy userId trong token)
         customerName: values.name,
         customerEmail: values.email,
         customerPhone: values.phone,
-        shippingAddress: values.address,
+        shippingAddress: fullAddress,
         paymentMethod: values.paymentMethod,
         items: orderItems
       };
 
-      await createOrderGuest(orderData);               // ✅ gọi chung API
+      await createOrderGuest(orderData);
 
-      if (!buyNowItems?.length) clearCart();      // Xoá cart local khi thanh toán từ giỏ
+      if (!buyNowItems?.length) clearCart();
       setOrderSuccess(true);
 
       notification.success({
@@ -128,7 +176,7 @@ export default function CheckoutGuest() {
   return (
     <div className="checkout-container">
       <div className="checkout-header">
-        <h1>Thanh toán (khách không đăng nhập)</h1>
+        <h1>Thanh toán</h1>
       </div>
 
       <div className="checkout-content">
@@ -167,11 +215,71 @@ export default function CheckoutGuest() {
               </Form.Item>
 
               <Form.Item
-                name="address"
-                label="Địa chỉ giao hàng"
-                rules={[{ required: true, message: 'Vui lòng nhập địa chỉ!' }]}
+                name="province"
+                label="Tỉnh/Thành phố"
+                rules={[{ required: true, message: 'Chọn tỉnh/thành phố!' }]}
               >
-                <TextArea placeholder="Nhập địa chỉ chi tiết" rows={3} />
+                <Select
+                  placeholder="Chọn tỉnh/thành phố"
+                  onChange={code => {
+                    const province = provinces.find(p => p.code === code);
+                    setSelectedProvince(province);
+                  }}
+                  value={selectedProvince?.code}
+                  showSearch
+                  optionFilterProp="children"
+                >
+                  {provinces.map(p => <Option key={p.code} value={p.code}>{p.name}</Option>)}
+                </Select>
+              </Form.Item>
+              <Form.Item
+                name="district"
+                label="Quận/Huyện"
+                rules={[{ required: true, message: 'Chọn quận/huyện!' }]}
+              >
+                <Select
+                  placeholder="Chọn quận/huyện"
+                  onChange={code => {
+                    const district = districts.find(d => d.code === code);
+                    setSelectedDistrict(district);
+                  }}
+                  value={selectedDistrict?.code}
+                  disabled={!selectedProvince}
+                  showSearch
+                  optionFilterProp="children"
+                >
+                  {districts.map(d => <Option key={d.code} value={d.code}>{d.name}</Option>)}
+                </Select>
+              </Form.Item>
+              <Form.Item
+                name="ward"
+                label="Phường/Xã"
+                rules={[{ required: true, message: 'Chọn phường/xã!' }]}
+              >
+                <Select
+                  placeholder="Chọn phường/xã"
+                  onChange={code => {
+                    const ward = wards.find(w => w.code === code);
+                    setSelectedWard(ward);
+                  }}
+                  value={selectedWard?.code}
+                  disabled={!selectedDistrict}
+                  showSearch
+                  optionFilterProp="children"
+                >
+                  {wards.map(w => <Option key={w.code} value={w.code}>{w.name}</Option>)}
+                </Select>
+              </Form.Item>
+              <Form.Item
+                name="addressDetail"
+                label="Địa chỉ chi tiết"
+                rules={[{ required: true, message: 'Nhập địa chỉ chi tiết!' }]}
+              >
+                <Input
+                  placeholder="Số nhà, tên đường..."
+                  value={addressDetail}
+                  onChange={e => setAddressDetail(e.target.value)}
+                />
               </Form.Item>
 
               <Form.Item

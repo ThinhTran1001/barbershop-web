@@ -51,8 +51,8 @@ const AppointmentChart = ({ chartRange, chartMode, onChartRangeChange, onChartMo
     <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.04)', padding: 24, marginBottom: 32 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div style={{ fontWeight: 600, fontSize: 18 }}>Appointment Stats</div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <Button.Group style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Button.Group>
             <Button type={chartMode === 'day' ? 'primary' : 'default'} onClick={() => onChartModeChange('day')}>Day</Button>
             <Button type={chartMode === 'week' ? 'primary' : 'default'} onClick={() => onChartModeChange('week')}>Week</Button>
             <Button type={chartMode === 'month' ? 'primary' : 'default'} onClick={() => onChartModeChange('month')}>Month</Button>
