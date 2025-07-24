@@ -128,7 +128,7 @@ export default function UserHeader() {
           navigate("/");
           setTimeout(() => {
             window.scrollTo({ top: 0, behavior: "smooth" });
-          }, 50);
+          }, 10);
         }}
       >
         BARBERSHOP
