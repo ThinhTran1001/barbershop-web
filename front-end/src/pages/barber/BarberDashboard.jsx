@@ -300,27 +300,55 @@ const BarberDashboard = () => {
                 renderItem={(booking) => (
                   <List.Item
                     actions={[
-                      booking.status === 'pending' && (
-                        <Button
-                          size="small"
-                          type="primary"
-                          onClick={() => handleBookingStatusUpdate(booking._id, 'confirmed')}
-                          loading={actionLoading}
-                        >
-                          Xác nhận
-                        </Button>
-                      ),
-                      booking.status === 'confirmed' && (
-                        <Button
-                          size="small"
-                          type="primary"
-                          onClick={() => handleBookingStatusUpdate(booking._id, 'completed')}
-                          loading={actionLoading}
-                        >
-                          Hoàn thành
-                        </Button>
-                      )
-                    ].filter(Boolean)}
+                      // Barbers can no longer confirm pending bookings - only admins can
+                      booking.status === 'confirmed' && (() => {
+                        const bookingDate = dayjs(booking.bookingDate);
+                        const today = dayjs();
+                        const isToday = bookingDate.isSame(today, 'day');
+                        const isPast = bookingDate.isBefore(today, 'day');
+
+                        if (isToday) {
+                          // Booking hôm nay - có thể hoàn thành hoặc không đến
+                          return [
+                            <Button
+                              key="complete"
+                              size="small"
+                              type="primary"
+                              onClick={() => handleBookingStatusUpdate(booking._id, 'completed')}
+                              loading={actionLoading}
+                            >
+                              Hoàn thành
+                            </Button>,
+                            <Button
+                              key="no-show"
+                              size="small"
+                              type="default"
+                              danger
+                              onClick={() => handleBookingStatusUpdate(booking._id, 'no_show')}
+                              loading={actionLoading}
+                            >
+                              Không đến
+                            </Button>
+                          ];
+                        } else if (isPast) {
+                          // Booking ngày trước - chỉ có thể đánh dấu không đến
+                          return (
+                            <Button
+                              size="small"
+                              type="default"
+                              danger
+                              onClick={() => handleBookingStatusUpdate(booking._id, 'no_show')}
+                              loading={actionLoading}
+                            >
+                              Không đến
+                            </Button>
+                          );
+                        } else {
+                          // Booking tương lai - không có action
+                          return null;
+                        }
+                      })()
+                    ].flat().filter(Boolean)}
                   >
                     <List.Item.Meta
                       avatar={<Avatar icon={<UserOutlined />} />}

@@ -96,19 +96,19 @@ export const getBarberBookings = async (userId, filters = {}) => {
     }
   });
 
-  const res = await axios.get(`${API_BASE}/${userId}/bookings?${params.toString()}`);
+  const res = await api.get(`/${userId}/bookings?${params.toString()}`); // Use the 'api' instance with auth
   return res.data;
 };
 
 export const getBarberByUserId = async (userId) => {
-  const res = await axios.get(`${API_BASE}/by-user/${userId}`);
+  const res = await api.get(`/by-user/${userId}`); // Use the 'api' instance
   return res.data;
 };
 
 export const getBarberPublicById = async (barberId) => {
-  const res = await axios.get(`${API_BASE}/public/${barberId}`);
+  const res = await api.get(`/public/${barberId}`); // Use the 'api' instance
   return res.data;
 };
 
-export const getBarberFeedbackById = (id) => axios.get(`${API_BASE}/feedback-barber/${id}`);
+export const getBarberFeedbackById = (id) => api.get(`/feedback-barber/${id}`); // Use the 'api' instance
 

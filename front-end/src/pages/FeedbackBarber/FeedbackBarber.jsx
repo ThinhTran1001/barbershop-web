@@ -66,7 +66,7 @@ const FeedbackBarber = () => {
     try {
       // Check if feedback already exists
       try {
-        const response = await getBarberFeedbackById(bookingId);
+        const response = await getBarberFeedbackByBookingId(bookingId);
         if (response.data) {
           message.info('Bạn đã đánh giá cho lịch hẹn này rồi');
           navigate('/my-booking');

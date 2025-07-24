@@ -1,0 +1,33 @@
+.review-item {
+  background: #fff;
+  padding: 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  margin-bottom: 16px;
+}
+
+.review-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.review-header .ant-avatar {
+  margin-right: 12px;
+}
+
+.review-author {
+  display: flex;
+  flex-direction: column;
+}
+
+.review-content {
+  margin-left: 44px;
+}
+
+.review-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}

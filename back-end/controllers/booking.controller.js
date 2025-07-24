@@ -8,6 +8,9 @@ const NoShow = require('../models/no-show.model');
 // Create a new booking with enhanced validation and conflict checking
 exports.createBooking = async (req, res) => {
   try {
+    // Use a simpler approach without transactions for standalone MongoDB
+    // This provides basic conflict prevention through timing and validation
+
     const {
       barberId,
       serviceId,
@@ -36,11 +39,18 @@ exports.createBooking = async (req, res) => {
       });
     }
 
-    // Check if customer has too many no-shows (block if >= 3)
-    const noShowCount = await NoShow.countDocuments({ customerId });
-    if (noShowCount >= 3) {
+    // Enhanced no-show checking with detailed blocking logic
+    const isBlocked = await NoShow.isCustomerBlocked(customerId, 3);
+    if (isBlocked) {
+      const noShowCount = await NoShow.getCustomerNoShowCount(customerId);
       return res.status(403).json({
-        message: 'Booking blocked due to repeated no-shows. Please contact support.'
+        message: `Booking blocked due to ${noShowCount} cancellations/no-shows. Please contact support to resolve this issue.`,
+        errorCode: 'CUSTOMER_BLOCKED',
+        details: {
+          noShowCount,
+          limit: 3,
+          contactSupport: true
+        }
       });
     }
 
@@ -52,35 +62,97 @@ exports.createBooking = async (req, res) => {
       });
     }
 
-    // Check for time slot conflicts
+    // CRITICAL: Enhanced conflict checking to prevent overlapping bookings
     const dateStr = requestedDateTime.toISOString().split('T')[0];
 
-    // Check if time slot is already booked
-    const existingBooking = await Booking.findOne({
+    // Get all existing bookings for the barber on this date
+    const barberBookings = await Booking.find({
       barberId,
       bookingDate: {
         $gte: new Date(dateStr + 'T00:00:00.000Z'),
         $lt: new Date(dateStr + 'T23:59:59.999Z')
       },
       status: { $in: ['pending', 'confirmed'] }
+    }).sort({ bookingDate: 1 });
+
+    // CRITICAL: Check for customer conflicts across ALL barbers on this date
+    const customerBookings = await Booking.find({
+      customerId,
+      bookingDate: {
+        $gte: new Date(dateStr + 'T00:00:00.000Z'),
+        $lt: new Date(dateStr + 'T23:59:59.999Z')
+      },
+      status: { $in: ['pending', 'confirmed'] }
+    }).populate('barberId', 'userId')
+      .populate({
+        path: 'barberId',
+        populate: {
+          path: 'userId',
+          select: 'name'
+        }
+      });
+
+    // Enhanced conflict detection with proper time overlap checking
+    const newStart = new Date(bookingDate);
+    const newEnd = new Date(newStart.getTime() + durationMinutes * 60000);
+
+    // 1. Check for barber conflicts (same barber, overlapping time)
+    const barberConflict = barberBookings.find(booking => {
+      const existingStart = new Date(booking.bookingDate);
+      const existingEnd = new Date(existingStart.getTime() + booking.durationMinutes * 60000);
+
+      // Proper overlap detection: new booking overlaps with existing booking
+      return (newStart < existingEnd && newEnd > existingStart);
     });
 
-    if (existingBooking) {
-      // Check for time overlap
-      const existingStart = new Date(existingBooking.bookingDate);
-      const existingEnd = new Date(existingStart.getTime() + existingBooking.durationMinutes * 60000);
-      const newStart = new Date(bookingDate);
-      const newEnd = new Date(newStart.getTime() + durationMinutes * 60000);
+    if (barberConflict) {
+      const affectedSlots = Math.ceil(durationMinutes / 30);
+      const conflictingSlots = Math.ceil(barberConflict.durationMinutes / 30);
 
-      if ((newStart < existingEnd && newEnd > existingStart)) {
-        return res.status(409).json({
-          message: 'Time slot conflicts with existing booking',
-          conflictingBooking: {
-            date: existingBooking.bookingDate,
-            duration: existingBooking.durationMinutes
-          }
-        });
-      }
+      return res.status(409).json({
+        message: `Time slot conflict detected. Your ${durationMinutes}-minute service (${newStart.toLocaleTimeString('vi-VN', {hour: '2-digit', minute: '2-digit'})} - ${newEnd.toLocaleTimeString('vi-VN', {hour: '2-digit', minute: '2-digit'})}) overlaps with an existing ${barberConflict.durationMinutes}-minute booking (${new Date(barberConflict.bookingDate).toLocaleTimeString('vi-VN', {hour: '2-digit', minute: '2-digit'})} - ${new Date(barberConflict.bookingDate).getTime() + barberConflict.durationMinutes * 60000 ? new Date(new Date(barberConflict.bookingDate).getTime() + barberConflict.durationMinutes * 60000).toLocaleTimeString('vi-VN', {hour: '2-digit', minute: '2-digit'}) : 'N/A'}).`,
+        conflictDetails: {
+          conflictType: 'BARBER_CONFLICT',
+          conflictingTime: barberConflict.bookingDate,
+          conflictingDuration: barberConflict.durationMinutes,
+          conflictingSlots: conflictingSlots,
+          requestedTime: bookingDate,
+          requestedDuration: durationMinutes,
+          requestedSlots: affectedSlots,
+          overlapStart: newStart > new Date(barberConflict.bookingDate) ? newStart : new Date(barberConflict.bookingDate),
+          overlapEnd: newEnd < new Date(new Date(barberConflict.bookingDate).getTime() + barberConflict.durationMinutes * 60000) ? newEnd : new Date(new Date(barberConflict.bookingDate).getTime() + barberConflict.durationMinutes * 60000)
+        },
+        errorCode: 'BOOKING_CONFLICT'
+      });
+    }
+
+    // 2. Check for customer conflicts (same customer, different barber, overlapping time)
+    const customerConflict = customerBookings.find(booking => {
+      const existingStart = new Date(booking.bookingDate);
+      const existingEnd = new Date(existingStart.getTime() + booking.durationMinutes * 60000);
+
+      // Proper overlap detection: new booking overlaps with customer's existing booking
+      return (newStart < existingEnd && newEnd > existingStart);
+    });
+
+    if (customerConflict) {
+      const conflictingBarberName = customerConflict.barberId?.userId?.name || 'Unknown Barber';
+
+      return res.status(409).json({
+        message: `You already have a booking during this time period. Your existing ${customerConflict.durationMinutes}-minute appointment with ${conflictingBarberName} (${new Date(customerConflict.bookingDate).toLocaleTimeString('vi-VN', {hour: '2-digit', minute: '2-digit'})} - ${new Date(new Date(customerConflict.bookingDate).getTime() + customerConflict.durationMinutes * 60000).toLocaleTimeString('vi-VN', {hour: '2-digit', minute: '2-digit'})}) conflicts with your requested ${durationMinutes}-minute service (${newStart.toLocaleTimeString('vi-VN', {hour: '2-digit', minute: '2-digit'})} - ${newEnd.toLocaleTimeString('vi-VN', {hour: '2-digit', minute: '2-digit'})}).`,
+        conflictDetails: {
+          conflictType: 'CUSTOMER_CONFLICT',
+          conflictingBookingId: customerConflict._id,
+          conflictingBarber: conflictingBarberName,
+          conflictingTime: customerConflict.bookingDate,
+          conflictingDuration: customerConflict.durationMinutes,
+          requestedTime: bookingDate,
+          requestedDuration: durationMinutes,
+          overlapStart: newStart > new Date(customerConflict.bookingDate) ? newStart : new Date(customerConflict.bookingDate),
+          overlapEnd: newEnd < new Date(new Date(customerConflict.bookingDate).getTime() + customerConflict.durationMinutes * 60000) ? newEnd : new Date(new Date(customerConflict.bookingDate).getTime() + customerConflict.durationMinutes * 60000)
+        },
+        errorCode: 'CUSTOMER_DOUBLE_BOOKING'
+      });
     }
 
     // Check barber's daily booking limit
@@ -90,19 +162,19 @@ exports.createBooking = async (req, res) => {
       return res.status(404).json({ message: 'Barber not found' });
     }
 
-    const dailyBookings = await Booking.countDocuments({
-      barberId,
-      bookingDate: {
-        $gte: new Date(dateStr + 'T00:00:00.000Z'),
-        $lt: new Date(dateStr + 'T23:59:59.999Z')
-      },
-      status: { $in: ['pending', 'confirmed'] }
-    });
-
-    if (dailyBookings >= barber.maxDailyBookings) {
+    // Use existing bookings count to check daily limit
+    if (barberBookings.length >= barber.maxDailyBookings) {
       return res.status(400).json({
-        message: 'Barber has reached maximum bookings for this date'
+        message: 'Barber has reached maximum bookings for this date',
+        errorCode: 'DAILY_LIMIT_EXCEEDED'
       });
+    }
+
+    // Validate service exists
+    const Service = require('../models/service.model');
+    const service = await Service.findById(serviceId);
+    if (!service) {
+      return res.status(404).json({ message: 'Service not found' });
     }
 
     // Create the booking
@@ -121,6 +193,32 @@ exports.createBooking = async (req, res) => {
     });
 
     await booking.save();
+
+    // CRITICAL: Mark time slots as booked in the barber schedule
+    const BarberSchedule = require('../models/barber-schedule.model');
+    const bookingStartTime = new Date(bookingDate);
+    const startTimeStr = bookingStartTime.toTimeString().substring(0, 5); // Extract HH:MM
+
+    try {
+      const scheduleResult = await BarberSchedule.markSlotsAsBooked(
+        barberId,
+        dateStr,
+        startTimeStr,
+        durationMinutes,
+        booking._id,
+        null // No session for standalone MongoDB
+      );
+
+      console.log(`Successfully marked ${scheduleResult.totalSlotsBooked} slots as booked:`, scheduleResult.bookedSlots);
+    } catch (scheduleError) {
+      console.error('Error marking schedule slots as booked:', scheduleError);
+      // Try to delete the booking if schedule update fails
+      await Booking.findByIdAndDelete(booking._id);
+      return res.status(409).json({
+        message: 'Failed to reserve time slots in schedule: ' + scheduleError.message,
+        errorCode: 'SCHEDULE_UPDATE_FAILED'
+      });
+    }
 
     // Update barber's total bookings count
     await Barber.findByIdAndUpdate(barberId, {
@@ -145,7 +243,11 @@ exports.createBooking = async (req, res) => {
     });
 
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    console.error('Error in createBooking:', err);
+    res.status(500).json({
+      message: err.message,
+      errorCode: 'INTERNAL_ERROR'
+    });
   }
 };
 
@@ -162,8 +264,10 @@ exports.getMyBookings = async (req, res) => {
       sortOrder = 'desc'
     } = req.query;
 
-    const filter = { customerId: req.userId };
+    // Start with role-based filter from middleware
+    const filter = { ...req.bookingFilter };
 
+    // Apply additional filters
     if (status) {
       filter.status = status;
     }
@@ -188,7 +292,58 @@ exports.getMyBookings = async (req, res) => {
           select: 'name email phone'
         }
       })
+      .populate('confirmedBy', 'name email')
       .sort(sort)
+      .skip(skip)
+      .limit(Number(limit));
+
+    const total = await Booking.countDocuments(filter);
+
+    res.json({
+      bookings,
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      },
+      userRole: req.role // Include user role for frontend logic
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Get pending bookings for admin review
+exports.getPendingBookings = async (req, res) => {
+  try {
+    const { page = 1, limit = 20, barberId, serviceId, startDate, endDate } = req.query;
+
+    // Only admins can access this endpoint
+    if (req.role !== 'admin') {
+      return res.status(403).json({ message: 'Only administrators can view pending bookings' });
+    }
+
+    const filter = { status: { $in: ['pending', 'cancelled', 'confirmed', 'completed'] } };
+
+    // Apply additional filters
+    if (barberId) filter.barberId = barberId;
+    if (serviceId) filter.serviceId = serviceId;
+    if (startDate || endDate) {
+      filter.bookingDate = {};
+      if (startDate) filter.bookingDate.$gte = new Date(startDate);
+      if (endDate) filter.bookingDate.$lte = new Date(endDate);
+    }
+
+    const skip = (page - 1) * limit;
+    const bookings = await Booking.find(filter)
+      .populate({
+        path: 'barberId',
+        populate: { path: 'userId', select: 'name email' }
+      })
+      .populate('serviceId', 'name price durationMinutes')
+      .populate('customerId', 'name email phone')
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(Number(limit));
 
@@ -204,46 +359,189 @@ exports.getMyBookings = async (req, res) => {
       }
     });
   } catch (err) {
+    console.error('Error in getPendingBookings:', err);
     res.status(500).json({ message: err.message });
   }
 };
 
-// Update booking status
-exports.updateBookingStatus = async (req, res) => {
+// Confirm a pending booking (admin only)
+exports.confirmBooking = async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const { status, reason } = req.body;
-    const userId = req.userId;
+    const adminId = req.userId;
+
+    // Only admins can confirm bookings
+    if (req.role !== 'admin') {
+      return res.status(403).json({ message: 'Only administrators can confirm bookings' });
+    }
 
     const booking = await Booking.findById(bookingId);
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
     }
 
-    // Check permissions
-    const User = require('../models/user.model');
-    const user = await User.findById(userId);
-    const isCustomer = booking.customerId.toString() === userId;
-    const isBarber = await require('../models/barber.model').findOne({ userId, _id: booking.barberId });
-    const isAdmin = user.role === 'admin';
-
-    if (!isCustomer && !isBarber && !isAdmin) {
-      return res.status(403).json({ message: 'Not authorized to update this booking' });
+    if (booking.status !== 'pending') {
+      return res.status(400).json({
+        message: `Cannot confirm booking with status: ${booking.status}. Only pending bookings can be confirmed.`
+      });
     }
 
-    // Validate status transitions
+    // Update booking status and audit fields
+    booking.status = 'confirmed';
+    booking.confirmedAt = new Date();
+    booking.confirmedBy = adminId;
+    await booking.save();
+
+    // Populate the response
+    const confirmedBooking = await Booking.findById(bookingId)
+      .populate({
+        path: 'barberId',
+        populate: { path: 'userId', select: 'name email' }
+      })
+      .populate('serviceId', 'name price durationMinutes')
+      .populate('customerId', 'name email phone')
+      .populate('confirmedBy', 'name email');
+
+    res.json({
+      booking: confirmedBooking,
+      message: 'Booking confirmed successfully'
+    });
+  } catch (err) {
+    console.error('Error in confirmBooking:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Bulk confirm multiple bookings (admin only)
+exports.bulkConfirmBookings = async (req, res) => {
+  try {
+    const { bookingIds } = req.body;
+    const adminId = req.userId;
+
+    // Only admins can confirm bookings
+    if (req.role !== 'admin') {
+      return res.status(403).json({ message: 'Only administrators can confirm bookings' });
+    }
+
+    if (!Array.isArray(bookingIds) || bookingIds.length === 0) {
+      return res.status(400).json({ message: 'Please provide an array of booking IDs' });
+    }
+
+    const results = [];
+    const confirmedBookings = [];
+
+    for (const bookingId of bookingIds) {
+      try {
+        const booking = await Booking.findById(bookingId);
+
+        if (!booking) {
+          results.push({ bookingId, status: 'error', message: 'Booking not found' });
+          continue;
+        }
+
+        if (booking.status !== 'pending') {
+          results.push({
+            bookingId,
+            status: 'error',
+            message: `Cannot confirm booking with status: ${booking.status}`
+          });
+          continue;
+        }
+
+        // Update booking
+        booking.status = 'confirmed';
+        booking.confirmedAt = new Date();
+        booking.confirmedBy = adminId;
+        await booking.save();
+
+        results.push({ bookingId, status: 'success', message: 'Booking confirmed' });
+        confirmedBookings.push(booking);
+      } catch (error) {
+        results.push({ bookingId, status: 'error', message: error.message });
+      }
+    }
+
+    res.json({
+      results,
+      confirmedCount: confirmedBookings.length,
+      totalProcessed: bookingIds.length,
+      message: `Successfully confirmed ${confirmedBookings.length} out of ${bookingIds.length} bookings`
+    });
+  } catch (err) {
+    console.error('Error in bulkConfirmBookings:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Update booking status (with enhanced role-based permissions)
+exports.updateBookingStatus = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { status, reason } = req.body;
+    const userId = req.userId;
+    const userRole = req.role;
+
+    // Use booking from middleware if available
+    const booking = req.booking || await Booking.findById(bookingId);
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    // Role-based status transition validation with date-based rules for barbers
     const validTransitions = {
-      'pending': ['confirmed', 'cancelled'],
-      'confirmed': ['completed', 'cancelled', 'no_show'],
-      'cancelled': [], // Cannot change from cancelled
-      'completed': [], // Cannot change from completed
-      'no_show': [] // Cannot change from no_show
+      admin: {
+        'pending': ['confirmed', 'cancelled'],
+        'confirmed': ['completed', 'cancelled', 'no_show'],
+        'cancelled': [],
+        'completed': [],
+        'no_show': []
+      },
+      barber: {
+        'confirmed': ['completed', 'no_show'],
+        'pending': [], // Barbers cannot see or modify pending bookings
+        'cancelled': [],
+        'completed': [],
+        'no_show': []
+      },
+      customer: {
+        'pending': ['cancelled'],
+        'confirmed': [],
+        'cancelled': [],
+        'completed': [],
+        'no_show': []
+      }
     };
 
-    if (!validTransitions[booking.status].includes(status)) {
+    const allowedTransitions = validTransitions[userRole]?.[booking.status] || [];
+    if (!allowedTransitions.includes(status)) {
       return res.status(400).json({
-        message: `Cannot change status from ${booking.status} to ${status}`
+        message: `${userRole} cannot change status from ${booking.status} to ${status}`
       });
+    }
+
+    // Additional validation for barbers: date-based status restrictions
+    if (userRole === 'barber' && booking.status === 'confirmed') {
+      const bookingDate = new Date(booking.bookingDate);
+      const today = new Date();
+
+      // Set time to start of day for accurate comparison
+      bookingDate.setHours(0, 0, 0, 0);
+      today.setHours(0, 0, 0, 0);
+
+      const isToday = bookingDate.getTime() === today.getTime();
+      const isPast = bookingDate.getTime() < today.getTime();
+
+      if (status === 'completed' && !isToday) {
+        return res.status(400).json({
+          message: 'Chỉ có thể đánh dấu "Hoàn thành" cho booking trong ngày hôm nay'
+        });
+      }
+
+      if (status === 'no_show' && !isPast && !isToday) {
+        return res.status(400).json({
+          message: 'Chỉ có thể đánh dấu "Không đến" cho booking trong quá khứ hoặc hôm nay'
+        });
+      }
     }
 
     // Handle no-show status
@@ -279,6 +577,28 @@ exports.updateBookingStatus = async (req, res) => {
       await Service.findByIdAndUpdate(booking.serviceId, {
         $inc: { popularity: 1 }
       });
+    }
+
+    // Handle schedule updates for status changes
+    if (status === 'cancelled') {
+      // Unmark time slots in the barber schedule
+      const BarberSchedule = require('../models/barber-schedule.model');
+      const bookingDate = new Date(booking.bookingDate);
+      const dateStr = bookingDate.toISOString().split('T')[0];
+
+      try {
+        const scheduleResult = await BarberSchedule.unmarkSlotsAsBooked(
+          booking.barberId,
+          dateStr,
+          booking._id,
+          null // No session for this operation
+        );
+
+        console.log(`Successfully unmarked ${scheduleResult.totalSlotsUnbooked} slots for cancelled booking:`, scheduleResult.unbookedSlots);
+      } catch (scheduleError) {
+        console.error('Error unmarking schedule slots for cancelled booking:', scheduleError);
+        // Don't fail the status update if schedule update fails, but log the error
+      }
     }
 
     booking.status = status;
@@ -339,9 +659,56 @@ exports.cancelBooking = async (req, res) => {
       });
     }
 
+    // CRITICAL: Unmark time slots in the barber schedule
+    const BarberSchedule = require('../models/barber-schedule.model');
+    const bookingDate = new Date(booking.bookingDate);
+    const dateStr = bookingDate.toISOString().split('T')[0];
+
+    try {
+      const scheduleResult = await BarberSchedule.unmarkSlotsAsBooked(
+        booking.barberId,
+        dateStr,
+        booking._id,
+        null // No session for standalone MongoDB
+      );
+
+      console.log(`Successfully unmarked ${scheduleResult.totalSlotsUnbooked} slots:`, scheduleResult.unbookedSlots);
+    } catch (scheduleError) {
+      console.error('Error unmarking schedule slots:', scheduleError);
+      return res.status(500).json({
+        message: 'Failed to free time slots in schedule: ' + scheduleError.message,
+        errorCode: 'SCHEDULE_UPDATE_FAILED'
+      });
+    }
+
     booking.status = 'cancelled';
     booking.note = booking.note ? `${booking.note}\nCancellation reason: ${reason}` : `Cancellation reason: ${reason}`;
     await booking.save();
+
+    // Track cancellation as no-show record
+    const NoShow = require('../models/no-show.model');
+
+    // Determine if this is a late cancellation (less than 2 hours before appointment)
+    const isLateCancellation = hoursDifference < 2;
+
+    try {
+      await NoShow.create({
+        customerId: booking.customerId,
+        bookingId: booking._id,
+        barberId: booking.barberId,
+        serviceId: booking.serviceId,
+        originalBookingDate: booking.bookingDate,
+        markedBy: userId,
+        reason: isLateCancellation ? 'late_cancellation' : 'customer_cancelled',
+        description: reason,
+        isWithinPolicy: !isLateCancellation
+      });
+
+      console.log(`No-show record created for booking ${booking._id}, customer ${booking.customerId}`);
+    } catch (noShowError) {
+      console.error('Error creating no-show record:', noShowError);
+      // Don't fail the cancellation if no-show tracking fails
+    }
 
     res.json({
       message: 'Booking cancelled successfully',
@@ -349,6 +716,7 @@ exports.cancelBooking = async (req, res) => {
     });
 
   } catch (err) {
+    console.error('Error in cancelBooking:', err);
     res.status(500).json({ message: err.message });
   }
 };
@@ -502,23 +870,49 @@ exports.getBookingConflicts = async (req, res) => {
 
 exports.getAllBookings = async (req, res) => {
   try {
-    const { search, status, barberId, serviceId } = req.query;
+    const { search, status, barberId, serviceId, page = 1, limit = 20 } = req.query;
+    const userRole = req.role;
 
-    const filter = {};
+    // Start with role-based filter from middleware
+    const filter = { ...req.bookingFilter };
 
+    // Apply additional filters
     if (status) filter.status = status;
     if (barberId) filter.barberId = barberId;
     if (serviceId) filter.serviceId = serviceId;
     if (search) {
       const regex = { $regex: search, $options: 'i' };
-      filter.customerName = regex; // chỉ tìm trong tên khách
+      filter.customerName = regex;
     }
 
-    const bookings = await Booking.find(filter)
-      .populate({ path: 'barberId', populate: { path: 'userId', select: 'name' } })
-      .populate('serviceId', 'name');
+    // For barbers, ensure they only see confirmed bookings (enforced by middleware)
+    // For admins, no additional restrictions
 
-    res.status(200).json(bookings);
+    const skip = (page - 1) * limit;
+    const bookings = await Booking.find(filter)
+      .populate({
+        path: 'barberId',
+        populate: { path: 'userId', select: 'name email' }
+      })
+      .populate('serviceId', 'name price durationMinutes')
+      .populate('customerId', 'name email phone')
+      .populate('confirmedBy', 'name email')
+      .sort({ bookingDate: -1 })
+      .skip(skip)
+      .limit(Number(limit));
+
+    const total = await Booking.countDocuments(filter);
+
+    res.status(200).json({
+      bookings,
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      },
+      userRole // Include user role for frontend logic
+    });
   } catch (err) {
     console.error('Error in getAllBookings:', err);
     res.status(500).json({ message: err.message });
@@ -680,13 +1074,20 @@ exports.createBookingFromBot = async (payload, userId) => {
       return { statusCode: 400, message: 'Lịch đặt phải cách thời điểm hiện tại ít nhất 30 phút.' };
     }
 
-    // Check no-show
+    // Enhanced no-show checking with detailed blocking logic
     const NoShow = require('../models/no-show.model');
-    const noShowCount = await NoShow.countDocuments({ customerId: userId });
-    if (noShowCount >= 3) {
+    const isBlocked = await NoShow.isCustomerBlocked(userId, 3);
+    if (isBlocked) {
+      const noShowCount = await NoShow.getCustomerNoShowCount(userId);
       return {
         statusCode: 403,
-        message: 'Tài khoản của bạn bị chặn đặt lịch do có nhiều lần không đến. Vui lòng liên hệ hỗ trợ.'
+        message: `Tài khoản của bạn bị chặn đặt lịch do có ${noShowCount} lần hủy/không đến. Vui lòng liên hệ hỗ trợ để giải quyết vấn đề này.`,
+        errorCode: 'CUSTOMER_BLOCKED',
+        details: {
+          noShowCount,
+          limit: 3,
+          contactSupport: true
+        }
       };
     }
 
@@ -700,7 +1101,7 @@ exports.createBookingFromBot = async (payload, userId) => {
     // Check trùng lịch
     const Booking = require('../models/booking.model');
     const dateStr = requestedDateTime.toISOString().split('T')[0];
-    const existingBookings = await Booking.find({
+    const barberBookings = await Booking.find({
       barberId,
       bookingDate: {
         $gte: new Date(`${dateStr}T00:00:00.000Z`),
@@ -711,7 +1112,7 @@ exports.createBookingFromBot = async (payload, userId) => {
 
     const newStart = new Date(bookingDate);
     const newEnd = new Date(newStart.getTime() + durationMinutes * 60000);
-    const hasConflict = existingBookings.some(b => {
+    const hasConflict = barberBookings.some(b => {
       const start = new Date(b.bookingDate);
       const end = new Date(start.getTime() + b.durationMinutes * 60000);
       return newStart < end && newEnd > start;
@@ -731,7 +1132,7 @@ exports.createBookingFromBot = async (payload, userId) => {
       return { statusCode: 404, message: 'Không tìm thấy thợ.' };
     }
 
-    if (existingBookings.length >= barber.maxDailyBookings) {
+    if (barberBookings.length >= barber.maxDailyBookings) {
       return {
         statusCode: 400,
         message: 'Thợ đã đạt giới hạn số lượng đặt lịch trong ngày.'

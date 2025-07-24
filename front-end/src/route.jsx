@@ -39,6 +39,7 @@ import BarberDashboard from "./pages/Barber/BarberDashboard.jsx";
 import BarberCalendarPage from "./pages/Barber/BarberCalendarPage.jsx";
 import BarberBookingManagement from "./pages/Barber/BarberBookingManagement.jsx";
 import BarberScheduleManagement from "./pages/Admin/BarberScheduleManagement.jsx";
+import BookingConfirmationManagement from "./pages/Admin/BookingConfirmationManagement.jsx";
 import BarberSetup from "./pages/Barber/BarberSetup.jsx";
 import BookingFeedbackPage from "./pages/Feedback/BookingFeedbackPage.jsx";
 import MyFeedbackPage from "./pages/Feedback/MyFeedbackPage.jsx";
@@ -57,6 +58,10 @@ import UserVouchers from "./pages/user/UserVouchers.jsx";
 import ManageBlog from "./pages/ManageBlog/ManageBlog.jsx";
 import BarberProfile from "./components/profile/baberProfile.jsx";
 import FeedbackBarber from "./pages/FeedbackBarber/FeedbackBarber.jsx";
+import NoShowManagement from "./pages/Admin/NoShowManagement.jsx";
+
+
+
 
 const router = createBrowserRouter([
   {
@@ -126,6 +131,8 @@ const router = createBrowserRouter([
           { path: "discount-product", element: <ManageDiscountProduct /> },
           { path: "appointment", element: <Appointment /> },
           { path: "barber-schedule", element: <BarberScheduleManagement /> },
+          { path: "booking-confirmation", element: <BookingConfirmationManagement /> },
+          { path: "noshow-management", element: <NoShowManagement /> },
           { path: "statistics", element: <Statistics /> },
           { path: "manage-blog", element: <ManageBlog /> },
         ],

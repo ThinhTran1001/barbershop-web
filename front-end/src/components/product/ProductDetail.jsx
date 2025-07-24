@@ -8,6 +8,9 @@ import {
   Breadcrumb,
   Skeleton,
   notification,
+  Avatar,
+  List,
+  Typography,
 } from "antd";
 import {
   ShoppingCartOutlined,
@@ -21,6 +24,7 @@ import "../../css/product/productdetail.css";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
 import { useUserCart } from "../../context/UserCartContext";
+import { getFeedbacksByProduct } from "../../services/api";
 
 import product1 from "../../assets/images/product1.jpg";
 import product2 from "../../assets/images/product2.jpg";
@@ -35,6 +39,7 @@ const imageMap = {
 };
 
 const { TabPane } = Tabs;
+const { Text, Title } = Typography;
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -44,6 +49,7 @@ const ProductDetail = () => {
   const { addToCart: addToUserCart } = useUserCart();
   const [product, setProduct] = useState(null);
   const [relatedProducts, setRelatedProducts] = useState([]);
+  const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [mainImage, setMainImage] = useState("");
@@ -51,7 +57,6 @@ const ProductDetail = () => {
   const [isFavorite, setIsFavorite] = useState(false);
   const [brandName, setBrandName] = useState("");
 
-  
   const addToCart = async (product, quantity) => {
     try {
       if (user) {
@@ -66,17 +71,15 @@ const ProductDetail = () => {
   };
 
   useEffect(() => {
-    const fetchProduct = async () => {
+    const fetchProductAndReviews = async () => {
       try {
         const res = await fetch(`http://localhost:3000/api/products/${id}`);
         if (!res.ok) throw new Error("Lỗi khi tải sản phẩm");
         const data = await res.json();
-        
         const productData = data.data || data;
         setProduct(productData);
         setMainImage(productData.image);
 
-       
         if (productData.details?.brandId) {
           const brandRes = await fetch(`http://localhost:3000/api/brands/${productData.details.brandId}`);
           if (brandRes.ok) {
@@ -85,23 +88,34 @@ const ProductDetail = () => {
           }
         }
 
-  
+        console.log("Fetching reviews for productId:", id);
+        const reviewRes = await getFeedbacksByProduct(id);
+console.log("reviewRes.data:", reviewRes.data); // giữ lại để debug
+
+if (reviewRes.success && Array.isArray(reviewRes.data?.data)) {
+  setReviews(reviewRes.data.data); // <-- Đây là mảng đánh giá thực sự
+  console.log("Updated reviews state:", reviewRes.data.data);
+} else {
+  setReviews([]);
+}
+          console.log("reviewRes.data:", reviewRes.data);
+
         setLoading(false);
       } catch (err) {
-        console.error(err);
-        setError("Không thể tải dữ liệu sản phẩm. Vui lòng thử lại sau.");
+        console.error("Error fetching data:", err);
+        setError("Không thể tải dữ liệu sản phẩm hoặc đánh giá. Vui lòng thử lại sau.");
         setLoading(false);
       }
     };
 
     window.scrollTo(0, 0);
-    fetchProduct();
+    fetchProductAndReviews();
   }, [id]);
 
   const getImage = (path) => {
     if (imageMap[path]) return imageMap[path];
-if (path?.startsWith("/assets")) return path.substring(1);
-    return path;
+    if (path?.startsWith("/assets")) return path.substring(1);
+    return path; // Return external URL as is if not in imageMap
   };
 
   const formatPrice = (price) =>
@@ -195,7 +209,7 @@ if (path?.startsWith("/assets")) return path.substring(1);
               alt={product.name}
               className="main-product-image"
               onError={(e) => {
-e.target.onerror = null;
+                e.target.onerror = null;
                 e.target.src = "";
               }}
             />
@@ -265,7 +279,7 @@ e.target.onerror = null;
 
           <div className="product-actions">
             <div className="quantity-selector">
-<span className="quantity-label">Số lượng:</span>
+              <span className="quantity-label">Số lượng:</span>
               <InputNumber
                 min={1}
                 max={product.stock}
@@ -350,7 +364,7 @@ e.target.onerror = null;
                       <td className="spec-name">Dung tích</td>
                       <td className="spec-value">{product.details.volume}</td>
                     </tr>
-)}
+                  )}
                   {product.details?.ingredients && (
                     <tr>
                       <td className="spec-name">Thành phần</td>
@@ -359,6 +373,63 @@ e.target.onerror = null;
                   )}
                 </tbody>
               </table>
+            </div>
+          </TabPane>
+          <TabPane tab="Đánh giá sản phẩm" key="4">
+            <div className="tab-content">
+              <Title level={3}>Đánh giá sản phẩm</Title>
+              {reviews.length > 0 ? (
+                <List
+                  dataSource={reviews}
+                  renderItem={(review) => (
+                    <div className="review-item">
+                      <div className="review-header">
+                        <Avatar>{review.userId?.name?.charAt(0) || "K"}</Avatar>
+                        <div className="review-author">
+                          <Text strong>{review.userId?.name || "Khách hàng ẩn danh"}</Text>
+                          <Text type="secondary" style={{ fontSize: 12 }}>
+                            {new Date(review.createdAt).toLocaleString("vi-VN", {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </Text>
+                        </div>
+                      </div>
+                      <div className="review-content">
+                        <Rate disabled allowHalf value={review.rating} style={{ marginBottom: 8 }} />
+                        <Text>{review.comment || "Không có bình luận."}</Text>
+                        {review.images?.length > 0 && (
+                          <div className="review-images">
+                            {review.images.map((img, idx) => (
+                              <img
+                                key={idx}
+                                src={getImage(img)}
+                                alt={`review-img-${idx}`}
+                                style={{
+                                  width: 100,
+                                  height: 100,
+                                  objectFit: "cover",
+                                  marginRight: 8,
+                                  borderRadius: 4,
+                                }}
+                                onError={(e) => {
+                                  e.target.onerror = null;
+                                  e.target.src = ""; // Fallback to empty src on error
+                                }}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                />
+              ) : (
+                <Text>Chưa có đánh giá nào cho sản phẩm này.</Text>
+              )}
             </div>
           </TabPane>
         </Tabs>
