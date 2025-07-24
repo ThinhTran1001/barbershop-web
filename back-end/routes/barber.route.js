@@ -16,9 +16,9 @@ router.get('/by-specialty', barberController.getBarbersBySpecialty);
 router.post('/auto-assign', barberController.autoAssignBarber);
 router.get('/availability', barberController.getBarberAvailability);
 
-// Barber bookings
-router.get('/:userId/bookings', barberController.getBarberBookings);
-router.get('/:barberId/bookings', barberController.getBarberBookings);
+// Barber bookings (with role-based access control)
+router.get('/:userId/bookings', authenticate, barberController.getBarberBookings);
+router.get('/:barberId/bookings', authenticate, barberController.getBarberBookings);
 router.get("/by-user/:userId", barberController.getBarberByUserId);
 router.get("/public/:id", barberController.getBarberPublicById);
 

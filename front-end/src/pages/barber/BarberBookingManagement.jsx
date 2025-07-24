@@ -16,7 +16,9 @@ import {
   Col,
   Statistic,
   Avatar,
-  Rate
+  Rate,
+  Tooltip,
+  Alert
 } from 'antd';
 import {
   SearchOutlined,
@@ -25,7 +27,8 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   ExclamationCircleOutlined,
-  EyeOutlined
+  EyeOutlined,
+  InfoCircleOutlined
 } from '@ant-design/icons';
 import { getBarberBookings } from '../../services/barberApi.js';
 import { updateBookingStatus } from '../../services/serviceApi.js';
@@ -62,10 +65,9 @@ const BarberBookingManagement = () => {
     total: 0
   });
 
-  // Statistics
+  // Statistics (barbers only see confirmed and completed bookings)
   const [stats, setStats] = useState({
     total: 0,
-    pending: 0,
     confirmed: 0,
     completed: 0,
     cancelled: 0,
@@ -118,7 +120,6 @@ const BarberBookingManagement = () => {
   const calculateStats = (bookingsData) => {
     const stats = {
       total: bookingsData.length,
-      pending: bookingsData.filter(b => b.status === 'pending').length,
       confirmed: bookingsData.filter(b => b.status === 'confirmed').length,
       completed: bookingsData.filter(b => b.status === 'completed').length,
       cancelled: bookingsData.filter(b => b.status === 'cancelled').length,
@@ -200,6 +201,27 @@ const BarberBookingManagement = () => {
     return texts[status] || status;
   };
 
+  // Helper function to get available actions for a booking
+  const getBookingActions = (booking) => {
+    if (booking.status !== 'confirmed') return null;
+
+    const bookingDate = dayjs(booking.bookingDate);
+    const today = dayjs();
+    const isToday = bookingDate.isSame(today, 'day');
+    const isPast = bookingDate.isBefore(today, 'day');
+    const isFuture = bookingDate.isAfter(today, 'day');
+
+    if (isToday) {
+      return 'can_complete'; // Có thể hoàn thành
+    } else if (isPast) {
+      return 'can_mark_no_show'; // Có thể đánh dấu không đến
+    } else if (isFuture) {
+      return 'future_booking'; // Booking tương lai - chờ đến ngày
+    }
+
+    return null;
+  };
+
   const columns = [
     {
       title: 'Khách hàng',
@@ -237,16 +259,38 @@ const BarberBookingManagement = () => {
       title: 'Thời gian',
       dataIndex: 'bookingDate',
       key: 'bookingDate',
-      render: (date) => (
-        <div>
+      render: (date, record) => {
+        const bookingDate = dayjs(date);
+        const today = dayjs();
+        const isToday = bookingDate.isSame(today, 'day');
+        const isPast = bookingDate.isBefore(today, 'day');
+        const isFuture = bookingDate.isAfter(today, 'day');
+
+        let dateColor = '#666';
+        let dateLabel = '';
+
+        if (isToday) {
+          dateColor = '#1890ff';
+          dateLabel = ' (Hôm nay)';
+        } else if (isPast) {
+          dateColor = '#ff4d4f';
+          dateLabel = ' (Quá hạn)';
+        } else if (isFuture) {
+          dateColor = '#52c41a';
+          dateLabel = ' (Sắp tới)';
+        }
+
+        return (
           <div>
-            <CalendarOutlined /> {dayjs(date).format('DD/MM/YYYY')}
+            <div style={{ color: dateColor, fontWeight: isToday ? 'bold' : 'normal' }}>
+              <CalendarOutlined /> {bookingDate.format('DD/MM/YYYY')}{dateLabel}
+            </div>
+            <div style={{ fontSize: '12px', color: '#666' }}>
+              {bookingDate.format('HH:mm')}
+            </div>
           </div>
-          <div style={{ fontSize: '12px', color: '#666' }}>
-            {dayjs(date).format('HH:mm')}
-          </div>
-        </div>
-      ),
+        );
+      },
       sorter: true
     },
     {
@@ -259,7 +303,6 @@ const BarberBookingManagement = () => {
         </Tag>
       ),
       filters: [
-        { text: 'Chờ xác nhận', value: 'pending' },
         { text: 'Đã xác nhận', value: 'confirmed' },
         { text: 'Hoàn thành', value: 'completed' },
         { text: 'Đã hủy', value: 'cancelled' },
@@ -281,39 +324,68 @@ const BarberBookingManagement = () => {
           >
             Chi tiết
           </Button>
-          {record.status === 'pending' && (
-            <Button
-              size="small"
-              type="primary"
-              icon={<CheckCircleOutlined />}
-              onClick={() => handleBookingStatusUpdate(record._id, 'confirmed')}
-              loading={actionLoading}
-            >
-              Xác nhận
-            </Button>
-          )}
-          {record.status === 'confirmed' && (
-            <Button
-              size="small"
-              type="primary"
-              icon={<CheckCircleOutlined />}
-              onClick={() => handleBookingStatusUpdate(record._id, 'completed')}
-              loading={actionLoading}
-            >
-              Hoàn thành
-            </Button>
-          )}
-          {(record.status === 'pending' || record.status === 'confirmed') && (
-            <Button
-              size="small"
-              danger
-              icon={<CloseCircleOutlined />}
-              onClick={() => handleBookingStatusUpdate(record._id, 'no_show')}
-              loading={actionLoading}
-            >
-              Không đến
-            </Button>
-          )}
+          {/* Barbers can no longer confirm pending bookings - only admins can */}
+          {record.status === 'confirmed' && (() => {
+            const bookingDate = dayjs(record.bookingDate);
+            const today = dayjs();
+            const isToday = bookingDate.isSame(today, 'day');
+            const isPast = bookingDate.isBefore(today, 'day');
+
+            if (isToday) {
+              // Booking hôm nay - có thể hoàn thành hoặc không đến
+              return [
+                <Tooltip key="complete" title="Đánh dấu booking hôm nay là hoàn thành">
+                  <Button
+                    size="small"
+                    type="primary"
+                    icon={<CheckCircleOutlined />}
+                    onClick={() => handleBookingStatusUpdate(record._id, 'completed')}
+                    loading={actionLoading}
+                    style={{ marginRight: 8 }}
+                  >
+                    Hoàn thành
+                  </Button>
+                </Tooltip>,
+                <Tooltip key="no-show" title="Đánh dấu booking hôm nay là không đến">
+                  <Button
+                    size="small"
+                    type="default"
+                    danger
+                    icon={<CloseCircleOutlined />}
+                    onClick={() => handleBookingStatusUpdate(record._id, 'no_show')}
+                    loading={actionLoading}
+                  >
+                    Không đến
+                  </Button>
+                </Tooltip>
+              ];
+            } else if (isPast) {
+              // Booking ngày trước - chỉ có thể đánh dấu không đến
+              return (
+                <Tooltip title="Đánh dấu booking quá hạn là không đến">
+                  <Button
+                    size="small"
+                    type="default"
+                    danger
+                    icon={<CloseCircleOutlined />}
+                    onClick={() => handleBookingStatusUpdate(record._id, 'no_show')}
+                    loading={actionLoading}
+                  >
+                    Không đến
+                  </Button>
+                </Tooltip>
+              );
+            } else {
+              // Booking tương lai - không có action
+              return (
+                <Tooltip title="Chờ đến ngày để xử lý booking">
+                  <Button size="small" disabled>
+                    Chờ xử lý
+                  </Button>
+                </Tooltip>
+              );
+            }
+          })()}
         </Space>
       )
     }
@@ -322,6 +394,22 @@ const BarberBookingManagement = () => {
   return (
     <div style={{ padding: 24, maxWidth: 1400, margin: '0 auto' }}>
       <Title level={2}>Quản lý lịch hẹn</Title>
+
+      {/* Thông báo quy tắc */}
+      <Alert
+        message="Quy tắc xử lý booking"
+        description={
+          <div>
+            <div>• <strong>Booking hôm nay:</strong> Có thể đánh dấu "Hoàn thành" hoặc "Không đến"</div>
+            <div>• <strong>Booking quá hạn:</strong> Chỉ có thể đánh dấu "Không đến"</div>
+            <div>• <strong>Booking tương lai:</strong> Chờ đến ngày để xử lý</div>
+          </div>
+        }
+        type="info"
+        showIcon
+        icon={<InfoCircleOutlined />}
+        style={{ marginBottom: 24 }}
+      />
 
       {/* Statistics */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
@@ -334,15 +422,7 @@ const BarberBookingManagement = () => {
             />
           </Card>
         </Col>
-        <Col xs={12} sm={8} md={4}>
-          <Card>
-            <Statistic
-              title="Chờ xác nhận"
-              value={stats.pending}
-              valueStyle={{ color: '#faad14' }}
-            />
-          </Card>
-        </Col>
+        {/* Removed pending bookings statistic - barbers can only see confirmed bookings */}
         <Col xs={12} sm={8} md={4}>
           <Card>
             <Statistic
