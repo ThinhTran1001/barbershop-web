@@ -53,6 +53,16 @@ const bookingSchema = new Schema({
     customerPhone: {
         type: String,
         trim: true
+    },
+    // Audit fields for booking confirmation tracking
+    confirmedAt: {
+        type: Date,
+        default: null
+    },
+    confirmedBy: {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
     }
 }, {
     timestamps: true
