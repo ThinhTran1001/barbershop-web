@@ -7,6 +7,8 @@ import Button from 'react-bootstrap/Button';
 import Modal from 'react-bootstrap/Modal';
 import Alert from 'react-bootstrap/Alert';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import { InputGroup, FormControl } from 'react-bootstrap';
+import { Link } from 'react-bootstrap-icons';
 
 const PAGE_SIZE = 5;
 
@@ -210,6 +212,14 @@ const ManageBlog = () => {
     setCurrentPage(pagination.current);
   };
 
+  // Hàm mở modal nhập link
+  // Hàm xác nhận link, fetch dữ liệu và truyền sang BlogModal
+  // Khi đóng modal Blog, reset initialValues
+  const handleCloseBlogModal = () => {
+    setModalVisible(false);
+    setBlogInitialValues(null);
+  };
+
   return (
     <div
       style={{ padding: 32 }}
@@ -255,7 +265,7 @@ const ManageBlog = () => {
       <BlogModal
         visible={modalVisible}
         onOk={handleModalOk}
-        onCancel={() => setModalVisible(false)}
+        onCancel={handleCloseBlogModal}
         initialValues={editingBlog}
         tags={tags}
       />
