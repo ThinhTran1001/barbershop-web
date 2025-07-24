@@ -98,10 +98,10 @@ const DiscountModal = ({
                     <strong>Product:</strong> {editingDiscount.productName}
                   </div>
                   <div>
-                    <strong>Original Price:</strong> ${editingDiscount.productPrice?.toFixed(2)}
+                    <strong>Original Price:</strong> {editingDiscount.productPrice?.toLocaleString('vi-VN')} VNĐ
                   </div>
                   <div>
-                    <strong>Current Discount:</strong> ${editingDiscount.discount}
+                    <strong>Current Discount:</strong> {editingDiscount.discount?.toLocaleString('vi-VN')} VNĐ
                   </div>
                 </Space>
               </div>
