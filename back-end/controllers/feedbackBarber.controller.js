@@ -222,7 +222,22 @@ exports.updateFeedbackStatus = async (req, res) => {
 };
 
 exports.getByBookingId = async (req, res) => {
-  const { bookingId } = req.params;
-  const feedback = await FeedbackBarber.findOne({ bookingId, isDeleted: false });
-  return res.json(feedback || null);
+  try {
+    const { bookingId } = req.params;
+
+    // Lấy tất cả feedbackBarber chưa bị xóa
+    const allFeedbacks = await FeedbackBarber.find({ isDeleted: false });
+
+    // Tìm feedback có bookingId khớp
+    const matchedFeedback = allFeedbacks.findOne(fb => fb.bookingId.toString() === bookingId);
+
+    if (matchedFeedback) {
+      return res.json(matchedFeedback);
+    } else {
+      return res.status(404).json({ message: 'Không tìm thấy phản hồi cho booking này' });
+    }
+  } catch (error) {
+    console.error('Lỗi trong getByBookingId:', error);
+    return res.status(500).json({ message: 'Lỗi máy chủ khi xử lý yêu cầu' });
+  }
 };

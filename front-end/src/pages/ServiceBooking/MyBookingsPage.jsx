@@ -42,7 +42,11 @@ import {
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 import { getBookingFeedback } from '../../services/bookingFeedbackApi';
-import { getBarberFeedbackByBookingId } from '../../services/api';
+import {
+  getMe,
+  getBarberFeedbacks // thêm dòng này ở đây nếu chưa có
+} from '../../services/api';
+
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -81,60 +85,71 @@ const MyBookingsPage = () => {
   const [detailModalVisible, setDetailModalVisible] = useState(false);
 
   // Load bookings with filters
-  const loadBookings = async (newFilters = filters) => {
-    setLoading(true);
-    try {
-      const response = await getMyBookings(newFilters);
-      const data = response.bookings || response;
-      const paginationData = response.pagination;
 
-      setBookings(Array.isArray(data) ? data : []);
-
-      // Fetch feedback status for each booking
-      const reviewMap = {};
-      for (const booking of data) {
-  let hasServiceFeedback = false;
-  let hasBarberFeedback = false;
-
+const loadBookings = async (newFilters = filters) => {
+  setLoading(true);
   try {
-    await getBookingFeedback(booking._id);
-    hasServiceFeedback = true;
-  } catch (err) {
-    if (err.response?.status === 404) hasServiceFeedback = false;
-    else console.error('Error checking booking feedback:', err);
-  }
+    // 1. Lấy thông tin user hiện tại
+    const meRes = await getMe();
+    const me = meRes.data || meRes;
 
-  try {
-    const res = await getBarberFeedbackByBookingId(booking._id);
-    hasBarberFeedback = !!res?.data; // <-- CHỈ CẦN DÒNG NÀY!
-  } catch (err) {
-    console.error('Error checking barber feedback:', err);
-    hasBarberFeedback = false;
-  }
+    // 2. Lấy danh sách lịch hẹn
+    const response = await getMyBookings(newFilters);
+    const data = response.bookings || response;
+    const paginationData = response.pagination;
 
-  reviewMap[booking._id] = {
-    hasServiceFeedback,
-    hasBarberFeedback
-  };
-}
+    setBookings(Array.isArray(data) ? data : []);
 
-      setReviewableBookings(reviewMap);
+    // 3. Lấy toàn bộ feedback barber của người dùng
+    const barberFeedbackRes = await getBarberFeedbacks({ customerId: me._id });
+    const barberFeedbacks = Array.isArray(barberFeedbackRes?.data)
+  ? barberFeedbackRes.data
+  : barberFeedbackRes?.data?.data || [];
 
 
-      if (paginationData) {
-        setPagination({
-          current: paginationData.page,
-          pageSize: paginationData.limit,
-          total: paginationData.total
-        });
+    // Tạo Set chứa các bookingId đã feedback barber
+    const barberFeedbackBookingIds = new Set(
+      barberFeedbacks.map(fb => fb.bookingId?._id || fb.bookingId)
+    );
+
+    // 4. Check feedback cho mỗi booking
+    const reviewMap = {};
+    for (const booking of data) {
+      let hasServiceFeedback = false;
+
+      try {
+        await getBookingFeedback(booking._id);
+        hasServiceFeedback = true;
+      } catch (err) {
+        if (err.response?.status === 404) hasServiceFeedback = false;
+        else console.error('Error checking service feedback:', err);
       }
-    } catch (error) {
-      message.error('Không thể tải danh sách đặt lịch!');
-      console.error('Error loading bookings:', error);
-    } finally {
-      setLoading(false);
+
+      const hasBarberFeedback = barberFeedbackBookingIds.has(booking._id);
+
+      reviewMap[booking._id] = {
+        hasServiceFeedback,
+        hasBarberFeedback
+      };
     }
-  };
+
+    setReviewableBookings(reviewMap);
+
+    if (paginationData) {
+      setPagination({
+        current: paginationData.page,
+        pageSize: paginationData.limit,
+        total: paginationData.total
+      });
+    }
+  } catch (error) {
+    message.error('Không thể tải danh sách đặt lịch!');
+    console.error('Error loading bookings:', error);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   useEffect(() => {
     loadBookings();
