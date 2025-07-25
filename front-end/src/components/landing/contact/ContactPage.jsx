@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import ContactForm from '../contact/ContactForm';
 import ContactInfo from '../contact/ContactInfo';
 import MapEmbed from '../contact/MapEmbed';
@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 
 const ContactPage = () => {
   const navigate = useNavigate(); 
+  useEffect(() => { window.scrollTo(0, 0); }, []);
 
   return (
     <Container className="my-5">
