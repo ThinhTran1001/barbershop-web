@@ -198,7 +198,10 @@ export default function CheckoutGuest() {
               <Form.Item
                 name="name"
                 label="Họ và tên"
-                rules={[{ required: true, message: 'Vui lòng nhập họ tên!' }]}
+                rules={[
+                  { required: true, message: 'Vui lòng nhập họ tên!' },
+                  { validator: (_, value) => value && value.trim() !== '' ? Promise.resolve() : Promise.reject('Họ tên không được để trống hoặc chỉ chứa khoảng trắng!') }
+                ]}
               >
                 <Input placeholder="Nhập họ và tên" />
               </Form.Item>
@@ -208,7 +211,8 @@ export default function CheckoutGuest() {
                 label="Số điện thoại"
                 rules={[
                   { required: true, message: 'Vui lòng nhập số điện thoại!' },
-                  { pattern: /^[0-9]{10}$/, message: 'Số điện thoại phải đủ 10 chữ số' }
+                  { pattern: /^[0-9]{10}$/, message: 'Số điện thoại phải đủ 10 chữ số' },
+                  { validator: (_, value) => value && value.trim() !== '' ? Promise.resolve() : Promise.reject('Số điện thoại không được để trống hoặc chỉ chứa khoảng trắng!') }
                 ]}
               >
                 <Input placeholder="Nhập số điện thoại" />
@@ -219,7 +223,8 @@ export default function CheckoutGuest() {
                 label="Email"
                 rules={[
                   { required: true, message: 'Vui lòng nhập email!' },
-                  { type: 'email', message: 'Email không hợp lệ!' }
+                  { type: 'email', message: 'Email không hợp lệ!' },
+                  { validator: (_, value) => value && value.trim() !== '' ? Promise.resolve() : Promise.reject('Email không được để trống hoặc chỉ chứa khoảng trắng!') }
                 ]}
               >
                 <Input placeholder="Nhập email" />
@@ -284,7 +289,10 @@ export default function CheckoutGuest() {
               <Form.Item
                 name="addressDetail"
                 label="Địa chỉ chi tiết"
-                rules={[{ required: true, message: 'Nhập địa chỉ chi tiết!' }]}
+                rules={[
+                  { required: true, message: 'Nhập địa chỉ chi tiết!' },
+                  { validator: (_, value) => value && value.trim() !== '' ? Promise.resolve() : Promise.reject('Địa chỉ không được để trống hoặc chỉ chứa khoảng trắng!') }
+                ]}
               >
                 <Input
                   placeholder="Số nhà, tên đường..."
