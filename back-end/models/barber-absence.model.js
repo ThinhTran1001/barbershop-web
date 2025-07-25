@@ -112,5 +112,83 @@ barberAbsenceSchema.methods.findAffectedBookings = async function() {
     }).populate('customerId serviceId');
 };
 
+// Instance method to update barber schedules when absence is approved
+barberAbsenceSchema.methods.updateBarberSchedules = async function(session) {
+    const BarberSchedule = require('./barber-schedule.model');
+
+    // Get all dates between startDate and endDate
+    const dates = [];
+    const currentDate = new Date(this.startDate);
+    const endDate = new Date(this.endDate);
+
+    while (currentDate <= endDate) {
+        dates.push(currentDate.toISOString().split('T')[0]);
+        currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    // Update or create schedule records for each date
+    const updatePromises = dates.map(async (date) => {
+        let schedule = await BarberSchedule.findOne({
+            barberId: this.barberId,
+            date
+        }).session(session);
+
+        if (!schedule) {
+            // Create new schedule if it doesn't exist
+            schedule = new BarberSchedule({
+                barberId: this.barberId,
+                date,
+                workingHours: { start: "09:00", end: "18:00" },
+                isOffDay: true,
+                offReason: 'absence',
+                absenceId: this._id
+            });
+            schedule.generateDefaultSlots();
+        } else {
+            // Update existing schedule
+            schedule.isOffDay = true;
+            schedule.offReason = 'absence';
+            schedule.absenceId = this._id;
+        }
+
+        return await schedule.save({ session });
+    });
+
+    return await Promise.all(updatePromises);
+};
+
+// Instance method to revert barber schedules when absence is rejected/cancelled
+barberAbsenceSchema.methods.revertBarberSchedules = async function(session) {
+    const BarberSchedule = require('./barber-schedule.model');
+
+    // Get all dates between startDate and endDate
+    const dates = [];
+    const currentDate = new Date(this.startDate);
+    const endDate = new Date(this.endDate);
+
+    while (currentDate <= endDate) {
+        dates.push(currentDate.toISOString().split('T')[0]);
+        currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    // Revert schedule records for each date
+    const updatePromises = dates.map(async (date) => {
+        const schedule = await BarberSchedule.findOne({
+            barberId: this.barberId,
+            date,
+            absenceId: this._id
+        }).session(session);
+
+        if (schedule) {
+            schedule.isOffDay = false;
+            schedule.offReason = null;
+            schedule.absenceId = null;
+            return await schedule.save({ session });
+        }
+    });
+
+    return await Promise.all(updatePromises.filter(Boolean));
+};
+
 const BarberAbsence = mongoose.model('BarberAbsence', barberAbsenceSchema);
 module.exports = BarberAbsence;

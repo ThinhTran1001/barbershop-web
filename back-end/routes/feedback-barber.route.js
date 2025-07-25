@@ -8,4 +8,6 @@ router.post('/', feedbackBarberController.createBarberFeedback);
 router.delete('/:id', feedbackBarberController.deleteBarberFeedback);
 router.patch('/:id/status', feedbackBarberController.updateFeedbackStatus);
 
+router.get('/booking/:bookingId', feedbackBarberController.getByBookingId);
+
 module.exports = router; 

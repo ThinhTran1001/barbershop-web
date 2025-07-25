@@ -203,12 +203,25 @@ exports.getBarberBookings = async (req, res) => {
     const userId = req.params.userId;
     console.log(`Fetching bookings for barber with userId: ${userId}`);
     const { date, status } = req.query;
+    const requestingUserRole = req.role;
+
     const barber = await Barber.findOne({ userId });
     if (!barber) {
       return res.status(404).json({ message: 'Barber not found' });
     }
+
     const barberId = barber._id;
     const query = { barberId };
+
+    // Apply role-based filtering
+    if (requestingUserRole === 'barber') {
+      // Barbers can only see confirmed bookings
+      query.status = { $in: ['confirmed', 'cancelled'] };
+    } else if (requestingUserRole === 'admin') {
+      // Admins can see all bookings for this barber
+      // No additional status filter needed
+    }
+
     if (date) {
       // Lọc theo ngày (YYYY-MM-DD)
       const start = new Date(date);
@@ -216,14 +229,22 @@ exports.getBarberBookings = async (req, res) => {
       end.setHours(23, 59, 59, 999);
       query.bookingDate = { $gte: start, $lte: end };
     }
-    if (status) {
+
+    // If status is explicitly provided and user is admin, use it
+    if (status && requestingUserRole === 'admin') {
       query.status = status;
     }
+
     const bookings = await Booking.find(query)
-      .populate('customerId', 'name email')
-      .populate('serviceId')
+      .populate('customerId', 'name email phone')
+      .populate('serviceId', 'name price durationMinutes')
+      .populate('confirmedBy', 'name email')
       .sort({ bookingDate: 1 });
-    res.json(bookings);
+
+    res.json({
+      bookings,
+      userRole: requestingUserRole
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

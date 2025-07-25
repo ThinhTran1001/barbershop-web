@@ -10,6 +10,7 @@ import '../../css/landing/container.css'
 import ChatWidget from "../../components/chatbot/ChatWidget";
 import ShopItems from "../../components/landing/productlistd";
 import ServiceBooking from "../ServiceBooking/ServiceBooking";
+import HotDeals from "../../components/landing/HotDeals";
 
 export default function Landing() {
   return (
@@ -33,6 +34,7 @@ export default function Landing() {
       <Barbers />
       <BookingForm />
       {/* <ChatWidget /> */}
+
     </>
   );
 }

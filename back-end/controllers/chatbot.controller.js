@@ -32,33 +32,43 @@ async function analyzeIntent(message, chatHistory = []) {
   const currentState = chatHistory.length > 0 && chatHistory[chatHistory.length - 1].sender === 'Assistant'
     ? chatHistory[chatHistory.length - 1].text.match(/Trạng thái: (\w+)/)?.[1] || 'start'
     : 'start';
+
   const prompt = `
-Bạn là một trợ lý AI thông minh, chuyên cung cấp thông tin trang trọng, lịch sự và thân thiện cho khách hàng tại BerGer Barbershop. Phân tích câu hỏi sau dựa trên ngữ cảnh từ lịch sử cuộc trò chuyện và trả về JSON chứa:
-- intent: Ý định của người dùng (ví dụ: "get_product_list", "get_service_list", "get_barber_list", "add_to_cart", "book_appointment", "get_barber_bookings", "general"). Nếu câu hỏi là "xác nhận", "đồng ý", hoặc các biến thể gần đúng (như "xác nhan") và trạng thái hiện tại là "confirm_booking", giữ intent là "book_appointment".
-- entities: Các thực thể trong câu hỏi (ví dụ: {"name": ["Sáp vuốt tóc Gatsby Moving Rubber"], "service": ["Cắt tóc nam"], "barber": ["Lê Quang Vinh"], "quantity": 5, "date": "2025-07-22", "time": "14:30", "customerName": "Nguyễn Văn A", "customerEmail": "a@example.com", "customerPhone": "0123456789"}, có thể rỗng nếu không có). Nếu có nhiều thực thể, trả về mảng trong "name", "service", hoặc "barber". Nếu trạng thái là "confirm_booking" và không có thực thể mới, giữ nguyên thực thể từ lịch sử.
-- state: Trạng thái hiện tại của cuộc trò chuyện (start, select_service, select_barber, select_time, collect_customer_info, confirm_booking) dựa trên lịch sử và câu hỏi. Nếu người dùng yêu cầu "xác nhận", "đồng ý", "xác nhân", hoặc các biến thể gần đúng (ví dụ: "xác nhan") và trạng thái hiện tại là "confirm_booking", giữ state là "confirm_booking". Nếu người dùng yêu cầu "sửa" hoặc "thay đổi", quay lại state trước đó dựa trên lịch sử.
+Bạn là một trợ lý AI thông minh tại BerGer Barbershop. Phân tích câu hỏi sau dựa trên ngữ cảnh từ lịch sử cuộc trò chuyện và trả về JSON chứa:
+- intent: Ý định của người dùng ("get_product_list", "get_service_list", "get_barber_list", "add_to_cart", "book_appointment", "get_barber_bookings", "general"). Nếu câu hỏi chứa "xác nhận", "đồng ý", hoặc các biến thể (như "xác nhan") và trạng thái hiện tại là "confirm_booking", giữ intent là "book_appointment".
+- entities: Các thực thể được trích xuất từ câu hỏi và lịch sử trò chuyện (ví dụ: {"service": ["Cắt tóc nam"], "barber": ["Lê Quang Vinh"], "date": "2025-07-22", "time": "14:30", "customerName": "Nguyễn Văn A", "customerEmail": "a@example.com", "customerPhone": "0123456789"}). Tổng hợp thông tin từ lịch sử nếu câu hỏi không cung cấp đủ.
+- state: Trạng thái của cuộc trò chuyện, dựa trên thông tin đã thu thập:
+  - "start": Khi chưa có thông tin đặt lịch.
+  - "collect_info": Khi đã có một số thông tin nhưng vẫn thiếu (dịch vụ, thợ, thời gian, hoặc thông tin khách hàng).
+  - "confirm_booking": Khi đã có đầy đủ thông tin cần thiết (dịch vụ, thợ, ngày, giờ, thông tin khách hàng).
+  - Nếu người dùng yêu cầu "sửa" hoặc "thay đổi", trả về trạng thái "collect_info" và gợi ý chỉnh sửa thông tin cụ thể.
 
 Câu hỏi: "${message}"
 Lịch sử cuộc trò chuyện:\n${historyText || 'Không có lịch sử'}
 Trạng thái hiện tại: ${currentState}
 
-Lưu ý quan trọng:
-- Nếu người dùng nói "sản phẩm này", "dịch vụ này", hoặc "thợ này" mà không rõ ràng, hãy tham chiếu đến danh sách sản phẩm/dịch vụ/thợ gần nhất từ lịch sử.
-- Nếu yêu cầu "thêm 5 sản phẩm này vào giỏ hàng", hãy hiểu "5" là số lượng sản phẩm (khác nhau) muốn thêm, và mặc định mỗi sản phẩm có quantity là 1, trừ khi có chỉ định rõ ràng như "thêm 5 sản phẩm này với mỗi sản phẩm 5 cái".
-- Nếu yêu cầu đặt lịch (book_appointment), xác định các thông tin như service, barber, date, time, customerName, customerEmail, customerPhone từ câu hỏi hoặc lịch sử, và gợi ý state tiếp theo dựa trên thông tin đã có.
-- Nếu yêu cầu xem lịch booking của barber (get_barber_bookings), xác định barber và giữ state là "start".
-- Không sử dụng dấu * để đánh dấu danh sách. Thay vào đó, sử dụng dấu ✦ kèm xuống dòng (\n✦ ) để định dạng danh sách rõ ràng, chỉ đặt ✦ trước phần tử chính, các thuộc tính con không cần ✦ mà chỉ thụt đầu dòng.
-- Trả lời bằng giọng điệu trang trọng, lịch sự, thân thiện, dễ hiểu và trực quan.
+Lưu ý:
+- Tự động phát hiện các thực thể từ lịch sử nếu câu hỏi không đề cập rõ ràng (ví dụ: nếu người dùng đã hỏi về dịch vụ "Cắt tóc nam" trước đó, sử dụng dịch vụ này khi họ yêu cầu đặt lịch).
+- Nếu câu hỏi chứa từ khóa như "sửa", "thay đổi", trả về trạng thái "collect_info" và xác định thông tin nào cần chỉnh sửa.
+- Trả lời bằng giọng điệu trang trọng, lịch sự, thân thiện, dễ hiểu.
+- Sử dụng dấu ✦ để định dạng danh sách, chỉ đặt trước phần tử chính.
 
 Ví dụ đầu ra:
 {
   "intent": "book_appointment",
   "entities": {
     "service": ["Cắt tóc nam"],
-    "state": "select_barber"
-  }
+    "barber": ["Lê Quang Vinh"],
+    "date": "2025-07-22",
+    "time": "14:30",
+    "customerName": "Nguyễn Văn A",
+    "customerEmail": "a@example.com",
+    "customerPhone": "0123456789"
+  },
+  "state": "confirm_booking"
 }
 `;
+
   try {
     console.log('Analyzing intent for message:', message, 'with history:', historyText);
     const raw = await gemini.generate({ prompt });
@@ -640,7 +650,7 @@ function generateNaturalResponse(fnName, data, userMessage, entities) {
       products.forEach(p => {
         reply += '✦ ' + p.name + '\n';
         reply += '  Thương hiệu: ' + p.brand + '\n';
-        reply += '  Giá: $' + p.price + '\n';
+        reply += '  Giá: ' + p.price + 'VNĐ' + '\n';
         reply += '  Đánh giá: ' + p.rating + '/5\n';
         if (p.categories.length > 0) {
           reply += '  Danh mục: ' + p.categories.join(', ') + '\n';

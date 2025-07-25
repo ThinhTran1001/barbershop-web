@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import "./ProductDetail.css";
 import {
   Rate,
   Tabs,
@@ -8,6 +9,9 @@ import {
   Breadcrumb,
   Skeleton,
   notification,
+  Avatar,
+  Typography,
+  Modal,
 } from "antd";
 import {
   ShoppingCartOutlined,
@@ -16,11 +20,13 @@ import {
   ShareAltOutlined,
   CheckCircleFilled,
 } from "@ant-design/icons";
+import dayjs from 'dayjs';
 
 import "../../css/product/productdetail.css";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
 import { useUserCart } from "../../context/UserCartContext";
+import { getFeedbacksByProduct } from "../../services/api";
 
 import product1 from "../../assets/images/product1.jpg";
 import product2 from "../../assets/images/product2.jpg";
@@ -35,6 +41,7 @@ const imageMap = {
 };
 
 const { TabPane } = Tabs;
+const { Text, Title } = Typography;
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -44,14 +51,16 @@ const ProductDetail = () => {
   const { addToCart: addToUserCart } = useUserCart();
   const [product, setProduct] = useState(null);
   const [relatedProducts, setRelatedProducts] = useState([]);
+  const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [mainImage, setMainImage] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [isFavorite, setIsFavorite] = useState(false);
   const [brandName, setBrandName] = useState("");
+  const [previewImage, setPreviewImage] = useState("");
+  const [isModalVisible, setIsModalVisible] = useState(false);
 
-  
   const addToCart = async (product, quantity) => {
     try {
       if (user) {
@@ -66,17 +75,16 @@ const ProductDetail = () => {
   };
 
   useEffect(() => {
-    const fetchProduct = async () => {
+    const fetchProductAndReviews = async () => {
       try {
         const res = await fetch(`http://localhost:3000/api/products/${id}`);
         if (!res.ok) throw new Error("Lỗi khi tải sản phẩm");
         const data = await res.json();
-        
         const productData = data.data || data;
         setProduct(productData);
         setMainImage(productData.image);
 
-       
+        // Fetch brand
         if (productData.details?.brandId) {
           const brandRes = await fetch(`http://localhost:3000/api/brands/${productData.details.brandId}`);
           if (brandRes.ok) {
@@ -85,23 +93,33 @@ const ProductDetail = () => {
           }
         }
 
-  
+        // Fetch reviews
+        const reviewRes = await getFeedbacksByProduct(id);
+        const extracted = reviewRes?.data?.data || reviewRes?.data || [];
+        console.log("Extracted reviews from API:", extracted);
+
+        if (Array.isArray(extracted)) {
+          setReviews(extracted);
+        } else {
+          setReviews([]);
+        }
+
         setLoading(false);
       } catch (err) {
-        console.error(err);
-        setError("Không thể tải dữ liệu sản phẩm. Vui lòng thử lại sau.");
+        console.error("Error fetching data:", err);
+        setError("Không thể tải dữ liệu sản phẩm hoặc đánh giá. Vui lòng thử lại sau.");
         setLoading(false);
       }
     };
 
     window.scrollTo(0, 0);
-    fetchProduct();
+    fetchProductAndReviews();
   }, [id]);
 
   const getImage = (path) => {
     if (imageMap[path]) return imageMap[path];
-if (path?.startsWith("/assets")) return path.substring(1);
-    return path;
+    if (path?.startsWith("/assets")) return path.substring(1);
+    return path; // Return external URL as is if not in imageMap
   };
 
   const formatPrice = (price) =>
@@ -157,6 +175,16 @@ if (path?.startsWith("/assets")) return path.substring(1);
     });
   };
 
+  const showImagePreview = (image) => {
+    setPreviewImage(image);
+    setIsModalVisible(true);
+  };
+
+  const handleModalClose = () => {
+    setIsModalVisible(false);
+    setPreviewImage("");
+  };
+
   if (loading) return <Skeleton active paragraph={{ rows: 10 }} />;
 
   if (error || !product) {
@@ -195,7 +223,7 @@ if (path?.startsWith("/assets")) return path.substring(1);
               alt={product.name}
               className="main-product-image"
               onError={(e) => {
-e.target.onerror = null;
+                e.target.onerror = null;
                 e.target.src = "";
               }}
             />
@@ -265,7 +293,7 @@ e.target.onerror = null;
 
           <div className="product-actions">
             <div className="quantity-selector">
-<span className="quantity-label">Số lượng:</span>
+              <span className="quantity-label">Số lượng:</span>
               <InputNumber
                 min={1}
                 max={product.stock}
@@ -324,7 +352,63 @@ e.target.onerror = null;
 
       <div className="product-details-tabs">
         <Tabs defaultActiveKey="1" type="card">
-          <TabPane tab="Mô tả chi tiết" key="1">
+          <TabPane tab="Đánh giá sản phẩm" key="1">
+            <div className="tab-content">
+              <Title level={3} className="review-title">Đánh giá sản phẩm</Title>
+              {reviews.length > 0 ? (
+                <div className="review-list">
+                  {reviews.map((review, idx) => (
+                    <div key={idx} className="review-card">
+                      <div className="review-header">
+                        <Avatar
+                          size={48}
+                          src={review.userId?.avatar || undefined}
+                          className="review-avatar"
+                        >
+                          {review.userId?.name?.charAt(0) || "K"}
+                        </Avatar>
+                        <div className="review-details">
+                          <Text strong className="review-author">{review.userId?.name || "Khách hàng ẩn danh"}</Text>
+                          <div className="review-rating-row">
+                            <div className="review-rating">
+                              <Rate disabled allowHalf value={review.rating || 0} />
+                              {/* <span className="review-rating-text">{review.rating || 0}/5</span> */}
+                            </div>
+                            <Text className="review-date">
+                              {dayjs(review.createdAt).format('DD MMMM YYYY, HH:mm')}
+                            </Text>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="review-comment-container">
+                        <Text className="review-comment">{review.comment || "Không có bình luận"}</Text>
+                      </div>
+                      {review.images && review.images.length > 0 && (
+                        <div className="review-images-container">
+                          {review.images.map((img, imgIdx) => (
+                            <img
+                              key={imgIdx}
+                              src={getImage(img)}
+                              alt={`review-image-${imgIdx}`}
+                              className="review-image"
+                              onClick={() => showImagePreview(getImage(img))}
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = "";
+                              }}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <Text className="no-reviews">Chưa có đánh giá nào cho sản phẩm này.</Text>
+              )}
+            </div>
+          </TabPane>
+          <TabPane tab="Mô tả chi tiết" key="4">
             <div className="tab-content">
               <h3>Thông tin sản phẩm</h3>
               <p>{product.description}</p>
@@ -350,7 +434,7 @@ e.target.onerror = null;
                       <td className="spec-name">Dung tích</td>
                       <td className="spec-value">{product.details.volume}</td>
                     </tr>
-)}
+                  )}
                   {product.details?.ingredients && (
                     <tr>
                       <td className="spec-name">Thành phần</td>
@@ -361,8 +445,18 @@ e.target.onerror = null;
               </table>
             </div>
           </TabPane>
+          
         </Tabs>
       </div>
+
+      <Modal
+        visible={isModalVisible}
+        footer={null}
+        onCancel={handleModalClose}
+        className="image-preview-modal"
+      >
+        <img src={previewImage} alt="Preview" className="preview-image" />
+      </Modal>
 
       {relatedProducts.length > 0 && (
         <div className="related-products-section">

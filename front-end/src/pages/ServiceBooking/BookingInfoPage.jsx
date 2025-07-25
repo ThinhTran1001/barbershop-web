@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import BookingInfoForm from '../../components/BookingInfoForm.jsx';
-import { Card, Typography, message, Descriptions, Divider, Button } from 'antd';
+import { Card, Typography, Descriptions, Divider, Button } from 'antd';
 import { createBooking } from '../../services/serviceApi.js';
+import ToastService from '../../services/toastService.jsx';
 import Cookies from 'js-cookie';
 
 const { Title } = Typography;
@@ -44,6 +45,49 @@ const BookingInfoPage = () => {
         bookingDate = new Date();
       }
 
+      // Pre-submission validation to prevent double-booking
+      const { validateTimeSlotAvailability } = await import('../../services/barberScheduleApi.js');
+
+      try {
+        const validation = await validateTimeSlotAvailability({
+          barberId: barber?._id,
+          bookingDate: bookingDate.toISOString(),
+          durationMinutes: service.durationMinutes || 30,
+          customerId
+        });
+
+        if (!validation.available) {
+          // Show enhanced error notifications based on conflict type
+          if (validation.conflictType === 'CUSTOMER_CONFLICT') {
+            ToastService.showCustomerDoubleBookingError({
+              reason: validation.reason,
+              conflictingBarber: validation.conflictingBooking?.barberName,
+              conflictTime: validation.conflictingBooking?.date,
+              conflictDuration: validation.conflictingBooking?.duration
+            });
+          } else if (validation.conflictType === 'BARBER_CONFLICT') {
+            ToastService.showBarberConflictError({
+              reason: validation.reason,
+              conflictTime: validation.conflictingBooking?.date,
+              conflictDuration: validation.conflictingBooking?.duration
+            });
+          } else {
+            ToastService.showValidationError({
+              reason: validation.reason || 'Time slot is no longer available'
+            });
+          }
+          setSubmitting(false);
+          return;
+        }
+      } catch (validationError) {
+        console.error('Pre-submission validation failed:', validationError);
+        ToastService.showWarning(
+          'Validation Warning',
+          'Unable to validate time slot. Proceeding with booking...',
+          6
+        );
+      }
+
       // Chuẩn bị dữ liệu booking gửi lên backend
       const bookingData = {
         customerId,
@@ -60,14 +104,71 @@ const BookingInfoPage = () => {
         durationMinutes: service.durationMinutes || 30,
         // autoAssignedBarber: !barber?._id
       };
+
+      // Show loading toast
+      ToastService.showLoadingToast('Creating your booking...', 'booking-creation');
+
       await createBooking(bookingData);
-      message.success('Đặt lịch thành công!');
+
+      // Hide loading toast
+      ToastService.hideLoadingToast('booking-creation');
+
+      // Show success toast with booking details
+      ToastService.showBookingSuccess({
+        serviceName: service.name,
+        barberName: barber?.userId?.name || 'Auto-assigned',
+        date: timeSlot.date,
+        time: timeSlot.time,
+        duration: service.durationMinutes || 30
+      });
+
       localStorage.removeItem('selectedService');
       localStorage.removeItem('selectedBarber');
       localStorage.removeItem('selectedTimeSlot');
-      setTimeout(() => window.location.href = '/', 1500);
+      setTimeout(() => window.location.href = '/', 2000);
     } catch (e) {
-      message.error('Đặt lịch thất bại!');
+      console.error('Booking creation error:', e);
+
+      // Hide loading toast on error
+      ToastService.hideLoadingToast('booking-creation');
+
+      // Handle specific error types with enhanced messaging
+      if (e.response?.status === 409) {
+        const errorCode = e.response?.data?.errorCode;
+        const errorMessage = e.response?.data?.message;
+        const conflictDetails = e.response?.data?.conflictDetails;
+
+        if (errorCode === 'CUSTOMER_DOUBLE_BOOKING') {
+          ToastService.showCustomerDoubleBookingError({
+            reason: errorMessage,
+            conflictingBarber: conflictDetails?.conflictingBarber,
+            conflictTime: conflictDetails?.conflictingTime,
+            conflictDuration: conflictDetails?.conflictingDuration
+          });
+        } else if (errorCode === 'BOOKING_CONFLICT') {
+          ToastService.showBarberConflictError({
+            reason: errorMessage,
+            conflictTime: conflictDetails?.conflictingTime,
+            conflictDuration: conflictDetails?.conflictingDuration
+          });
+        } else {
+          ToastService.showBarberConflictError({
+            reason: 'Time slot is no longer available. Another customer just booked this time.'
+          });
+        }
+      } else if (e.response?.data?.errorCode === 'DAILY_LIMIT_EXCEEDED') {
+        ToastService.showDailyLimitError(barber?.userId?.name);
+      } else if (e.response?.data?.errorCode === 'SCHEDULE_UPDATE_FAILED') {
+        ToastService.showScheduleUpdateError();
+      } else if (!e.response) {
+        // Network error
+        ToastService.showNetworkError('booking creation');
+      } else {
+        // Generic error
+        ToastService.showValidationError({
+          reason: e.response?.data?.message || 'Booking creation failed. Please try again.'
+        });
+      }
     }
     setSubmitting(false);
   };

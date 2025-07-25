@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
-import { Form, Input, Select, Button, Upload, Tag, Space } from 'antd';
-import { PlusOutlined, UploadOutlined } from '@ant-design/icons';
+import { Form, Input, Select, Button, Upload } from 'antd';
+import { UploadOutlined } from '@ant-design/icons';
 
 const { Option } = Select;
 

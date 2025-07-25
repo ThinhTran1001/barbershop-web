@@ -136,30 +136,53 @@ exports.getAllAbsences = async (req, res) => {
 
 // Update absence approval status
 exports.updateAbsenceApproval = async (req, res) => {
+  const session = await require('mongoose').startSession();
+
   try {
-    const { absenceId } = req.params;
-    const { isApproved } = req.body;
-    const approvedBy = req.userId;
+    await session.withTransaction(async () => {
+      const { absenceId } = req.params;
+      const { isApproved } = req.body;
+      const approvedBy = req.userId;
 
-    const absence = await BarberAbsence.findById(absenceId);
-    if (!absence) {
-      return res.status(404).json({ message: 'Absence record not found' });
-    }
+      const absence = await BarberAbsence.findById(absenceId).session(session);
+      if (!absence) {
+        throw new Error('Absence record not found');
+      }
 
-    absence.isApproved = isApproved;
-    if (isApproved) {
-      absence.approvedBy = approvedBy;
-    }
+      const wasApproved = absence.isApproved;
+      absence.isApproved = isApproved;
 
-    await absence.save();
+      if (isApproved) {
+        absence.approvedBy = approvedBy;
 
-    res.json({
-      absence,
-      message: `Absence ${isApproved ? 'approved' : 'rejected'} successfully`
+        // Update barber schedules when approving
+        await absence.updateBarberSchedules(session);
+
+        console.log(`Absence approved: Updated schedules for barber ${absence.barberId} from ${absence.startDate} to ${absence.endDate}`);
+      } else if (wasApproved && !isApproved) {
+        // Revert schedules if previously approved and now rejected
+        await absence.revertBarberSchedules(session);
+
+        console.log(`Absence rejected: Reverted schedules for barber ${absence.barberId} from ${absence.startDate} to ${absence.endDate}`);
+      }
+
+      await absence.save({ session });
+
+      res.json({
+        absence,
+        message: `Absence ${isApproved ? 'approved' : 'rejected'} successfully`,
+        scheduleUpdated: true
+      });
     });
 
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error('Error updating absence approval:', err);
+    res.status(500).json({
+      message: err.message || 'Failed to update absence approval',
+      scheduleUpdated: false
+    });
+  } finally {
+    await session.endSession();
   }
 };
 
@@ -294,7 +317,7 @@ exports.getBarberCalendar = async (req, res) => {
     const bookings = await Booking.find({
       barberId: barberId,
       bookingDate: { $gte: startDate, $lte: endDate },
-      status: { $in: ['pending', 'confirmed'] }
+      status: { $in: ['pending', 'confirmed', 'cancelled'] }
     }).select('bookingDate durationMinutes status');
 
     // Generate calendar
@@ -361,6 +384,7 @@ exports.getBarberSchedule = async (req, res) => {
     }
 
   
+
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0);
 
@@ -371,7 +395,7 @@ exports.getBarberSchedule = async (req, res) => {
     const bookings = await Booking.find({
       barberId: barberId,
       bookingDate: { $gte: startDate, $lte: endDate },
-      status: { $in: ['pending', 'confirmed'] }
+      status: { $in: ['pending', 'confirmed', 'cancelled'] }
     }).select('bookingDate durationMinutes status');
 
     // Generate calendar

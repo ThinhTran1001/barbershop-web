@@ -1,6 +1,5 @@
-// front-end/src/components/chatbot/ChatWidget.jsx
 import React, { useState, useRef, useEffect } from 'react';
-import { Input, Avatar, notification } from 'antd';
+import { Input, Avatar, notification, Badge } from 'antd';
 import { MessageOutlined, SendOutlined, UserOutlined } from '@ant-design/icons';
 import { ChevronsDown } from 'lucide-react';
 import { sendChat } from '../../services/api';
@@ -22,7 +21,7 @@ const ProductCard = ({ product }) => (
 const ServiceCard = ({ service }) => (
   <div className="card service-card">
     <h3>{service.name}</h3>
-    <p>Giá: ${service.price}</p>
+    <p>Giá: {service.price} VNĐ</p>
     <p>Thời gian: {service.duration} phút</p>
     {service.description && <p>Mô tả: {service.description}</p>}
     {service.suggestedFor && <p>Phù hợp cho: {service.suggestedFor}</p>}
@@ -57,6 +56,8 @@ export default function ChatWidget() {
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [rooms, setRooms] = useState([]);
   const [messageRefreshKey, setMessageRefreshKey] = useState(0);
+  const [unreadCounts, setUnreadCounts] = useState({});
+
 
   useEffect(() => {
     if (open && inputRef.current) {
@@ -83,20 +84,39 @@ export default function ChatWidget() {
     });
 
     newSocket.on("receiveMessage", (message) => {
-      setChatMessages((prev) => ({
-        ...prev,
-        [message.roomId]: [...(prev[message.roomId] || []), message],
-      }));
+      const { roomId } = message;
+      const isOwnMessage = String(message.senderId) === String(user?.id);
 
-      // Nếu là admin và đang xem đúng room → force re-render
-      if (user?.role === 'admin' && selectedRoom === message.roomId) {
-        setMessageRefreshKey((prev) => prev + 1);
+      // ⛏ FIX: xác định room đang mở phải tính cả `open === true`
+      const isRoomOpen =
+        open && (
+          (user?.role === 'admin' && selectedRoom === roomId) ||
+          (user?.role === 'customer' && activeChat === 'admin' && roomId === user?.id)
+        );
+
+      // Nếu không phải tin của mình và KHÔNG mở đúng phòng → tăng badge
+      if (!isOwnMessage && !isRoomOpen) {
+        setUnreadCounts(prev => ({
+          ...prev,
+          [roomId]: (prev[roomId] || 0) + 1
+        }));
       }
+
+      // Nếu ĐANG ở đúng phòng → cập nhật
+      if (isRoomOpen) {
+        setMessageRefreshKey(prev => prev + 1);
+      }
+
+      // Luôn cập nhật message
+      setChatMessages(prev => ({
+        ...prev,
+        [roomId]: [...(prev[roomId] || []), message],
+      }));
     });
 
-    newSocket.on("updateRooms", (roomIds) => {
+    newSocket.on("updateRooms", () => {
       if (user?.role === 'admin') {
-        setRooms(roomIds);
+        fetchRooms(); // Gọi lại API /rooms-detail để giữ đúng định dạng [{ roomId, user }]
       }
     });
 
@@ -172,31 +192,28 @@ export default function ChatWidget() {
 
   const fetchRooms = async () => {
     try {
-      const res = await fetch(`http://localhost:3000/api/chat/rooms`, {
+      const res = await fetch(`http://localhost:3000/api/chat/rooms-detail`, {
         method: 'GET',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
       });
       const data = await res.json();
       if (data.success) {
-        setRooms(data.data);
+        setRooms(data.data); // [{ roomId, user: { name, avatarUrl } }]
       } else {
-        console.error('Fetch rooms failed:', data.message);
         notification.error({
           message: "Lỗi tải danh sách room",
           description: data.message || "Vui lòng thử lại!",
         });
       }
     } catch (err) {
-      console.error('Error fetching rooms:', err);
       notification.error({
         message: "Lỗi kết nối",
         description: "Không thể tải danh sách room. Vui lòng thử lại!",
       });
     }
   };
+
 
   const handleSendChatbot = async () => {
     if (!input.trim()) return;
@@ -252,17 +269,21 @@ export default function ChatWidget() {
       senderRole: user.role === 'admin' ? 'admin' : 'user',
     };
 
+    // ✅ XÓA BADGE UNREAD NGAY KHI GỬI
+    setUnreadCounts(prev => ({ ...prev, [roomId]: 0 }));
+
     socket.emit("sendMessage", message, (response) => {
       if (response.error) {
-    notification.error({
-      message: "Gửi tin nhắn thất bại",
-      description: response.error,
-    });
-  }
+        notification.error({
+          message: "Gửi tin nhắn thất bại",
+          description: response.error,
+        });
+      }
     });
 
     setInput('');
   };
+
 
   const scrollToBottom = () => {
     if (contentRef.current) {
@@ -271,9 +292,20 @@ export default function ChatWidget() {
   };
 
   if (!open) {
+    const totalUnread = Object.values(unreadCounts).reduce((a, b) => a + b, 0);
     return (
-      <div className="chat-toggle-btn" onClick={() => setOpen(true)} title="Mở chat">
-        <MessageOutlined />
+      <div
+        className="chat-toggle-btn"
+        onClick={() => setOpen(true)}
+        title="Mở chat"
+        style={{ position: 'fixed', bottom: '20px', right: '20px' }}
+      >
+        <MessageOutlined style={{ fontSize: 24 }} />
+        {totalUnread > 0 && (
+          <span className="chat-toggle-badge">
+            {totalUnread}
+          </span>
+        )}
       </div>
     );
   }
@@ -282,7 +314,7 @@ export default function ChatWidget() {
     <div className="chat-widget">
       <div className="chat-header">
         <div className="chat-title">
-          <span className="chat-icon">🤖</span> BarberChat
+          <span className="chat-icon">✂️</span> BarberChat
         </div>
         <div className="chat-close" onClick={() => setOpen(false)}>✕</div>
       </div>
@@ -291,19 +323,25 @@ export default function ChatWidget() {
           {user?.role === 'admin' && (
             rooms.map((room) => (
               <div
-                key={room}
-                className={`sidebar-item ${selectedRoom === room ? 'active' : ''}`}
+                key={room.roomId}
+                className={`sidebar-item ${selectedRoom === room.roomId ? 'active' : ''}`}
                 onClick={() => {
-                  setSelectedRoom(room);
+                  setSelectedRoom(room.roomId);
                   setActiveChat('admin');
-                  fetchMessages(room);
-                  socket?.emit("joinRoom", room, 'admin');
+                  fetchMessages(room.roomId);
+                  setUnreadCounts(prev => ({ ...prev, [room.roomId]: 0 }));
+                  socket?.emit("joinRoom", room.roomId, 'admin');
                 }}
               >
-                <span>Room: {room}</span>
+                <Badge count={unreadCounts[room.roomId]} offset={[8, 0]} size="small" style={{ backgroundColor: '#f5222d', marginRight: '10px' }}>
+                  <Avatar src={room.user?.avatarUrl || null} icon={<UserOutlined />} size="small" />
+                </Badge>
+
+                <span style={{ marginLeft: '8px' }}>{room.user?.name || 'Unknown'}</span>
               </div>
             ))
           )}
+
           {user?.role !== 'admin' && (
             <>
               <div
@@ -313,7 +351,7 @@ export default function ChatWidget() {
                   setSelectedRoom(null);
                 }}
               >
-                <span>Chatbot AI</span>
+                <span>🤖 <span style={{ marginLeft: '14px' }}>Chatbot AI</span></span>
               </div>
               {
                 user && (
@@ -322,9 +360,18 @@ export default function ChatWidget() {
                     onClick={() => {
                       setActiveChat('admin');
                       fetchMessages(user.id);
+                      setUnreadCounts(prev => ({ ...prev, [user.id]: 0 }));
                     }}
                   >
-                    <span>Chat với Admin</span>
+                    <Badge
+                      count={unreadCounts[user.id]}
+                      offset={[8, 0]}
+                      size="small"
+                      style={{ backgroundColor: '#f5222d', marginRight: '10px' }}
+                    >
+                      <Avatar icon={<UserOutlined />} size="small" />
+                    </Badge>
+                    <span style={{ marginLeft: '8px' }}>Chat với Admin</span>
                   </div>
                 )
               }
@@ -334,7 +381,7 @@ export default function ChatWidget() {
         <div className="chat-content-wrapper">
           <div className="chat-content" ref={contentRef} onScroll={onScroll}>
             {activeChat === 'chatbot' && user?.role !== 'admin' && msgs.map((m, i) => (
-              <div key={i} className={`chat-bubble ${m.sender === 'user' ? 'user-bubble' : 'bot-bubble'}`}>
+              <div key={i} className={`chat-bubble realtime-bubble ${m.sender === 'user' ? 'own' : 'other'}`}>
                 {m.text && <div className="message-text">{m.text}</div>}
                 {m.data?.products && m.data.products.map((p, idx) => (
                   <ProductCard key={idx} product={p} />
@@ -350,14 +397,22 @@ export default function ChatWidget() {
             {activeChat === 'admin' && user?.role !== 'admin' && chatMessages[user?.id]?.map((m, i) => (
               <div key={i} className={`chat-bubble realtime-bubble ${m.senderId === user.id ? 'own' : 'other'}`}>
                 <div className="message-text">{m.text}</div>
+                <div className="meta-info">
+                  {m.senderName || m.senderId} • {new Date(m.timestamp).toLocaleString()}
+                </div>
+
               </div>
             ))}
 
             {user?.role === 'admin' && selectedRoom && chatMessages[selectedRoom]?.map((m, i) => (
-              <div key={`${m._id || i}-${messageRefreshKey}`} className={`chat-bubble realtime-bubble ${m.senderId === user.id ? 'own' : 'other'}`}>
+              <div key={`${m._id || i}-${messageRefreshKey}`} className={`chat-bubble realtime-bubble ${String(m.senderId) === String(user.id) ? 'own' : 'other'}`}>
                 <div className="message-text">{m.text}</div>
+                <div className="meta-info">
+                  {m.senderName || m.senderId} • {new Date(m.timestamp).toLocaleString()}
+                </div>
               </div>
             ))}
+
 
             {user?.role === 'admin' && !selectedRoom && (
               <div className="chat-placeholder">
@@ -377,6 +432,12 @@ export default function ChatWidget() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onPressEnter={() => activeChat === 'chatbot' ? handleSendChatbot() : handleSendAdmin()}
+              onFocus={() => {
+                const roomId = user?.role === 'admin' ? selectedRoom : user?.id;
+                if (roomId) {
+                  setUnreadCounts(prev => ({ ...prev, [roomId]: 0 }));
+                }
+              }}
               placeholder={activeChat === 'chatbot' ? 'Nhập câu hỏi...' : 'Nhập tin nhắn...'}
               suffix={
                 <SendOutlined

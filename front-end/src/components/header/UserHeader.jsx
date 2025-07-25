@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Layout, Menu, Button, Dropdown, Badge } from "antd";
 import {
   ShoppingCartOutlined,
@@ -15,8 +15,8 @@ import "../../css/landing/common-header.css";
 
 const { Header } = Layout;
 
+// Cập nhật navItems - không có "TRANG CHỦ"
 const navItems = [
-  { key: "home", label: "TRANG CHỦ" },
   { key: "about", label: "GIỚI THIỆU" },
   { key: "services", label: "DỊCH VỤ & BẢNG GIÁ" },
   { key: "products", label: "SẢN PHẨM" },
@@ -30,6 +30,8 @@ export default function UserHeader() {
   const { getCartCount: getUserCartCount, clearCart } = useUserCart();
   const navigate = useNavigate();
   const cartCount = user ? getUserCartCount() : getGuestCartCount();
+  const [selectedKey, setSelectedKey] = useState("");
+
 
   console.log("UserHeader render, cart count:", cartCount);
 
@@ -115,28 +117,52 @@ export default function UserHeader() {
         height: "auto",
       }}
     >
-      <div className="d-flex justify-content-center flex-grow-1">
-        <Menu
-          mode="horizontal"
-          theme="dark"
-          items={navItems}
-          className="text-uppercase fw-bold"
-          style={{
-            backgroundColor: "transparent",
-            borderBottom: "none",
-            color: "#ffc107",
-          }}
-          defaultSelectedKeys={["home"]}
-          onClick={({ key }) => {
-            if (key === "services") {
-              scrollToSection("services");
-            } else {
-              navigate(`/${key === "home" ? "" : key}`);
-            }
-          }}
-        />
+      {/* Logo BARBERSHOP */}
+      <div
+        style={{
+          fontWeight: "bold",
+          fontSize: "20px",
+          color: "#ffc107",
+          cursor: "pointer",
+          marginRight: "32px",
+        }}
+        onClick={() => {
+  setSelectedKey("logo"); // << Không có menu item key là "logo"
+  navigate("/");
+  setTimeout(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, 10);
+}}
+      >
+        BARBERSHOP
       </div>
 
+      {/* Navigation menu */}
+      <Menu
+        mode="horizontal"
+        theme="dark"
+        items={navItems}
+        selectedKeys={[selectedKey]}
+        className="text-uppercase fw-bold flex-grow-1"
+        style={{
+          backgroundColor: "transparent",
+          borderBottom: "none",
+          color: "#ffc107",
+          justifyContent: "center",
+        }}
+        overflowedIndicator={null} // ✅ Tắt thu gọn "..."
+        onClick={({ key }) => {
+  setSelectedKey(key);
+  if (key === "services") {
+    scrollToSection("services");
+  } else {
+    navigate(`/${key}`);
+  }
+}}
+
+      />
+
+      {/* Giỏ hàng & user dropdown */}
       <div className="d-flex align-items-center gap-2 ms-auto">
         <Badge count={cartCount} showZero={false}>
           <Button
@@ -169,4 +195,5 @@ export default function UserHeader() {
       </div>
     </Header>
   );
+
 }

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Button } from "antd";
 import { useNavigate } from "react-router-dom";
 import img1 from "../../assets/images/about1.jpg";
@@ -7,6 +7,7 @@ import "../../css/landing/aboutsection.css";
 
 export default function AboutSection() {
   const navigate = useNavigate();
+  useEffect(() => { window.scrollTo(0, 0); }, []);
 
   return (
     <section className="about-section">

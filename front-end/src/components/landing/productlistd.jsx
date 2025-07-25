@@ -7,6 +7,12 @@ import product2 from "../../assets/images/product2.jpg";
 import product3 from "../../assets/images/product3.jpg";
 import product4 from "../../assets/images/product4.jpg";
 import { getProducts } from "../../services/api";
+import dayjs from "dayjs";
+import duration from "dayjs/plugin/duration";
+dayjs.extend(duration);
+import { useUserCart } from '../../context/UserCartContext';
+import { useCart } from '../../context/CartContext';
+import { useAuth } from '../../context/AuthContext';
 
 const imageMap = {
   "/assets/images/product1.jpg": product1,
@@ -23,6 +29,9 @@ export default function ShopItems() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { addToCart: addToUserCart } = useUserCart();
+  const { addToCart: addToGuestCart } = useCart();
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -123,10 +132,21 @@ export default function ShopItems() {
                       )}
                     </div>
                     <div className="item-buttons">
-                      <button className="purchase-button">Mua hàng</button>
+                      <button
+                        className="purchase-button"
+                        onClick={() => {
+                          if (user) {
+                            addToUserCart(product, 1);
+                          } else {
+                            addToGuestCart(product, 1);
+                          }
+                        }}
+                      >
+                        Mua hàng
+                      </button>
                       <button
                         className="detail-button"
-                        onClick={() => goToProductDetail(product._id)}
+                        onClick={() => goToProductDetail(product._id || product.id)}
                       >
                         Chi tiết
                       </button>

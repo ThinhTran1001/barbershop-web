@@ -5,8 +5,8 @@ const Voucher = require('../models/voucher.model');
 const Payment = require('../models/payment.model');
 const PaymentController = require('./payment.controller');
 const User_Voucher = require('../models/user_voucher.model');
-const User = require('../models/user.model'); 
-const { sendOrderCodeToGuestEmail } = require('../services/email.service'); 
+const User = require('../models/user.model');
+const { sendOrderCodeToGuestEmail } = require('../services/email.service');
 
 exports.createOrderGuest = async (req, res) => {
   try {
@@ -19,13 +19,14 @@ exports.createOrderGuest = async (req, res) => {
       paymentMethod
     } = req.body;
 
+    const orderCodeNumber = Math.floor(Date.now() % 9000000000000);
     const order = new Order({
       userId: null, // vì là khách
       customerName,
       customerEmail,
       customerPhone,
       shippingAddress,
-      orderCode: `ORD-${Date.now()}`,
+      orderCode: `ORD-${orderCodeNumber}`,
       status: 'pending',
       voucherId: null
     });
@@ -41,14 +42,10 @@ exports.createOrderGuest = async (req, res) => {
         });
       }
 
-      product.stock -= item.quantity;
-      await product.save();
-
       const subtotal = product.price * item.quantity;
       originalTotal += subtotal;
 
       orderItems.push({
-        orderId: order._id,
         productId: product._id,
         productName: product.name,
         quantity: item.quantity,
@@ -60,24 +57,93 @@ exports.createOrderGuest = async (req, res) => {
     order.totalAmount = Number(originalTotal.toFixed(2));
     order.discountAmount = 0;
 
+    // ✅ Nếu là bank => tạo link PayOS và KHÔNG lưu đơn hàng
+    if (paymentMethod === 'bank') {
+      const payOS = req.app.get("payOS");
+
+      const paymentLinkBody = {
+        orderCode: orderCodeNumber,
+        amount: parseInt(order.totalAmount),
+        description: `Đơn hàng ${orderCodeNumber}`,
+        items: orderItems.map(i => ({
+          name: i.productName,
+          quantity: i.quantity,
+          price: parseInt(i.unitPrice)
+        })),
+        returnUrl: `http://localhost:5173/payos-success?orderCode=${orderCodeNumber}&success=true`,
+        cancelUrl: `http://localhost:5173/checkout-guest?canceled=true`
+      };
+
+      const paymentLink = await payOS.createPaymentLink(paymentLinkBody);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Tạo link thanh toán thành công',
+        redirectUrl: paymentLink.checkoutUrl,
+        orderDraft: {
+          orderCode: order.orderCode,
+          orderData: {
+            customerName,
+            customerEmail,
+            customerPhone,
+            shippingAddress,
+            items: orderItems.map(i => ({
+              productId: i.productId,
+              quantity: i.quantity,
+              price: i.unitPrice
+            })),
+            originalSubtotal: originalTotal,
+            discountedSubtotal: originalTotal,
+            voucherDiscount: 0,
+            totalAmount: originalTotal
+          }
+        }
+      });
+    }
+
+    // ✅ Nếu là cash => tiến hành lưu order + order items
     const savedOrder = await order.save();
-    await Order_Item.insertMany(orderItems);
 
-    await PaymentController.createUnpaidPayment(
-      savedOrder._id,
-      paymentMethod || 'cash'
-    );
+    const orderItemsWithOrderId = orderItems.map(i => ({
+      ...i,
+      orderId: savedOrder._id
+    }));
+    await Order_Item.insertMany(orderItemsWithOrderId);
 
-    res.status(201).json({
+    for (const item of items) {
+      await Product.findByIdAndUpdate(item.productId, {
+        $inc: { stock: -item.quantity }
+      });
+    }
+
+    await PaymentController.createUnpaidPayment(savedOrder._id, paymentMethod || 'cash');
+
+    // ✅ Gửi email nếu có
+    if (customerEmail) {
+      try {
+        await sendOrderCodeToGuestEmail(customerEmail, {
+          orderCode: savedOrder.orderCode,
+          orderDate: savedOrder.createdAt,
+          items: orderItems,
+          totalAmount: savedOrder.totalAmount,
+          customerName
+        });
+      } catch (e) {
+        console.error('Gửi email đơn hàng cho guest thất bại:', e);
+      }
+    }
+
+    return res.status(201).json({
       success: true,
       message: 'Tạo đơn hàng thành công',
-      data: savedOrder,
+      data: savedOrder
     });
   } catch (error) {
     console.error('Lỗi tạo đơn hàng:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
 
 
 exports.createOrder = async (req, res) => {
@@ -90,24 +156,26 @@ exports.createOrder = async (req, res) => {
       customerName,
       customerEmail,
       customerPhone,
-      shippingAddress, 
-      items, 
-      voucherId, 
+      shippingAddress,
+      items,
+      voucherId,
       paymentMethod,
-      originalSubtotal, 
-      discountedSubtotal, 
-      voucherDiscount, 
-      totalAmount 
+      originalSubtotal,
+      discountedSubtotal,
+      voucherDiscount,
+      totalAmount
     } = req.body;
 
-    const finalCustomerName  = (customerName  || findUser.name);
+    const finalCustomerName = (customerName || findUser.name);
     const finalCustomerEmail = (customerEmail || findUser.email)
     const finalCustomerPhone = (customerPhone || findUser.phone);
 
+    const orderCodeNumber = Math.floor(Date.now() % 9000000000000);
+
     const order = new Order({
       userId: req.user.id,
-      orderCode: `ORD-${Date.now()}`,
-      customerName : finalCustomerName,
+      orderCode: `ORD-${orderCodeNumber}`,
+      customerName: finalCustomerName,
       customerEmail: finalCustomerEmail,
       customerPhone: finalCustomerPhone,
       status: 'pending',
@@ -252,6 +320,47 @@ exports.createOrder = async (req, res) => {
     order.totalAmount = Number(finalTotalAmount || (subtotal - finalVoucherDiscount)).toFixed(2);
     order.discountAmount = Number(finalVoucherDiscount.toFixed(2));
 
+    if (paymentMethod === 'bank') {
+  const payOS = req.app.get("payOS");
+  const paymentLinkBody = {
+    orderCode: orderCodeNumber,
+    amount: parseInt(order.totalAmount),
+    description: `Don hang ${orderCodeNumber}`,
+    items: orderItems.map(i => ({
+      name: i.productName,
+      quantity: i.quantity,
+      price: parseInt(i.unitPrice)
+    })),
+    returnUrl: `http://localhost:5173/payos-success?orderCode=${order.orderCode}&success=true`,
+    cancelUrl: `http://localhost:5173/checkout?canceled=true`
+  };
+
+  // ✅ KHÔNG lưu order, order items, payment ở đây
+
+  const paymentLink = await payOS.createPaymentLink(paymentLinkBody);
+
+  return res.status(200).json({
+    success: true,
+    message: 'Tạo link thanh toán thành công',
+    redirectUrl: paymentLink.checkoutUrl,
+    orderDraft: {
+      orderCode: order.orderCode,
+      orderData: {
+        customerName: finalCustomerName,
+        customerEmail: finalCustomerEmail,
+        customerPhone: finalCustomerPhone,
+        shippingAddress,
+        items,
+        voucherId,
+        originalSubtotal: finalOriginalTotal,
+        discountedSubtotal: finalDiscountedSubtotal,
+        voucherDiscount: finalVoucherDiscount,
+        totalAmount: order.totalAmount
+      }
+    }
+  });
+}
+
     const savedOrder = await order.save();
     await Order_Item.insertMany(orderItems);
 
@@ -350,7 +459,7 @@ exports.getAllOrders = async (req, res) => {
         return {
           ...order.toObject(),
           payment,
-          items 
+          items
         };
       })
     );
@@ -566,5 +675,164 @@ exports.deleteOrder = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getOrderByCode = async (req, res) => {
+  try {
+    const { code } = req.params;
+    const order = await Order.findOne({ orderCode: code });
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+    const items = await Order_Item.find({ orderId: order._id });
+    const payment = await Payment.findOne({ orderId: order._id });
+
+    res.json({ order, items, payment });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+};
+
+exports.finalizeOrderAuth = async (req, res) => {
+  try {
+    const { orderCode, orderData, userId } = req.body;
+    if (!userId) return res.status(400).json({ message: "Thiếu userId" });
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "Người dùng không tồn tại" });
+
+    const {
+      customerName, customerEmail, customerPhone,
+      shippingAddress, items, voucherId,
+      originalSubtotal, discountedSubtotal,
+      voucherDiscount, totalAmount
+    } = orderData;
+
+    const order = new Order({
+      userId: userId,
+      customerName: customerName || user.name,
+      customerEmail: customerEmail || user.email,
+      customerPhone: customerPhone || user.phone,
+      shippingAddress,
+      orderCode,
+      status: 'pending',
+      voucherId: voucherId || null,
+      totalAmount,
+      discountAmount: voucherDiscount || 0,
+    });
+
+    const savedOrder = await order.save();
+
+    const orderItems = [];
+    for (const item of items) {
+      const product = await Product.findById(item.productId);
+      if (!product) continue;
+
+      product.stock -= item.quantity;
+      await product.save();
+
+      orderItems.push({
+        orderId: savedOrder._id,
+        customerName: order.customerName,
+        customerEmail: order.customerEmail,
+        customerPhone: order.customerPhone,
+        productId: product._id,
+        productName: product.name,
+        quantity: item.quantity,
+        unitPrice: item.price,
+        productImage: product.image,
+      });
+    }
+
+    await Order_Item.insertMany(orderItems);
+    await PaymentController.createUnpaidPayment(savedOrder._id, 'payOS');
+
+    // ✅ Gửi email xác nhận đơn hàng
+    if (customerEmail) {
+      try {
+        await sendOrderCodeToGuestEmail(customerEmail, {
+          orderCode: savedOrder.orderCode,
+          orderDate: savedOrder.createdAt,
+          items: orderItems,
+          totalAmount: savedOrder.totalAmount,
+          customerName
+        });
+      } catch (e) {
+        console.error('Gửi email xác nhận cho guest thất bại:', e);
+      }
+    }
+    
+    res.status(200).json({ success: true, order: savedOrder });
+  } catch (err) {
+    console.error("Finalize Auth Error:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.finalizeOrderGuest = async (req, res) => {
+  try {
+    const { orderCode, orderData } = req.body;
+
+    const {
+      customerName, customerEmail, customerPhone,
+      shippingAddress, items, voucherId,
+      originalSubtotal, discountedSubtotal,
+      voucherDiscount, totalAmount
+    } = orderData;
+
+    const order = new Order({
+      userId: null,
+      customerName,
+      customerEmail,
+      customerPhone,
+      shippingAddress,
+      orderCode,
+      status: 'pending',
+      voucherId: voucherId || null,
+      totalAmount,
+      discountAmount: voucherDiscount || 0,
+    });
+
+    const savedOrder = await order.save();
+
+    const orderItems = [];
+    for (const item of items) {
+      const product = await Product.findById(item.productId);
+      if (!product) continue;
+
+      product.stock -= item.quantity;
+      await product.save();
+
+      orderItems.push({
+        orderId: savedOrder._id,
+        productId: product._id,
+        productName: product.name,
+        quantity: item.quantity,
+        unitPrice: item.price,
+        productImage: product.image,
+      });
+    }
+
+    await Order_Item.insertMany(orderItems);
+    await PaymentController.createUnpaidPayment(savedOrder._id, 'payOS');
+
+    // ✅ Gửi email xác nhận đơn hàng
+    if (customerEmail) {
+      try {
+        await sendOrderCodeToGuestEmail(customerEmail, {
+          orderCode: savedOrder.orderCode,
+          orderDate: savedOrder.createdAt,
+          items: orderItems,
+          totalAmount: savedOrder.totalAmount,
+          customerName
+        });
+      } catch (e) {
+        console.error('Gửi email xác nhận cho guest thất bại:', e);
+      }
+    }
+
+    res.status(200).json({ success: true, order: savedOrder });
+  } catch (err) {
+    console.error("Finalize Guest Error:", err);
+    res.status(500).json({ success: false, message: err.message });
   }
 };

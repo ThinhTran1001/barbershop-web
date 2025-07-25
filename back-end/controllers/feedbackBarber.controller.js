@@ -118,27 +118,15 @@ exports.getBarberFeedbackById = async (req, res) => {
   }
 };
 
+// feedbackBarber.controller.js
 exports.createBarberFeedback = async (req, res) => {
   try {
     const { bookingId, barberId, customerId, rating, comment, images } = req.body;
 
     if (!bookingId || !barberId || !customerId || !rating || !comment) {
-      return res.status(400).json({ message: 'Thiếu các trường bắt buộc' });
-    }
-
-    if (!mongoose.Types.ObjectId.isValid(bookingId) ||
-        !mongoose.Types.ObjectId.isValid(barberId) ||
-        !mongoose.Types.ObjectId.isValid(customerId)) {
-      return res.status(400).json({ message: 'Định dạng ID không hợp lệ' });
-    }
-
-    if (rating < 1 || rating > 5) {
-      return res.status(400).json({ message: 'Điểm đánh giá phải từ 1 đến 5' });
-    }
-
-    const existingFeedback = await FeedbackBooking.findOne({ bookingId, userId: customerId });
-    if (existingFeedback && existingFeedback.status) {
-      return res.status(400).json({ message: 'Bạn đã đánh giá booking này rồi' });
+      return res.status(400).json({ 
+        message: 'Thiếu các trường bắt buộc: bookingId, barberId, customerId, rating, hoặc comment' 
+      });
     }
 
     const feedback = new FeedbackBarber({
@@ -147,44 +135,20 @@ exports.createBarberFeedback = async (req, res) => {
       customerId,
       rating,
       comment,
-      images: images || []
+      images: Array.isArray(images) ? images : [],
+      status: 'Unapproved'
     });
 
     await feedback.save();
-
-    if (!existingFeedback) {
-      await FeedbackBooking.create({ bookingId, userId: customerId });
-    } else {
-      await FeedbackBooking.findOneAndUpdate({ bookingId, userId: customerId }, { status: true });
-    }
-
-    // Update barber rating after creating feedback
-    await updateBarberRating(barberId);
-    
-    // Cập nhật rating cho tất cả barber để đảm bảo tính nhất quán
-    const allBarberIds = await FeedbackBarber.distinct('barberId');
-    for (const id of allBarberIds) {
-      await updateBarberRating(id);
-    }
-
-    const populatedFeedback = await FeedbackBarber.findById(feedback._id)
-      .populate({ path: 'barberId', populate: { path: 'userId', select: 'name' } })
-      .populate('customerId', 'name email')
-      .populate('bookingId', 'bookingDate name title _id');
-
-    const transformedFeedback = {
-      ...populatedFeedback.toObject(),
-      reviewer: populatedFeedback.customerId?.name || populatedFeedback.customerId?.email || 'Unknown',
-      product: populatedFeedback.bookingId?._id || 'Service',
-    };
-
     res.status(201).json({ 
-      message: 'Phản hồi đã được tạo thành công', 
-      data: transformedFeedback 
+      message: 'Phản hồi barber đã được tạo thành công', 
+      data: feedback 
     });
   } catch (error) {
-    console.error('Error in createBarberFeedback:', error);
-    res.status(500).json({ message: 'Không thể tạo phản hồi' });
+    res.status(500).json({ 
+      message: 'Không thể tạo phản hồi barber', 
+      error: error.message 
+    });
   }
 };
 
@@ -254,5 +218,26 @@ exports.updateFeedbackStatus = async (req, res) => {
     res.json({ success: true, message: 'Status updated successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getByBookingId = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+
+    // Lấy tất cả feedbackBarber chưa bị xóa
+    const allFeedbacks = await FeedbackBarber.find({ isDeleted: false });
+
+    // Tìm feedback có bookingId khớp
+    const matchedFeedback = allFeedbacks.findOne(fb => fb.bookingId.toString() === bookingId);
+
+    if (matchedFeedback) {
+      return res.json(matchedFeedback);
+    } else {
+      return res.status(404).json({ message: 'Không tìm thấy phản hồi cho booking này' });
+    }
+  } catch (error) {
+    console.error('Lỗi trong getByBookingId:', error);
+    return res.status(500).json({ message: 'Lỗi máy chủ khi xử lý yêu cầu' });
   }
 };

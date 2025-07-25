@@ -85,7 +85,7 @@ const DiscountModal = ({
               >
                 {availableProducts.map((product) => (
                   <Option key={product._id} value={product._id}>
-                    {product.name} - ${product.price?.toFixed(2)}
+                    {product.name} - {product.price?.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}
                   </Option>
                 ))}
               </Select>
@@ -98,10 +98,10 @@ const DiscountModal = ({
                     <strong>Product:</strong> {editingDiscount.productName}
                   </div>
                   <div>
-                    <strong>Original Price:</strong> ${editingDiscount.productPrice?.toFixed(2)}
+                    <strong>Original Price:</strong> {editingDiscount.productPrice?.toLocaleString('vi-VN')} VNĐ
                   </div>
                   <div>
-                    <strong>Current Discount:</strong> ${editingDiscount.discount}
+                    <strong>Current Discount:</strong> {editingDiscount.discount?.toLocaleString('vi-VN')} VNĐ
                   </div>
                 </Space>
               </div>

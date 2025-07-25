@@ -15,6 +15,8 @@ import ProductDetail from "./components/product/ProductDetail.jsx";
 import Checkout from "./pages/checkout/Checkout.jsx";
 import CheckoutGuest from "./pages/checkout/CheckoutGuest.jsx";
 import OrderSuccess from "./pages/checkout/OrderSuccess.jsx";
+import OrderFail from "./pages/checkout/OrderFail.jsx";
+import OrderSuccessPayOS from "./pages/checkout/OrderSuccessPayOS.jsx";
 import CustomerProfile from "./components/profile/customerProfile.jsx";
 import Cart from "./components/cart/Cart";
 import UserCart from "./components/cart/UserCart";
@@ -39,6 +41,7 @@ import BarberDashboard from "./pages/Barber/BarberDashboard.jsx";
 import BarberCalendarPage from "./pages/Barber/BarberCalendarPage.jsx";
 import BarberBookingManagement from "./pages/Barber/BarberBookingManagement.jsx";
 import BarberScheduleManagement from "./pages/Admin/BarberScheduleManagement.jsx";
+import BookingConfirmationManagement from "./pages/Admin/BookingConfirmationManagement.jsx";
 import BarberSetup from "./pages/Barber/BarberSetup.jsx";
 import BookingFeedbackPage from "./pages/Feedback/BookingFeedbackPage.jsx";
 import MyFeedbackPage from "./pages/Feedback/MyFeedbackPage.jsx";
@@ -56,6 +59,8 @@ import MyBookingsPage from "./pages/ServiceBooking/MyBookingsPage.jsx";
 import UserVouchers from "./pages/user/UserVouchers.jsx";
 import ManageBlog from "./pages/ManageBlog/ManageBlog.jsx";
 import BarberProfile from "./components/profile/baberProfile.jsx";
+import FeedbackBarber from "./pages/FeedbackBarber/FeedbackBarber.jsx";
+import NoShowManagement from "./pages/Admin/NoShowManagement.jsx";
 
 
 const router = createBrowserRouter([
@@ -73,6 +78,8 @@ const router = createBrowserRouter([
       { path: "/checkout", element: <Checkout /> },
       { path: "/checkout-guest", element: <CheckoutGuest /> },
       { path: "/order-success", element: <OrderSuccess /> },
+      { path: "/order-fail", element: <OrderFail /> },
+      { path: "/payos-success", element: <OrderSuccessPayOS /> },
       { path: "/cart-guest", element: <Cart /> },
       { path: "/cart", element: <UserCart /> },
       { path: "/profile", element: <CustomerProfile /> },
@@ -88,10 +95,12 @@ const router = createBrowserRouter([
       { path: "/news/:id", element: <BlogDetail /> },
       { path: "/contact", element: <ContactPage /> },
       { path: "/feedback-order/:orderId", element: <FeedbackProduct /> },
+      { path: "/feedback-barber/:bookingId", element: <FeedbackBarber/> },
       // Protected Customer Routes
       {
         element: <RequireAuth allowedRoles={["customer"]} />,
         children: [
+          
           { path: "/my-orders", element: <ListOfOrder /> },
           { path: "/my-orders/:id", element: <OrderDetail /> },
           { path: "/feedback/:orderId", element: <FeedbackProduct /> },
@@ -124,6 +133,8 @@ const router = createBrowserRouter([
           { path: "discount-product", element: <ManageDiscountProduct /> },
           { path: "appointment", element: <Appointment /> },
           { path: "barber-schedule", element: <BarberScheduleManagement /> },
+          { path: "booking-confirmation", element: <BookingConfirmationManagement /> },
+          { path: "noshow-management", element: <NoShowManagement /> },
           { path: "statistics", element: <Statistics /> },
           { path: "manage-blog", element: <ManageBlog /> },
         ],
