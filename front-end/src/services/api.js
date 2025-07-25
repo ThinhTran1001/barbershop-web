@@ -44,6 +44,7 @@ export const getAllVoucher = (params) => api.get('/vouchers', { params });
 export const createVoucher = (data) => api.post('/vouchers', data);
 export const getVoucherById = (id) => api.get(`/vouchers/${id}`);
 export const getVoucherByUser = () => api.get('/vouchers/user');
+export const getPersonalVouchers = () => api.get('/vouchers/personal');
 export const updateVoucher = (id, data) => api.put(`/vouchers/${id}`, data);
 export const deleteVoucher = (id) => api.delete(`/vouchers/${id}`);
 

@@ -63,8 +63,6 @@ import FeedbackBarber from "./pages/FeedbackBarber/FeedbackBarber.jsx";
 import NoShowManagement from "./pages/Admin/NoShowManagement.jsx";
 
 
-
-
 const router = createBrowserRouter([
   {
     element: <CommonLayout />,
