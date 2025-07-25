@@ -430,3 +430,63 @@ exports.getCustomerFeedback = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+exports.getAllServiceFeedback = async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      rating,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+      status = 'approved'
+    } = req.query;
+
+    const filter = {
+      status,
+      isPublic: true
+      // ❌ Đừng thêm 'type': 'service'
+    };
+
+    if (rating) {
+  filter.rating = { $gte: Number(rating) }; // ✅ lấy từ X sao trở lên
+}
+
+    const sort = {};
+    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+    const skip = (page - 1) * limit;
+
+    const feedback = await BookingFeedback.find(filter)
+      .populate('customerId', 'name avatar')
+      .populate('barberId', 'userId specialties')
+      .populate({
+        path: 'barberId',
+        populate: {
+          path: 'userId',
+          select: 'name'
+        }
+      })
+      .populate('serviceId', 'name price')
+      .sort(sort)
+      .skip(skip)
+      .limit(Number(limit));
+
+    const total = await BookingFeedback.countDocuments(filter);
+
+    res.json({
+      data: feedback,
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+
+  } catch (error) {
+    console.error('Error getting all service feedback:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+

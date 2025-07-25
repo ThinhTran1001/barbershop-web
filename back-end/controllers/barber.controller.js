@@ -502,3 +502,82 @@ exports.getBarberPublicById = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+// Get available barbers for specific time slot (Admin only)
+exports.getAvailableBarbers = async (req, res) => {
+  try {
+    const { date, timeSlot, excludeBarberId } = req.query;
+
+    if (!date || !timeSlot) {
+      return res.status(400).json({
+        message: 'Date and timeSlot are required'
+      });
+    }
+
+    // Build filter to exclude specific barber if provided
+    const filter = { isAvailable: true };
+    if (excludeBarberId) {
+      filter._id = { $ne: excludeBarberId };
+    }
+
+    // Get all available barbers
+    const barbers = await Barber.find(filter)
+      .populate('userId', 'name email')
+      .select('userId specialties experienceYears averageRating');
+
+    // Filter barbers based on schedule availability
+    const availableBarbers = [];
+
+    for (const barber of barbers) {
+      // Check if barber has a schedule for this date
+      const schedule = await BarberSchedule.findOne({
+        barberId: barber._id,
+        date: date
+      });
+
+      // If no schedule exists, barber is potentially available
+      if (!schedule) {
+        availableBarbers.push(barber);
+        continue;
+      }
+
+      // Check if barber is not off that day
+      if (schedule.isOffDay) {
+        continue;
+      }
+
+      // Check if the specific time slot is available
+      const slot = schedule.timeSlots.find(slot => slot.time === timeSlot);
+      if (!slot || slot.isBooked) {
+        continue;
+      }
+
+      // Check for existing bookings at this time
+      const existingBooking = await Booking.findOne({
+        barberId: barber._id,
+        bookingDate: {
+          $gte: new Date(`${date}T${timeSlot}:00.000Z`),
+          $lt: new Date(`${date}T${timeSlot}:30.000Z`)
+        },
+        status: { $in: ['pending', 'confirmed'] }
+      });
+
+      if (!existingBooking) {
+        availableBarbers.push(barber);
+      }
+    }
+
+    res.json({
+      availableBarbers,
+      date,
+      timeSlot,
+      total: availableBarbers.length
+    });
+
+  } catch (error) {
+    console.error('Error getting available barbers:', error);
+    res.status(500).json({
+      message: error.message || 'Failed to get available barbers'
+    });
+  }
+};

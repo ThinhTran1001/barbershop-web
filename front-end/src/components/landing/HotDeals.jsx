@@ -172,6 +172,7 @@ export default function HotDeals() {
                         </div>
                       }
                       bodyStyle={{ padding: 16, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 170 }}
+                      onClick={() => navigate(`/products/${product._id}`)}
                     >
                       {/* Badge discount góc phải trên cùng card */}
                       {/* Trong Card, thay badge -20% thành block gồm badge và countdown */}

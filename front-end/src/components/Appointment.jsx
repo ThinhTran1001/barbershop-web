@@ -225,8 +225,9 @@ const Appointment = () => {
         query.sortOrder = sorter.order === 'ascend' ? 'asc' : 'desc';
       }
       const res = await getAllBookings(query);
-      const bookingsData = res.data?.data || res.data?.bookings || res.data || [];
-      const totalCount = res.data?.total || res.total || 0;
+      // The backend returns { bookings: [...], pagination: {...}, userRole: "..." }
+      const bookingsData = res.data?.bookings || [];
+      const totalCount = res.data?.pagination?.total || 0;
       setData(bookingsData);
       setPagination(p => ({
         ...p,

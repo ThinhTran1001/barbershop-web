@@ -113,7 +113,7 @@ barberAbsenceSchema.methods.findAffectedBookings = async function() {
 };
 
 // Instance method to update barber schedules when absence is approved
-barberAbsenceSchema.methods.updateBarberSchedules = async function(session) {
+barberAbsenceSchema.methods.updateBarberSchedules = async function() {
     const BarberSchedule = require('./barber-schedule.model');
 
     // Get all dates between startDate and endDate
@@ -131,7 +131,7 @@ barberAbsenceSchema.methods.updateBarberSchedules = async function(session) {
         let schedule = await BarberSchedule.findOne({
             barberId: this.barberId,
             date
-        }).session(session);
+        });
 
         if (!schedule) {
             // Create new schedule if it doesn't exist
@@ -151,14 +151,14 @@ barberAbsenceSchema.methods.updateBarberSchedules = async function(session) {
             schedule.absenceId = this._id;
         }
 
-        return await schedule.save({ session });
+        return await schedule.save();
     });
 
     return await Promise.all(updatePromises);
 };
 
 // Instance method to revert barber schedules when absence is rejected/cancelled
-barberAbsenceSchema.methods.revertBarberSchedules = async function(session) {
+barberAbsenceSchema.methods.revertBarberSchedules = async function() {
     const BarberSchedule = require('./barber-schedule.model');
 
     // Get all dates between startDate and endDate
@@ -177,13 +177,13 @@ barberAbsenceSchema.methods.revertBarberSchedules = async function(session) {
             barberId: this.barberId,
             date,
             absenceId: this._id
-        }).session(session);
+        });
 
         if (schedule) {
             schedule.isOffDay = false;
             schedule.offReason = null;
             schedule.absenceId = null;
-            return await schedule.save({ session });
+            return await schedule.save();
         }
     });
 

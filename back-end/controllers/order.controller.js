@@ -183,7 +183,6 @@ exports.createOrder = async (req, res) => {
       voucherId: voucherId || null,
     });
 
-    // Sử dụng giá từ frontend nếu có, nếu không thì tính lại
     let finalOriginalTotal = originalSubtotal || 0;
     let finalDiscountedSubtotal = discountedSubtotal || 0;
     let finalVoucherDiscount = voucherDiscount || 0;
@@ -387,25 +386,6 @@ exports.createOrder = async (req, res) => {
       } catch (emailError) {
         console.error('Gửi email đơn hàng cho guest thất bại:', emailError);
         // Không return lỗi, chỉ log để không cản luồng xử lý đơn hàng
-      }
-    }
-
-    if (voucherId) {
-      const updatedVoucher = await Voucher.findByIdAndUpdate(
-        voucherId,
-        { $inc: { usedCount: 1 } },
-        { new: true }
-      );
-
-      if (updatedVoucher.usageLimit && updatedVoucher.usedCount >= updatedVoucher.usageLimit) {
-        updatedVoucher.isActive = false;
-        await updatedVoucher.save();
-      }
-
-      if (userVoucher) {
-        await User_Voucher.findByIdAndUpdate(userVoucher._id, {
-          isUsed: true,
-        });
       }
     }
 
@@ -616,6 +596,26 @@ exports.updateOrder = async (req, res) => {
         }
 
         order.status = status;
+        // Nếu chuyển trạng thái sang 'processing' và có voucher, thì mới đánh dấu đã sử dụng
+        if (status === 'processing' && order.voucherId) {
+          // Đánh dấu voucher đã sử dụng
+          const updatedVoucher = await Voucher.findByIdAndUpdate(
+            order.voucherId,
+            { $inc: { usedCount: 1 } },
+            { new: true }
+          );
+          if (updatedVoucher.usageLimit && updatedVoucher.usedCount >= updatedVoucher.usageLimit) {
+            updatedVoucher.isActive = false;
+            await updatedVoucher.save();
+          }
+          // Nếu là khách (không có userId), tìm user_voucher theo email nếu có logic này, hoặc bỏ qua nếu không dùng user_voucher cho guest
+          if (order.userId) {
+            await User_Voucher.findOneAndUpdate(
+              { userId: order.userId, voucherId: order.voucherId },
+              { isUsed: true }
+            );
+          }
+        }
       }
     }
 

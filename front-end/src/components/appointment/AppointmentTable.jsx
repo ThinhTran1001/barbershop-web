@@ -9,21 +9,33 @@ const AppointmentTable = ({ search, status, barberId, serviceId, currentPage, pa
   useEffect(() => {
     setLoading(true);
     getAllBookings({ search, status, barberId, serviceId })
-      .then(res => setData(res.data?.data || res.data || []))
+      .then(res => {
+        // The backend returns { bookings: [...], pagination: {...}, userRole: "..." }
+        const responseData = res.data?.bookings || [];
+        // Ensure data is always an array
+        setData(Array.isArray(responseData) ? responseData : []);
+      })
+      .catch(err => {
+        console.error('Error fetching bookings:', err);
+        setData([]);
+      })
       .finally(() => setLoading(false));
   }, [search, status, barberId, serviceId]);
 
   if (loading) return <div className="text-center my-5"><Spin size="large" /></div>;
 
+  // Ensure data is an array before rendering
+  const safeData = Array.isArray(data) ? data : [];
+
   return (
     <Table
-      dataSource={data.slice((currentPage-1)*pageSize, currentPage*pageSize)}
+      dataSource={safeData.slice((currentPage-1)*pageSize, currentPage*pageSize)}
       columns={columns}
       rowKey="_id"
       pagination={{
         current: currentPage,
         pageSize,
-        total: data.length,
+        total: safeData.length,
         onChange: (page, size) => {
           onPageChange(page);
           onPageSizeChange(size);

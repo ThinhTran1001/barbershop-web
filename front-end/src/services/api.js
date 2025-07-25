@@ -44,6 +44,7 @@ export const getAllVoucher = (params) => api.get('/vouchers', { params });
 export const createVoucher = (data) => api.post('/vouchers', data);
 export const getVoucherById = (id) => api.get(`/vouchers/${id}`);
 export const getVoucherByUser = () => api.get('/vouchers/user');
+export const getPersonalVouchers = () => api.get('/vouchers/personal');
 export const updateVoucher = (id, data) => api.put(`/vouchers/${id}`, data);
 export const deleteVoucher = (id) => api.delete(`/vouchers/${id}`);
 
@@ -160,9 +161,9 @@ export const finalizeOrder = (orderCode, orderData, userId = null) => {
 };
 
 
-// export const createFeedbackBooking = (data) => api.post('/feedback-bookings', data);
-// export const updateFeedbackBooking = (bookingId, data) => api.put(`/feedback-bookings/${bookingId}`, data);
-// export const getFeedbackBookingByBookingId = (bookingId) => api.get(`/feedback-bookings/${bookingId}`);
+export const createFeedbackBooking = (data) => api.post('/feedback-bookings', data);
+export const updateFeedbackBooking = (bookingId, data) => api.put(`/feedback-bookings/${bookingId}`, data);
+export const getFeedbackBookingByBookingId = (bookingId) => api.get(`/feedback-bookings/${bookingId}`);
 
 // Blog
 export const getAllBlogs = (params) => api.get('/news', { params });

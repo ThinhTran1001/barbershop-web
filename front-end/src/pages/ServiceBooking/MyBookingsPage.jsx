@@ -4,7 +4,6 @@ import {
   Table,
   Typography,
   Spin,
-  message,
   Tag,
   Button,
   Card,
@@ -17,12 +16,21 @@ import {
   Input,
   Rate,
   Descriptions,
-  Divider
+  Divider,
+  Form,
+  Alert,
+  Tooltip,
+  Avatar,
+  message
 } from 'antd';
+import { toast } from 'react-toastify';
 import {
   getMyBookings,
   updateBookingStatus,
-  cancelBooking
+  cancelBooking,
+  updateBooking,
+  getServices,
+  getBarbers
 } from '../../services/serviceApi.js';
 // import {
 //   getFeedbackBookingByBookingId,
@@ -37,16 +45,21 @@ import {
   StarOutlined,
   ExclamationCircleOutlined,
   EditOutlined,
-  EyeOutlined
+  EyeOutlined,
+  SaveOutlined,
+  CloseOutlined
 } from '@ant-design/icons';
+import TimeSlotPicker from '../../components/TimeSlotPicker';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
-import { getBookingFeedback } from '../../services/bookingFeedbackApi';
 import {
-  getMe,
-  getBarberFeedbacks // thêm dòng này ở đây nếu chưa có
-} from '../../services/api';
-
+  canCancelBooking,
+  getStatusText,
+  getStatusColor,
+  getDisabledActionMessage,
+  isBookingFinal
+} from '../../utils/bookingValidation';
+import {getBarberFeedbackById, getFeedbackBookingByBookingId, getMe} from "../../services/api.js";
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -83,6 +96,18 @@ const MyBookingsPage = () => {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [cancelReason, setCancelReason] = useState('');
   const [detailModalVisible, setDetailModalVisible] = useState(false);
+
+  // Edit booking states
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editForm] = Form.useForm();
+  const [editLoading, setEditLoading] = useState(false);
+  const [services, setServices] = useState([]);
+  const [barbers, setBarbers] = useState([]);
+  const [selectedService, setSelectedService] = useState(null);
+  const [selectedBarber, setSelectedBarber] = useState(null);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState(null);
+  const [servicesLoading, setServicesLoading] = useState(false);
+  const [barbersLoading, setBarbersLoading] = useState(false);
 
   // Load bookings with filters
 
@@ -188,80 +213,350 @@ const loadBookings = async (newFilters = filters) => {
   // Handle booking cancellation
   const handleCancelBooking = async () => {
     if (!selectedBooking || !cancelReason.trim()) {
-      message.error('Vui lòng nhập lý do hủy');
+      toast.error('⚠️ Please enter a cancellation reason', {
+        position: "top-right",
+        autoClose: 3000,
+      });
       return;
     }
 
     setActionLoading(true);
+
+    // Show loading toast
+    const loadingToastId = toast.loading(
+      `❌ Cancelling booking for ${selectedBooking.serviceId?.name || 'service'}...`,
+      {
+        position: "top-right",
+        autoClose: false,
+        hideProgressBar: false,
+        closeOnClick: false,
+        pauseOnHover: true,
+        draggable: true,
+      }
+    );
+
     try {
       await cancelBooking(selectedBooking._id, cancelReason);
-      message.success('Hủy lịch hẹn thành công');
+
+      // Update loading toast to success
+      toast.update(loadingToastId, {
+        render: `✅ Booking cancelled successfully!\n📅 Service: ${selectedBooking.serviceId?.name || 'Unknown'}\n💰 Refund will be processed according to our cancellation policy.`,
+        type: "success",
+        isLoading: false,
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+
       setCancelModalVisible(false);
       setCancelReason('');
       setSelectedBooking(null);
       loadBookings();
     } catch (error) {
-      message.error(error.response?.data?.message || 'Không thể hủy lịch hẹn');
+      // Update loading toast to error
+      toast.update(loadingToastId, {
+        render: `❌ Failed to cancel booking\n${error.response?.data?.message || 'Please try again'}`,
+        type: "error",
+        isLoading: false,
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
     } finally {
       setActionLoading(false);
     }
   };
 
-  // Get status color
-  const getStatusColor = (status) => {
-    const colors = {
-      'pending': 'orange',
-      'confirmed': 'blue',
-      'completed': 'green',
-      'cancelled': 'red',
-      'no_show': 'volcano'
-    };
-    return colors[status] || 'default';
-  };
+  // Note: Using utility functions from bookingValidation.js for status helpers
 
-  // Get status text
-  const getStatusText = (status) => {
-    const texts = {
-      'pending': 'Chờ xác nhận',
-      'confirmed': 'Đã xác nhận',
-      'completed': 'Hoàn thành',
-      'cancelled': 'Đã hủy',
-      'no_show': 'Không đến'
-    };
-    return texts[status] || status;
-  };
-
-  // Check if booking can be cancelled
-  const canCancelBooking = (booking) => {
-    if (booking.status !== 'pending' && booking.status !== 'confirmed') {
-      return false;
+  // Check if booking can be cancelled (enhanced with validation utilities)
+  const canCancelBookingWithTimeCheck = (booking) => {
+    // First check basic cancellation validation
+    const basicValidation = canCancelBooking(booking);
+    if (!basicValidation.canCancel) {
+      return { canCancel: false, reason: basicValidation.reason };
     }
 
+    // Then check time restrictions
     const bookingTime = dayjs(booking.bookingDate);
     const now = dayjs();
     const hoursDifference = bookingTime.diff(now, 'hour');
 
-    return hoursDifference >= 2; // Can cancel if more than 2 hours before appointment
+    if (hoursDifference < 2) {
+      return {
+        canCancel: false,
+        reason: 'Cannot cancel booking less than 2 hours before appointment time'
+      };
+    }
+
+    return { canCancel: true, reason: null };
+  };
+
+  // Check if booking can be edited
+  const canEditBooking = (booking) => {
+    // Only allow editing of pending or confirmed bookings
+    if (!['pending', 'confirmed'].includes(booking.status)) {
+      return {
+        canEdit: false,
+        reason: `Cannot edit ${booking.status} bookings`
+      };
+    }
+
+    // Check if booking is in the past
+    const bookingTime = dayjs(booking.bookingDate);
+    const now = dayjs();
+
+    if (bookingTime.isBefore(now)) {
+      return {
+        canEdit: false,
+        reason: 'Cannot edit past bookings'
+      };
+    }
+
+    // Check if booking is within 24 hours
+    const hoursDifference = bookingTime.diff(now, 'hour');
+    if (hoursDifference < 24) {
+      return {
+        canEdit: false,
+        reason: 'Cannot edit bookings within 24 hours of appointment time'
+      };
+    }
+
+    return { canEdit: true, reason: null };
+  };
+
+  // Load services for edit modal
+  const loadServices = async () => {
+    setServicesLoading(true);
+    try {
+      const response = await getServices();
+      setServices(response.services || response);
+    } catch (error) {
+      toast.error('Failed to load services', {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    } finally {
+      setServicesLoading(false);
+    }
+  };
+
+  // Load barbers for edit modal
+  const loadBarbers = async () => {
+    setBarbersLoading(true);
+    try {
+      const response = await getBarbers();
+      setBarbers(response.barbers || response);
+    } catch (error) {
+      toast.error('Failed to load barbers', {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    } finally {
+      setBarbersLoading(false);
+    }
+  };
+
+  // Handle edit booking button click
+  const handleEditBooking = async (booking) => {
+    setSelectedBooking(booking);
+
+    // Show loading toast while loading data
+    const loadingToastId = toast.loading('📋 Loading services and barbers...', {
+      position: "top-right",
+      autoClose: false,
+    });
+
+    try {
+      // Load services and barbers
+      await Promise.all([loadServices(), loadBarbers()]);
+
+      // Update loading toast to success
+      toast.update(loadingToastId, {
+        render: '✅ Ready to edit booking!',
+        type: "success",
+        isLoading: false,
+        autoClose: 2000,
+      });
+
+      // Set initial form values after data is loaded
+      setTimeout(() => {
+        const service = services.find(s => s._id === booking.serviceId?._id) || booking.serviceId;
+        const barber = barbers.find(b => b._id === booking.barberId?._id) || booking.barberId;
+
+        setSelectedService(service);
+        setSelectedBarber(barber);
+        setSelectedTimeSlot(null);
+
+        editForm.setFieldsValue({
+          serviceId: booking.serviceId?._id,
+          barberId: booking.barberId?._id || 'auto',
+          note: booking.note || ''
+        });
+
+        setEditModalVisible(true);
+      }, 100); // Small delay to ensure state is updated
+
+    } catch (error) {
+      // Update loading toast to error
+      toast.update(loadingToastId, {
+        render: '❌ Failed to load booking data',
+        type: "error",
+        isLoading: false,
+        autoClose: 3000,
+      });
+    }
+  };
+
+  // Handle service change in edit form
+  const handleServiceChange = (serviceId) => {
+    const service = services.find(s => s._id === serviceId);
+    setSelectedService(service);
+    setSelectedTimeSlot(null); // Reset time slot when service changes
+
+    // Show feedback toast
+    toast.info(`📋 Service changed to: ${service?.name}`, {
+      position: "top-right",
+      autoClose: 2000,
+      hideProgressBar: true,
+    });
+  };
+
+  // Handle barber change in edit form
+  const handleBarberChange = (barberId) => {
+    if (barberId === 'auto') {
+      setSelectedBarber(null);
+      toast.info('👤 Barber set to auto-assign', {
+        position: "top-right",
+        autoClose: 2000,
+        hideProgressBar: true,
+      });
+    } else {
+      const barber = barbers.find(b => b._id === barberId);
+      setSelectedBarber(barber);
+      toast.info(`👤 Barber changed to: ${barber?.userId?.name}`, {
+        position: "top-right",
+        autoClose: 2000,
+        hideProgressBar: true,
+      });
+    }
+    setSelectedTimeSlot(null); // Reset time slot when barber changes
+  };
+
+  // Handle time slot selection
+  const handleTimeSlotSelect = (timeSlotData) => {
+    setSelectedTimeSlot(timeSlotData);
+  };
+
+  // Handle booking update
+  const handleUpdateBooking = async () => {
+    if (!selectedTimeSlot) {
+      toast.warn('⚠️ Please select a new time slot', {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      return;
+    }
+
+    setEditLoading(true);
+
+    // Show loading toast
+    const loadingToastId = toast.loading(
+      `📝 Updating your booking...`,
+      {
+        position: "top-right",
+        autoClose: false,
+        hideProgressBar: false,
+        closeOnClick: false,
+        pauseOnHover: true,
+        draggable: true,
+      }
+    );
+
+    try {
+      const formValues = await editForm.validateFields();
+
+      // Construct booking date properly without forcing UTC
+      const [year, month, day] = selectedTimeSlot.date.split('-');
+      const [hour, minute] = selectedTimeSlot.time.split(':');
+      const bookingDateTime = new Date(
+        parseInt(year),
+        parseInt(month) - 1, // Month is 0-indexed
+        parseInt(day),
+        parseInt(hour),
+        parseInt(minute)
+      );
+
+      const updateData = {
+        serviceId: formValues.serviceId,
+        barberId: formValues.barberId === 'auto' ? null : formValues.barberId,
+        bookingDate: bookingDateTime.toISOString(),
+        note: formValues.note || '',
+        durationMinutes: selectedService?.durationMinutes || 30
+      };
+
+      await updateBooking(selectedBooking._id, updateData);
+
+      // Update loading toast to success
+      toast.update(loadingToastId, {
+        render: `🎉 Booking updated successfully!\n📅 Service: ${selectedService?.name || 'Unknown'}\n👤 Barber: ${selectedBarber?.userId?.name || 'Auto-assigned'}\n🕐 New time: ${selectedTimeSlot.date} at ${selectedTimeSlot.time}`,
+        type: "success",
+        isLoading: false,
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+
+      // Close modal and refresh bookings
+      setEditModalVisible(false);
+      setSelectedBooking(null);
+      setSelectedService(null);
+      setSelectedBarber(null);
+      setSelectedTimeSlot(null);
+      editForm.resetFields();
+      loadBookings();
+
+    } catch (error) {
+      // Update loading toast to error
+      toast.update(loadingToastId, {
+        render: `❌ Failed to update booking\n${error.response?.data?.message || 'Please try again'}`,
+        type: "error",
+        isLoading: false,
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+    } finally {
+      setEditLoading(false);
+    }
   };
 
   // Check if booking can be reviewed
-  //   const canReviewBooking = async (bookingId) => {
-  //   try {
-  //     const res = await getFeedbackBookingByBookingId(bookingId);
-  //     return !res?.data;
-  //   } catch {
-  //     return true; // Nếu không có feedback => cho phép đánh giá
-  //   }
-  // };
+    const canReviewBooking = async (bookingId) => {
+    try {
+      const res = await getFeedbackBookingByBookingId(bookingId);
+      return !res?.data;
+    } catch {
+      return true; // Nếu không có feedback => cho phép đánh giá
+    }
+  };
 
-  // const canReviewBarber = async (bookingId) => {
-  //   try {
-  //     const res = await getBarberFeedbackById(bookingId);
-  //     return !res?.data;
-  //   } catch {
-  //     return true; // Nếu không có feedback => cho phép đánh giá
-  //   }
-  // };
+  const canReviewBarber = async (bookingId) => {
+    try {
+      const res = await getBarberFeedbackById(bookingId);
+      return !res?.data;
+    } catch {
+      return true; // Nếu không có feedback => cho phép đánh giá
+    }
+  };
 
 
   // Handle feedback navigation for service
@@ -352,53 +647,93 @@ const loadBookings = async (newFilters = filters) => {
     {
       title: 'Thao tác',
       key: 'actions',
-      render: (_, record) => (
-        <Space>
-          <Button
-            size="small"
-            onClick={() => {
-              setSelectedBooking(record);
-              setDetailModalVisible(true);
-            }}
-          >
-            Chi tiết
-          </Button>
-          {canCancelBooking(record) && (
-            <Button
-              size="small"
-              danger
-              onClick={() => {
-                setSelectedBooking(record);
-                setCancelModalVisible(true);
-              }}
-            >
-              Hủy lịch
-            </Button>
-          )}
-          {record.status === 'completed' && !reviewableBookings[record._id]?.hasServiceFeedback && (
-            <Button
-              size="small"
-              type="primary"
-              icon={<StarOutlined />}
-              onClick={() => handleServiceFeedback(record)}
-            >
-              Đánh giá dịch vụ
-            </Button>
-          )}
+      render: (_, record) => {
+        const cancelValidation = canCancelBookingWithTimeCheck(record);
+        const editValidation = canEditBooking(record);
 
-          {record.status === 'completed' && !reviewableBookings[record._id]?.hasBarberFeedback && (
-            <Button
-              size="small"
-              type="primary"
-              icon={<StarOutlined />}
-              onClick={() => handleBarberFeedback(record)}
-            >
-              Đánh giá barber
-            </Button>
-          )}
+        return (
+          <Space direction="vertical" size="small">
+            <Space>
+              <Button
+                size="small"
+                icon={<EyeOutlined />}
+                onClick={() => {
+                  setSelectedBooking(record);
+                  setDetailModalVisible(true);
+                }}
+              >
+                Chi tiết
+              </Button>
 
-        </Space>
-      )
+              {/* Edit button with validation */}
+              {editValidation.canEdit ? (
+                <Button
+                  size="small"
+                  type="primary"
+                  icon={<EditOutlined />}
+                  onClick={() => handleEditBooking(record)}
+                >
+                  Sửa
+                </Button>
+              ) : (
+                <Tooltip title={editValidation.reason}>
+                  <Button
+                    size="small"
+                    type="primary"
+                    icon={<EditOutlined />}
+                    disabled
+                  >
+                    Sửa
+                  </Button>
+                </Tooltip>
+              )}
+
+              {/* Enhanced cancel button with validation */}
+              {cancelValidation.canCancel ? (
+                <Button
+                  size="small"
+                  danger
+                  onClick={() => {
+                    setSelectedBooking(record);
+                    setCancelModalVisible(true);
+                  }}
+                >
+                  Hủy lịch
+                </Button>
+              ) : (
+                <Tooltip title={cancelValidation.reason}>
+                  <Button
+                    size="small"
+                    danger
+                    disabled
+                  >
+                    Hủy lịch
+                  </Button>
+                </Tooltip>
+              )}
+
+              {canReviewBooking(record) && (
+                <Button
+                  size="small"
+                  type="default"
+                  icon={<StarOutlined />}
+                  onClick={() => handleFeedback(record)}
+                >
+                  Đánh giá
+                </Button>
+              )}
+            </Space>
+
+            {/* Show status message for non-editable/non-cancellable bookings */}
+            {(!editValidation.canEdit || !cancelValidation.canCancel) && isBookingFinal(record) && (
+              <div style={{ fontSize: '11px', color: '#999', fontStyle: 'italic' }}>
+                {getDisabledActionMessage(record, 'modify')}
+              </div>
+            )}
+          </Space>
+        );
+      }
+
     }
   ];
 
@@ -481,7 +816,7 @@ const loadBookings = async (newFilters = filters) => {
       {/* Cancel Booking Modal */}
       <Modal
         title="Hủy lịch hẹn"
-        visible={cancelModalVisible}
+        open={cancelModalVisible}
         onCancel={() => {
           setCancelModalVisible(false);
           setCancelReason('');
@@ -538,7 +873,7 @@ const loadBookings = async (newFilters = filters) => {
       {/* Booking Detail Modal */}
       <Modal
         title="Chi tiết lịch hẹn"
-        visible={detailModalVisible}
+        open={detailModalVisible}
         onCancel={() => {
           setDetailModalVisible(false);
           setSelectedBooking(null);
@@ -640,6 +975,407 @@ const loadBookings = async (newFilters = filters) => {
             )}
 
           </Descriptions>
+        )}
+      </Modal>
+
+      {/* Edit Booking Modal */}
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <EditOutlined style={{ color: '#1890ff', marginRight: 8 }} />
+            Edit Booking
+          </div>
+        }
+        open={editModalVisible}
+        onCancel={() => {
+          setEditModalVisible(false);
+          setSelectedBooking(null);
+          setSelectedService(null);
+          setSelectedBarber(null);
+          setSelectedTimeSlot(null);
+          editForm.resetFields();
+        }}
+        width={800}
+        footer={[
+          <Button
+            key="cancel"
+            onClick={() => {
+              setEditModalVisible(false);
+              setSelectedBooking(null);
+              setSelectedService(null);
+              setSelectedBarber(null);
+              setSelectedTimeSlot(null);
+              editForm.resetFields();
+            }}
+          >
+            Cancel
+          </Button>,
+          <Button
+            key="save"
+            type="primary"
+            icon={<SaveOutlined />}
+            loading={editLoading}
+            onClick={handleUpdateBooking}
+            disabled={!selectedTimeSlot}
+          >
+            Update Booking
+          </Button>
+        ]}
+      >
+        {selectedBooking && (
+          <div>
+            {/* Current booking info */}
+            <Alert
+              message="Current Booking Details"
+              description={
+                <div>
+                  <div><strong>Service:</strong> {selectedBooking.serviceId?.name}</div>
+                  <div><strong>Barber:</strong> {selectedBooking.barberId?.userId?.name || 'Auto-assigned'}</div>
+                  <div><strong>Date & Time:</strong> {dayjs(selectedBooking.bookingDate).format('DD/MM/YYYY HH:mm')}</div>
+                  <div><strong>Duration:</strong> {selectedBooking.durationMinutes || 30} minutes</div>
+                </div>
+              }
+              type="info"
+              style={{ marginBottom: 24 }}
+            />
+
+            <Form
+              form={editForm}
+              layout="vertical"
+              onValuesChange={(changedValues) => {
+                if (changedValues.serviceId) {
+                  handleServiceChange(changedValues.serviceId);
+                }
+                if (changedValues.barberId !== undefined) {
+                  handleBarberChange(changedValues.barberId);
+                }
+              }}
+            >
+              <Row gutter={16}>
+                <Col span={24}>
+                  <Form.Item
+                    label={
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span>Service</span>
+                        {selectedService && (
+                          <Tag color="blue" style={{ margin: 0 }}>
+                            {selectedService.durationMinutes} min
+                          </Tag>
+                        )}
+                      </div>
+                    }
+                    name="serviceId"
+                    rules={[{ required: true, message: 'Please select a service' }]}
+                  >
+                    <Select
+                      placeholder={servicesLoading ? "Loading services..." : "Choose a service..."}
+                      loading={servicesLoading}
+                      onChange={handleServiceChange}
+                      size="large"
+                      showSearch
+                      filterOption={(input, option) =>
+                        option.children.props.children[0].props.children.toLowerCase().includes(input.toLowerCase())
+                      }
+                      notFoundContent={servicesLoading ? <Spin size="small" /> : "No services available"}
+                      popupMatchSelectWidth={false}
+                      style={{ width: '100%' }}
+                    >
+                      {services.length === 0 && !servicesLoading ? (
+                        <Option disabled value="no-services">
+                          <div style={{ textAlign: 'center', padding: '20px', color: '#999' }}>
+                            <div>No services available</div>
+                            <div style={{ fontSize: '12px' }}>Please contact support</div>
+                          </div>
+                        </Option>
+                      ) : (
+                        services.map(service => (
+                        <Option key={service._id} value={service._id}>
+                          <Card
+                            size="small"
+                            style={{
+                              margin: '4px 0',
+                              border: selectedService?._id === service._id ? '2px solid #1890ff' : '1px solid #f0f0f0',
+                              backgroundColor: selectedService?._id === service._id ? '#f6ffed' : 'white'
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div>
+                                <div style={{ fontWeight: 'bold', fontSize: '14px' }}>
+                                  {service.name}
+                                </div>
+                                <div style={{ fontSize: '12px', color: '#666', marginTop: 2 }}>
+                                  {service.description || 'Professional service'}
+                                </div>
+                                <div style={{ fontSize: '11px', color: '#999', marginTop: 2 }}>
+                                  Duration: {service.durationMinutes} minutes
+                                </div>
+                              </div>
+                              <div style={{ textAlign: 'right' }}>
+                                <div style={{ fontWeight: 'bold', color: '#1890ff', fontSize: '16px' }}>
+                                  {service.price?.toLocaleString()} VND
+                                </div>
+                                {selectedService?._id === service._id && (
+                                  <Tag color="success" size="small" style={{ marginTop: 4 }}>
+                                    Selected
+                                  </Tag>
+                                )}
+                              </div>
+                            </div>
+                          </Card>
+                        </Option>
+                        ))
+                      )}
+                    </Select>
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Row gutter={16}>
+                <Col span={24}>
+                  <Form.Item
+                    label={
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span>Barber</span>
+                        {selectedBarber && (
+                          <Tag color="green" style={{ margin: 0 }}>
+                            Specialist
+                          </Tag>
+                        )}
+                      </div>
+                    }
+                    name="barberId"
+                    rules={[{ required: true, message: 'Please select a barber' }]}
+                  >
+                    <Select
+                      placeholder={barbersLoading ? "Loading barbers..." : "Choose a barber..."}
+                      loading={barbersLoading}
+                      onChange={handleBarberChange}
+                      size="large"
+                      showSearch
+                      filterOption={(input, option) => {
+                        try {
+                          return option.children.props.children.props.children[0].props.children.toLowerCase().includes(input.toLowerCase());
+                        } catch {
+                          return true; // Fallback for auto-assign option
+                        }
+                      }}
+                      notFoundContent={barbersLoading ? <Spin size="small" /> : "No barbers available"}
+                      popupMatchSelectWidth={false}
+                      style={{ width: '100%' }}
+                    >
+                      <Option value="auto">
+                        <Card
+                          size="small"
+                          style={{
+                            margin: '4px 0',
+                            border: !selectedBarber ? '2px solid #52c41a' : '1px solid #f0f0f0',
+                            backgroundColor: !selectedBarber ? '#f6ffed' : 'white'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <Avatar
+                              style={{ backgroundColor: '#52c41a' }}
+                              icon={<UserOutlined />}
+                            />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: 'bold', fontSize: '14px' }}>
+                                Auto-assign Best Barber
+                              </div>
+                              <div style={{ fontSize: '12px', color: '#666', marginTop: 2 }}>
+                                System will automatically assign the most suitable available barber
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#52c41a', marginTop: 2 }}>
+                                ✓ Recommended for optimal scheduling
+                              </div>
+                            </div>
+                            {!selectedBarber && (
+                              <Tag color="success" size="small">
+                                Selected
+                              </Tag>
+                            )}
+                          </div>
+                        </Card>
+                      </Option>
+                      {barbers.map(barber => (
+                        <Option key={barber._id} value={barber._id}>
+                          <Card
+                            size="small"
+                            style={{
+                              margin: '4px 0',
+                              border: selectedBarber?._id === barber._id ? '2px solid #1890ff' : '1px solid #f0f0f0',
+                              backgroundColor: selectedBarber?._id === barber._id ? '#f6ffed' : 'white'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                              <Avatar
+                                style={{ backgroundColor: '#1890ff' }}
+                                src={barber.userId?.avatar}
+                              >
+                                {barber.userId?.name?.charAt(0)?.toUpperCase()}
+                              </Avatar>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontWeight: 'bold', fontSize: '14px' }}>
+                                  {barber.userId?.name}
+                                </div>
+                                <div style={{ fontSize: '12px', color: '#666', marginTop: 2 }}>
+                                  {barber.specialties?.length > 0
+                                    ? `Specialties: ${barber.specialties.slice(0, 2).join(', ')}${barber.specialties.length > 2 ? '...' : ''}`
+                                    : 'General services'
+                                  }
+                                </div>
+                                <div style={{ fontSize: '11px', color: '#999', marginTop: 2 }}>
+                                  Experience: {barber.experienceYears || 'N/A'} years
+                                  {barber.rating && (
+                                    <span style={{ marginLeft: 8 }}>
+                                      ⭐ {barber.rating.toFixed(1)}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              {selectedBarber?._id === barber._id && (
+                                <Tag color="success" size="small">
+                                  Selected
+                                </Tag>
+                              )}
+                            </div>
+                          </Card>
+                        </Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              {/* Service Comparison */}
+              {selectedService && (
+                <div style={{ marginBottom: 16 }}>
+                  <Alert
+                    message="Service Selection Summary"
+                    description={
+                      <Row gutter={16}>
+                        <Col span={12}>
+                          <Card size="small" title="Current Service" style={{ backgroundColor: '#fff2e8' }}>
+                            <div><strong>Name:</strong> {selectedBooking.serviceId?.name}</div>
+                            <div><strong>Duration:</strong> {selectedBooking.durationMinutes || 30} minutes</div>
+                            <div><strong>Price:</strong> {selectedBooking.serviceId?.price?.toLocaleString() || 'N/A'} VND</div>
+                          </Card>
+                        </Col>
+                        <Col span={12}>
+                          <Card size="small" title="New Service" style={{ backgroundColor: '#f6ffed' }}>
+                            <div><strong>Name:</strong> {selectedService.name}</div>
+                            <div><strong>Duration:</strong> {selectedService.durationMinutes} minutes</div>
+                            <div><strong>Price:</strong> {selectedService.price?.toLocaleString()} VND</div>
+                            {selectedService.price !== selectedBooking.serviceId?.price && (
+                              <div style={{ marginTop: 8 }}>
+                                <Tag color={selectedService.price > selectedBooking.serviceId?.price ? 'red' : 'green'}>
+                                  {selectedService.price > selectedBooking.serviceId?.price ? '+' : ''}
+                                  {(selectedService.price - (selectedBooking.serviceId?.price || 0)).toLocaleString()} VND
+                                </Tag>
+                              </div>
+                            )}
+                          </Card>
+                        </Col>
+                      </Row>
+                    }
+                    type="info"
+                    showIcon
+                  />
+                </div>
+              )}
+
+              {/* Barber Comparison */}
+              {(selectedBarber || editForm.getFieldValue('barberId') === 'auto') && (
+                <div style={{ marginBottom: 16 }}>
+                  <Alert
+                    message="Barber Selection Summary"
+                    description={
+                      <Row gutter={16}>
+                        <Col span={12}>
+                          <Card size="small" title="Current Barber" style={{ backgroundColor: '#fff2e8' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <Avatar size="small" style={{ backgroundColor: '#faad14' }}>
+                                {selectedBooking.barberId?.userId?.name?.charAt(0)?.toUpperCase() || 'A'}
+                              </Avatar>
+                              <div>
+                                <div><strong>{selectedBooking.barberId?.userId?.name || 'Auto-assigned'}</strong></div>
+                                <div style={{ fontSize: '12px', color: '#666' }}>
+                                  {selectedBooking.barberId?.specialties?.join(', ') || 'General services'}
+                                </div>
+                              </div>
+                            </div>
+                          </Card>
+                        </Col>
+                        <Col span={12}>
+                          <Card size="small" title="New Barber" style={{ backgroundColor: '#f6ffed' }}>
+                            {editForm.getFieldValue('barberId') === 'auto' ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <Avatar size="small" style={{ backgroundColor: '#52c41a' }} icon={<UserOutlined />} />
+                                <div>
+                                  <div><strong>Auto-assign</strong></div>
+                                  <div style={{ fontSize: '12px', color: '#666' }}>
+                                    Best available barber
+                                  </div>
+                                </div>
+                              </div>
+                            ) : selectedBarber ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <Avatar size="small" style={{ backgroundColor: '#1890ff' }}>
+                                  {selectedBarber.userId?.name?.charAt(0)?.toUpperCase()}
+                                </Avatar>
+                                <div>
+                                  <div><strong>{selectedBarber.userId?.name}</strong></div>
+                                  <div style={{ fontSize: '12px', color: '#666' }}>
+                                    {selectedBarber.specialties?.join(', ') || 'General services'}
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div style={{ color: '#999' }}>No barber selected</div>
+                            )}
+                          </Card>
+                        </Col>
+                      </Row>
+                    }
+                    type="success"
+                    showIcon
+                  />
+                </div>
+              )}
+
+              <Form.Item
+                label="Special Requests / Notes"
+                name="note"
+              >
+                <Input.TextArea
+                  rows={3}
+                  placeholder="Any special requests or notes for the barber..."
+                />
+              </Form.Item>
+            </Form>
+
+            {/* Time Slot Selection */}
+            {selectedService && (selectedBarber || editForm.getFieldValue('barberId') === 'auto') && (
+              <div style={{ marginTop: 24 }}>
+                <Divider>Select New Time Slot</Divider>
+                <TimeSlotPicker
+                  barberId={selectedBarber?._id || null}
+                  serviceId={selectedService._id}
+                  durationMinutes={selectedService.durationMinutes}
+                  onSelect={handleTimeSlotSelect}
+                />
+
+                {selectedTimeSlot && (
+                  <Alert
+                    message="New Time Slot Selected"
+                    description={`${selectedTimeSlot.label} (${selectedService.durationMinutes} minutes)`}
+                    type="success"
+                    showIcon
+                    style={{ marginTop: 16 }}
+                  />
+                )}
+              </div>
+            )}
+          </div>
         )}
       </Modal>
     </div>
