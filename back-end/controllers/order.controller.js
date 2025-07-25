@@ -746,6 +746,21 @@ exports.finalizeOrderAuth = async (req, res) => {
     await Order_Item.insertMany(orderItems);
     await PaymentController.createUnpaidPayment(savedOrder._id, 'payOS');
 
+    // ✅ Gửi email xác nhận đơn hàng
+    if (customerEmail) {
+      try {
+        await sendOrderCodeToGuestEmail(customerEmail, {
+          orderCode: savedOrder.orderCode,
+          orderDate: savedOrder.createdAt,
+          items: orderItems,
+          totalAmount: savedOrder.totalAmount,
+          customerName
+        });
+      } catch (e) {
+        console.error('Gửi email xác nhận cho guest thất bại:', e);
+      }
+    }
+    
     res.status(200).json({ success: true, order: savedOrder });
   } catch (err) {
     console.error("Finalize Auth Error:", err);
@@ -799,6 +814,21 @@ exports.finalizeOrderGuest = async (req, res) => {
 
     await Order_Item.insertMany(orderItems);
     await PaymentController.createUnpaidPayment(savedOrder._id, 'payOS');
+
+    // ✅ Gửi email xác nhận đơn hàng
+    if (customerEmail) {
+      try {
+        await sendOrderCodeToGuestEmail(customerEmail, {
+          orderCode: savedOrder.orderCode,
+          orderDate: savedOrder.createdAt,
+          items: orderItems,
+          totalAmount: savedOrder.totalAmount,
+          customerName
+        });
+      } catch (e) {
+        console.error('Gửi email xác nhận cho guest thất bại:', e);
+      }
+    }
 
     res.status(200).json({ success: true, order: savedOrder });
   } catch (err) {
