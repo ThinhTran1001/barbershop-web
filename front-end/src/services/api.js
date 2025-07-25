@@ -162,4 +162,9 @@ export const createBlog = (data) => api.post('/news', data);
 export const updateBlog = (id, data) => api.put(`/news/${id}`, data);
 export const deleteBlog = (id) => api.delete(`/news/${id}`);
 
+export const getOrderByCode = (code) => api.get(`/orders/code/${code}`);
+export const updateStatusPayment = (orderId, status, paidAt) => api.put(`/payments/order/${orderId}`, { status, paidAt });
+export const markPaymentAsPaid = (orderId) => api.put(`/payments/mark-paid/${orderId}`);
+
+
 export default api;

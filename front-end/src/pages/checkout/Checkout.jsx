@@ -134,9 +134,9 @@ const Checkout = () => {
       });
       return;
     }
-  
+
     setLoading(true);
-  
+
     try {
       // Tính toán lại để đảm bảo chính xác
       const originalSubtotal = itemsToCheckout.reduce((sum, item) => {
@@ -163,7 +163,7 @@ const Checkout = () => {
           setLoading(false);
           return;
         }
-        
+
         if (selectedVoucher.usageLimit && selectedVoucher.usedCount >= selectedVoucher.usageLimit) {
           notification.warning({
             message: "Voucher đã hết lượt sử dụng",
@@ -190,9 +190,9 @@ const Checkout = () => {
         const rawPrice = item.price || item.product?.price || 0;
         const discount = item.discount || item.product?.discount || 0;
         const finalPrice = discount > 0 ? rawPrice * (1 - discount / 100) : rawPrice;
-        
+
         const productId = item.productId || item.id || item._id || item.product?._id;
-  
+
         return {
           productId: productId,
           quantity: item.quantity,
@@ -200,7 +200,7 @@ const Checkout = () => {
           originalPrice: rawPrice, // Giá gốc để backend có thể tính toán
         };
       });
-  
+
       const orderData = {
         customerName: values.name,
         customerEmail: values.email,
@@ -216,18 +216,22 @@ const Checkout = () => {
         voucherDiscount: finalVoucherDiscount, // Số tiền giảm từ voucher
         totalAmount: finalTotal, // Tổng cuối cùng
       };
-  
-      await createOrder(orderData);
-  
-      // Xóa giỏ hàng khi đặt hàng thành công (nếu không phải mua ngay)
-      if (!buyNowItems?.length) clearCart();
-  
-      setOrderSuccess(true);
-      notification.success({
-        message: "Đặt hàng thành công!",
-        description: "Cảm ơn bạn đã mua hàng. Chúng tôi sẽ liên hệ sớm.",
-        placement: "topRight",
-      });
+
+      const res = await createOrder(orderData);
+
+      if (orderData.paymentMethod === 'bank' && res.data?.redirectUrl) {
+        window.location.href = res.data.redirectUrl; // chuyển sang trang PayOS
+      } else {
+        if (!buyNowItems?.length) clearCart();
+
+        setOrderSuccess(true);
+        notification.success({
+          message: "Đặt hàng thành công!",
+          description: "Cảm ơn bạn đã mua hàng. Chúng tôi sẽ liên hệ sớm.",
+          placement: "topRight",
+        });
+      }
+
     } catch (error) {
       console.error(error);
       notification.error({
@@ -451,7 +455,7 @@ const Checkout = () => {
                 ) : (
                   vouchers.map((voucher) => {
                     const isValid = (!voucher.minOrderAmount || subtotal >= voucher.minOrderAmount) &&
-                                   (!voucher.usageLimit || !voucher.usedCount || voucher.usedCount < voucher.usageLimit);
+                      (!voucher.usageLimit || !voucher.usedCount || voucher.usedCount < voucher.usageLimit);
                     return (
                       <Card
                         key={voucher._id || voucher.id}
@@ -587,7 +591,7 @@ const Checkout = () => {
                   <span>-{formatPrice(voucherDiscount)}</span>
                 </div>
               )}
-              
+
               {selectedVoucher && voucherDiscount === 0 && (
                 <div className="summary-row">
                   <span>Voucher ({selectedVoucher.code}):</span>

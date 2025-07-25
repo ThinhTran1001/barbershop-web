@@ -18,4 +18,6 @@ router.put('/:id', authenticate, orderController.updateOrder);
 // Xoá đơn hàng
 router.delete('/:id', authenticate, orderController.deleteOrder);
 
+router.get('/code/:code', authenticate, orderController.getOrderByCode);
+
 module.exports = router;

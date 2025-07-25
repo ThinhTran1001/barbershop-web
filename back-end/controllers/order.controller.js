@@ -5,8 +5,8 @@ const Voucher = require('../models/voucher.model');
 const Payment = require('../models/payment.model');
 const PaymentController = require('./payment.controller');
 const User_Voucher = require('../models/user_voucher.model');
-const User = require('../models/user.model'); 
-const { sendOrderCodeToGuestEmail } = require('../services/email.service'); 
+const User = require('../models/user.model');
+const { sendOrderCodeToGuestEmail } = require('../services/email.service');
 
 exports.createOrderGuest = async (req, res) => {
   try {
@@ -91,24 +91,26 @@ exports.createOrder = async (req, res) => {
       customerName,
       customerEmail,
       customerPhone,
-      shippingAddress, 
-      items, 
-      voucherId, 
+      shippingAddress,
+      items,
+      voucherId,
       paymentMethod,
-      originalSubtotal, 
-      discountedSubtotal, 
-      voucherDiscount, 
-      totalAmount 
+      originalSubtotal,
+      discountedSubtotal,
+      voucherDiscount,
+      totalAmount
     } = req.body;
 
-    const finalCustomerName  = (customerName  || findUser.name);
+    const finalCustomerName = (customerName || findUser.name);
     const finalCustomerEmail = (customerEmail || findUser.email)
     const finalCustomerPhone = (customerPhone || findUser.phone);
 
+    const orderCodeNumber = Math.floor(Date.now() % 9000000000000);
+
     const order = new Order({
       userId: req.user.id,
-      orderCode: `ORD-${Date.now()}`,
-      customerName : finalCustomerName,
+      orderCode: `ORD-${orderCodeNumber}`,
+      customerName: finalCustomerName,
       customerEmail: finalCustomerEmail,
       customerPhone: finalCustomerPhone,
       status: 'pending',
@@ -255,6 +257,36 @@ exports.createOrder = async (req, res) => {
     order.discountAmount = Number(finalVoucherDiscount.toFixed(2));
 
     const savedOrder = await order.save();
+    if (paymentMethod === 'bank') {
+      const payOS = req.app.get("payOS");
+
+      const paymentLinkBody = {
+        orderCode: orderCodeNumber,
+        amount: parseInt(order.totalAmount),
+        description: `Don hang ${orderCodeNumber}`,
+        items: orderItems.map(i => ({
+          name: i.productName,
+          quantity: i.quantity,
+          price: parseInt(i.unitPrice)
+        })),
+        returnUrl: `http://localhost:5173/payos-success?orderCode=${order.orderCode}&success=true`,
+        cancelUrl: `http://localhost:5173/checkout?canceled=true`
+      };
+
+      // ✅ Bổ sung 2 dòng quan trọng trước return
+      await Order_Item.insertMany(orderItems);
+      await PaymentController.createUnpaidPayment(savedOrder._id, 'payOS');
+
+      const paymentLink = await payOS.createPaymentLink(paymentLinkBody);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Đơn hàng tạo thành công, chuyển hướng thanh toán...',
+        redirectUrl: paymentLink.checkoutUrl,
+        data: savedOrder,
+      });
+    }
+
     await Order_Item.insertMany(orderItems);
 
     const orderObj = savedOrder.toObject ? savedOrder.toObject() : savedOrder;
@@ -371,7 +403,7 @@ exports.getAllOrders = async (req, res) => {
         return {
           ...order.toObject(),
           payment,
-          items 
+          items
         };
       })
     );
@@ -567,5 +599,19 @@ exports.deleteOrder = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getOrderByCode = async (req, res) => {
+  try {
+    const { code } = req.params;
+    const order = await Order.findOne({ orderCode: code });
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+    const items = await Order_Item.find({ orderId: order._id });
+    const payment = await Payment.findOne({ orderId: order._id });
+
+    res.json({ order, items, payment });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
   }
 };
