@@ -1,6 +1,10 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { message, Spin, Form, DatePicker } from 'antd';
 import dayjs from 'dayjs';
+import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
+import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
+dayjs.extend(isSameOrAfter);
+dayjs.extend(isSameOrBefore);
 import DiscountTable from '../../components/DiscountTable';
 import DiscountStats from '../../components/DiscountStats';
 import DiscountSearch from '../../components/DiscountSearch';
@@ -78,6 +82,7 @@ const DiscountManagement = () => {
   const handleClearFilters = useCallback(() => {
     setSearchText('');
     setStatusFilter('all');
+    setDateRange([null, null]);
   }, []);
 
   const filteredDiscounts = useMemo(() => {
@@ -107,10 +112,11 @@ const DiscountManagement = () => {
         }
       });
     }
-    if (dateRange[0] && dateRange[1]) {
+    if (Array.isArray(dateRange) && dateRange[0] && dateRange[1]) {
       filtered = filtered.filter(discount => {
         const endDate = dayjs(discount.discountEndDate);
-        return dayjs(endDate).isSameOrAfter(dayjs(dateRange[0]).startOf('day')) && dayjs(endDate).isSameOrBefore(dayjs(dateRange[1]).endOf('day'));
+        if (!endDate.isValid()) return false;
+        return endDate.isSameOrAfter(dayjs(dateRange[0]).startOf('day')) && endDate.isSameOrBefore(dayjs(dateRange[1]).endOf('day'));
       });
     }
     return filtered;
