@@ -16,7 +16,7 @@ export default function Landing() {
     <>
       
       <HeroSection />
-      <HotDeals />
+    
       <AboutSection />
 
         {/* <Services /> */}
@@ -25,6 +25,7 @@ export default function Landing() {
         </div>
         <br></br>   
         <br></br>
+        <HotDeals />
         <ShopItems />
         <br></br>
         <br></br>

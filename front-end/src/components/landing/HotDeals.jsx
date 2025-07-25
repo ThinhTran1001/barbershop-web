@@ -4,6 +4,10 @@ import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 import { Carousel, Button, Card, Row, Col } from "antd";
 import "antd/dist/reset.css";
+import { useNavigate } from 'react-router-dom';
+import { useUserCart } from '../../context/UserCartContext';
+import { useCart } from '../../context/CartContext';
+import { useAuth } from '../../context/AuthContext';
 dayjs.extend(duration);
 
 const imageMap = {
@@ -15,6 +19,10 @@ export default function HotDeals() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const ITEMS_PER_PAGE = 4;
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { addToCart: addToUserCart } = useUserCart();
+  const { addToCart: addToGuestCart } = useCart();
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -28,6 +36,9 @@ export default function HotDeals() {
       }
     };
     fetchProducts();
+    // Polling: fetch lại data mỗi 10 giây
+    const interval = setInterval(fetchProducts, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   const getImage = (imagePath) => {
@@ -40,19 +51,20 @@ export default function HotDeals() {
     (p) => Number(p.discount) > 0 && p.discountEndDate && dayjs(p.discountEndDate).isAfter(dayjs())
   );
   // Lấy danh sách các ngày có sản phẩm ưu đãi (không trùng lặp, đã sort tăng dần)
-  const uniqueDealDays = Array.from(new Set(hotDeals.map(p => dayjs(p.discountEndDate).format('YYYY-MM-DD'))))
-    .map(d => dayjs(d)).sort((a, b) => a.valueOf() - b.valueOf());
-  const [selectedDay, setSelectedDay] = useState(uniqueDealDays[0] || dayjs());
+  // XÓA các dòng liên quan đến uniqueDealDays, selectedDay, setSelectedDay
+  // const uniqueDealDays = Array.from(new Set(hotDeals.map(p => dayjs(p.discountEndDate).format('YYYY-MM-DD'))))
+  //   .map(d => dayjs(d)).sort((a, b) => a.valueOf() - b.valueOf());
+  // const [selectedDay, setSelectedDay] = useState(uniqueDealDays[0] || dayjs());
 
   // Tự động chọn ngày đầu tiên khi uniqueDealDays thay đổi
-  useEffect(() => {
-    if (uniqueDealDays.length > 0) {
-      setSelectedDay(uniqueDealDays[0]);
-    }
-  }, [uniqueDealDays.length]);
+  // useEffect(() => {
+  //   if (uniqueDealDays.length > 0) {
+  //     setSelectedDay(uniqueDealDays[0]);
+  //   }
+  // }, [uniqueDealDays.length]);
 
-  // Lọc hotDeals theo ngày đang chọn
-  const filteredDeals = hotDeals.filter(p => dayjs(p.discountEndDate).isSame(selectedDay, 'day'));
+  // filteredDeals là toàn bộ hotDeals
+  const filteredDeals = hotDeals;
   const totalPages = Math.ceil(filteredDeals.length / ITEMS_PER_PAGE);
   const slides = Array.from({ length: totalPages }, (_, i) => filteredDeals.slice(i * ITEMS_PER_PAGE, (i + 1) * ITEMS_PER_PAGE));
 
@@ -66,7 +78,7 @@ export default function HotDeals() {
   // Countdown tổng cho khu vực hot deals, lấy theo ngày đang chọn
   const renderMainCountdown = () => {
     // Lấy các deal của ngày đang chọn
-    const dealsOfDay = hotDeals.filter(p => dayjs(p.discountEndDate).isSame(selectedDay, 'day'));
+    const dealsOfDay = hotDeals.filter(p => dayjs(p.discountEndDate).isSame(dayjs(), 'day'));
     if (dealsOfDay.length === 0) return null;
     // Lấy discountEndDate gần nhất trong ngày đang chọn
     const nextEnd = dealsOfDay.reduce((min, p) => {
@@ -93,6 +105,17 @@ export default function HotDeals() {
     );
   };
 
+  // Thêm hàm renderCountdown cho từng sản phẩm
+  const renderCountdown = (endDate) => {
+    const diff = dayjs(endDate).diff(dayjs(now));
+    if (diff <= 0) return "Đã hết";
+    const d = dayjs.duration(diff);
+    const hours = d.hours().toString().padStart(2, '0');
+    const minutes = d.minutes().toString().padStart(2, '0');
+    const seconds = d.seconds().toString().padStart(2, '0');
+    return `${hours}:${minutes}:${seconds}`;
+  };
+
   if (loading || error || hotDeals.length === 0) return null;
 
   return (
@@ -102,12 +125,13 @@ export default function HotDeals() {
         {/* Countdown tổng bên trái */}
         <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start' }}>{renderMainCountdown()}</div>
         {/* Tiêu đề giữa */}
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12 }}>
+        <div style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: 16 }}>
           <span role="img" aria-label="fire" style={{ fontSize: 32, verticalAlign: 'middle' }}>🔥</span>
-          <h2 style={{ color: '#e74c3c', margin: 0, textAlign: 'center', fontSize: 36, fontWeight: 700 }}>ƯU ĐÃI HOT</h2>
+          <h2 style={{ color: '#e74c3c', margin: 0, textAlign: 'center', fontSize: 36, fontWeight: 700, marginLeft: 12 }}>ƯU ĐÃI HOT</h2>
         </div>
         {/* Nút ngày bên phải */}
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+        {/* XÓA hoàn toàn đoạn render các nút ngày: */}
+        {/* <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           {uniqueDealDays.map((d, idx) => (
             <button
               key={idx}
@@ -130,7 +154,7 @@ export default function HotDeals() {
               {d.format('DD/MM')}
             </button>
           ))}
-        </div>
+        </div> */}
       </div>
       <div style={{ width: '100%' }}>
         <Carousel autoplay autoplaySpeed={4000} dots={totalPages > 1} arrows={false} pauseOnHover={false} effect="scrollx">
@@ -141,24 +165,52 @@ export default function HotDeals() {
                   <Col key={product._id} flex="0 0 260px" style={{ display: 'flex', justifyContent: 'center', maxWidth: 260 }}>
                     <Card
                       hoverable
-                      style={{ width: 240, border: '2px solid #e74c3c', borderRadius: 8, background: '#fff8f6', position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+                      style={{ width: 240, height: 370, border: '2px solid #e74c3c', borderRadius: 8, background: '#fff8f6', position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}
                       cover={
-                        <div style={{ position: 'relative', width: '100%', display: 'flex', justifyContent: 'center' }}>
+                        <div style={{ position: 'relative', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 140 }}>
                           <img src={getImage(product.image)} alt={product.name} style={{ width: 120, height: 120, objectFit: 'cover', borderRadius: 6, margin: '16px auto 8px auto' }} />
                         </div>
                       }
-                      bodyStyle={{ padding: 16, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+                      bodyStyle={{ padding: 16, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 170 }}
                     >
                       {/* Badge discount góc phải trên cùng card */}
-                      <div style={{ position: 'absolute', top: 8, right: 8, background: '#ff4d4f', color: '#fff', padding: '2px 8px', borderRadius: 4, fontWeight: 'bold', fontSize: 12, zIndex: 2 }}>
-                        -{product.discount}%
+                      {/* Trong Card, thay badge -20% thành block gồm badge và countdown */}
+                      {/* Trong Card, chuyển block badge + countdown sang góc trên trái */}
+                      {/* Trong Card, hiển thị countdown ở góc trên trái và badge -XX% ở góc trên phải */}
+                      {/* Trong Card, căn badge và countdown cùng chiều ngang, cùng chiều cao, cùng font, cùng border-radius */}
+                      {/* Countdown ở góc trên trái */}
+                      <div style={{ position: 'absolute', top: 8, left: 8, zIndex: 2 }}>
+                        <div style={{ background: '#fff', color: '#e74c3c', fontWeight: 700, fontSize: 13, borderRadius: 4, padding: '2px 10px', border: '1px solid #e74c3c', minWidth: 68, textAlign: 'center', height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {renderCountdown(product.discountEndDate)}
+                        </div>
                       </div>
-                      <div style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 4 }}>{product.name}</div>
+                      {/* Badge -XX% ở góc trên phải */}
+                      <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 2 }}>
+                        <div style={{ background: '#ff4d4f', color: '#fff', fontWeight: 700, fontSize: 13, borderRadius: 4, padding: '2px 10px', minWidth: 48, textAlign: 'center', height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          -{product.discount}%
+                        </div>
+                      </div>
+                      <div style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 4, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+                        {product.name}
+                      </div>
                       <div style={{ color: '#888', textDecoration: 'line-through', fontSize: 13 }}>{product.price.toLocaleString('vi-VN')} VND</div>
                       <div style={{ color: '#e74c3c', fontWeight: 'bold', fontSize: 15, marginBottom: 4 }}>{(product.price * (1 - Number(product.discount) / 100)).toLocaleString('vi-VN')} VND</div>
+                      <div style={{ color: '#e67e22', fontSize: 12, margin: '4px 0 8px 0', fontWeight: 500 }}>
+                        Áp dụng: {dayjs(product.discountStartDate).format('DD/MM/YYYY')} - {dayjs(product.discountEndDate).format('DD/MM/YYYY')}
+                      </div>
                       <div style={{ display: 'flex', gap: 8, width: '100%', justifyContent: 'center' }}>
-                        <Button type="primary" style={{ background: '#222', borderColor: '#222' }}>Mua hàng</Button>
-                        <Button type="default" style={{ background: '#ffe066', borderColor: '#ffe066', color: '#222', fontWeight: 600 }}>Chi tiết</Button>
+                        <Button type="primary" style={{ background: '#222', borderColor: '#222' }}
+                          onClick={() => {
+                            if (user) {
+                              addToUserCart(product, 1);
+                            } else {
+                              addToGuestCart(product, 1);
+                            }
+                          }}
+                        >Mua hàng</Button>
+                        <Button type="default" style={{ background: '#ffe066', borderColor: '#ffe066', color: '#222', fontWeight: 600 }}
+                          onClick={() => navigate(`/products/${product._id}`)}
+                        >Chi tiết</Button>
                       </div>
                     </Card>
                   </Col>
