@@ -3,7 +3,7 @@ import { Table, Button, Tag, Space, Tooltip } from 'antd';
 import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 
-const DiscountTable = ({ discounts, loading, getDiscountStatus, handleEditDiscount, handleDeleteDiscount }) => {
+const DiscountTable = ({ discounts, loading, getDiscountStatus, handleEditDiscount, handleDeleteDiscount, pagination, onChangePagination }) => {
   // Function to format currency in VND
   const formatVND = (amount) => {
     return new Intl.NumberFormat('en-US', {
@@ -93,13 +93,13 @@ const DiscountTable = ({ discounts, loading, getDiscountStatus, handleEditDiscou
       columns={columns}
       scroll={{ x: 800 }}
       pagination={{
-        pageSize: 10,
+        ...pagination,
         showSizeChanger: true,
-        showQuickJumper: true,
         showTotal: (total, range) => 
           `${range[0]}-${range[1]} of ${total} discounts`,
         pageSizeOptions: ['5', '10', '20', '50'],
       }}
+      onChange={(_, __, ___, pagination) => onChangePagination({ current: pagination.current, pageSize: pagination.pageSize })}
       bordered
       loading={loading}
       locale={{ emptyText: 'No discounts found' }}

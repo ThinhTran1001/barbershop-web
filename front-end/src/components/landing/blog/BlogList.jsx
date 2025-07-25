@@ -15,6 +15,10 @@ const BlogList = ({ sort, category, tags = [] }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+  useEffect(() => {
     setCurrentPage(1);
     setPosts([]);
     setTotal(0);
