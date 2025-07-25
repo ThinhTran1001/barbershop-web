@@ -20,7 +20,8 @@ import {
   Form,
   Alert,
   Tooltip,
-  Avatar
+  Avatar,
+  message
 } from 'antd';
 import { toast } from 'react-toastify';
 import {
@@ -58,6 +59,7 @@ import {
   getDisabledActionMessage,
   isBookingFinal
 } from '../../utils/bookingValidation';
+import {getBarberFeedbackById, getFeedbackBookingByBookingId, getMe} from "../../services/api.js";
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -538,23 +540,23 @@ const loadBookings = async (newFilters = filters) => {
   };
 
   // Check if booking can be reviewed
-  //   const canReviewBooking = async (bookingId) => {
-  //   try {
-  //     const res = await getFeedbackBookingByBookingId(bookingId);
-  //     return !res?.data;
-  //   } catch {
-  //     return true; // Nếu không có feedback => cho phép đánh giá
-  //   }
-  // };
+    const canReviewBooking = async (bookingId) => {
+    try {
+      const res = await getFeedbackBookingByBookingId(bookingId);
+      return !res?.data;
+    } catch {
+      return true; // Nếu không có feedback => cho phép đánh giá
+    }
+  };
 
-  // const canReviewBarber = async (bookingId) => {
-  //   try {
-  //     const res = await getBarberFeedbackById(bookingId);
-  //     return !res?.data;
-  //   } catch {
-  //     return true; // Nếu không có feedback => cho phép đánh giá
-  //   }
-  // };
+  const canReviewBarber = async (bookingId) => {
+    try {
+      const res = await getBarberFeedbackById(bookingId);
+      return !res?.data;
+    } catch {
+      return true; // Nếu không có feedback => cho phép đánh giá
+    }
+  };
 
 
   // Handle feedback navigation for service

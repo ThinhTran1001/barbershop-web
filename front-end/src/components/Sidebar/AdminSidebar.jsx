@@ -40,9 +40,9 @@ const AdminSidebar = () => {
     if (path.includes('/admin/barber-schedule')) return 'barber-schedule';
     if (path.includes('/admin/absence-management')) return 'absence-management';
     if (path.includes('/admin/barber')) return 'barber';
+    if (path.includes('/admin/user-vouchers')) return 'user-vouchers';
     if (path.includes('/admin/user')) return 'user';
     if (path.includes('/admin/voucher')) return 'voucher';
-    if (path.includes('/admin/user-vouchers')) return 'user-vouchers';
     if (path.includes('/admin/order')) return 'order';
     if (path.includes('/admin/discount-product')) return 'discount-product';
     if (path.includes('/admin/feedback-product')) return 'feedback-product';
