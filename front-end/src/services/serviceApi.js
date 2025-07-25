@@ -86,6 +86,16 @@ export const updateBookingStatus = async (bookingId, status, reason) => {
   return res.data;
 };
 
+// Update booking details (edit booking)
+export const updateBooking = async (bookingId, updateData) => {
+  const res = await axios.put(
+    `http://localhost:3000/api/bookings/${bookingId}`,
+    updateData,
+    { withCredentials: true }
+  );
+  return res.data;
+};
+
 // Cancel booking
 export const cancelBooking = async (bookingId, reason) => {
   const res = await axios.put(
@@ -103,5 +113,17 @@ export const checkAvailability = async (barberId, bookingDate, durationMinutes) 
     { barberId, bookingDate, durationMinutes },
     { withCredentials: true }
   );
+  return res.data;
+};
+
+// Get all services (for edit booking)
+export const getServices = async () => {
+  const res = await axios.get('http://localhost:3000/api/services', { withCredentials: true });
+  return res.data;
+};
+
+// Get all barbers (for edit booking)
+export const getBarbers = async () => {
+  const res = await axios.get('http://localhost:3000/api/barbers', { withCredentials: true });
   return res.data;
 };

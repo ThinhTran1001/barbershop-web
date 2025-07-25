@@ -58,6 +58,7 @@ import UserVouchers from "./pages/user/UserVouchers.jsx";
 import ManageBlog from "./pages/ManageBlog/ManageBlog.jsx";
 import BarberProfile from "./components/profile/baberProfile.jsx";
 import NoShowManagement from "./pages/Admin/NoShowManagement.jsx";
+import BarberAbsencePage from "./pages/barber/BarberAbsencePage.jsx";
 
 
 
@@ -128,6 +129,7 @@ const router = createBrowserRouter([
           { path: "discount-product", element: <ManageDiscountProduct /> },
           { path: "appointment", element: <Appointment /> },
           { path: "barber-schedule", element: <BarberScheduleManagement /> },
+          { path: "absence-management", element: <BarberScheduleManagement /> },
           { path: "booking-confirmation", element: <BookingConfirmationManagement /> },
           { path: "noshow-management", element: <NoShowManagement /> },
           { path: "statistics", element: <Statistics /> },
@@ -150,6 +152,7 @@ const router = createBrowserRouter([
           { path: "setup", element: <BarberSetup /> },
           { path: "calendar", element: <BarberCalendarPage /> },
           { path: "bookings", element: <BarberBookingManagement /> },
+          { path: "absence", element: <BarberAbsencePage /> },
           { path: "customers", element: <BarberBookingManagement /> },
           { path: "feedback", element: <BarberBookingManagement /> },
           { path: "performance", element: <BarberBookingManagement /> },

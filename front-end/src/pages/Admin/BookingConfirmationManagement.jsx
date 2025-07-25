@@ -11,7 +11,6 @@ import {
   Input,
   Modal,
   Descriptions,
-  message,
   Row,
   Col,
   Statistic,
@@ -20,6 +19,7 @@ import {
   Popconfirm,
   Alert
 } from 'antd';
+import { toast } from 'react-toastify';
 import {
   SearchOutlined,
   CalendarOutlined,
@@ -34,6 +34,13 @@ import {
 import { useAuth } from '../../context/AuthContext.jsx';
 import dayjs from 'dayjs';
 import axios from 'axios';
+import {
+  canConfirmBooking,
+  getStatusText,
+  getStatusColor,
+  getDisabledActionMessage,
+  isBookingFinal
+} from '../../utils/bookingValidation';
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -128,19 +135,57 @@ const BookingConfirmationManagement = () => {
   // Confirm single booking
   const handleConfirmBooking = async (bookingId) => {
     setActionLoading(true);
+
+    // Find the booking to get details for toast
+    const booking = pendingBookings.find(b => b._id === bookingId);
+
+    // Show loading toast
+    const loadingToastId = toast.loading(
+      `✅ Confirming booking for ${booking?.customerName || 'customer'}...`,
+      {
+        position: "top-right",
+        autoClose: false,
+        hideProgressBar: false,
+        closeOnClick: false,
+        pauseOnHover: true,
+        draggable: true,
+      }
+    );
+
     try {
       const response = await axios.put(`/api/bookings/${bookingId}/confirm`);
-      message.success(response.data.message || 'Booking confirmed successfully');
-      
+
+      // Update loading toast to success
+      toast.update(loadingToastId, {
+        render: `🎉 Booking confirmed successfully!\n👤 Customer: ${booking?.customerName || 'Unknown'}\n📅 Service: ${booking?.serviceId?.name || 'Unknown'}\n🕐 Date: ${booking?.bookingDate ? new Date(booking.bookingDate).toLocaleDateString() : 'Unknown'}`,
+        type: "success",
+        isLoading: false,
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+
       // Remove confirmed booking from the list
       setPendingBookings(prev => prev.filter(b => b._id !== bookingId));
-      
+
       // Update statistics
       const updatedBookings = pendingBookings.filter(b => b._id !== bookingId);
       calculateStats(updatedBookings);
-      
+
     } catch (error) {
-      message.error(error.response?.data?.message || 'Failed to confirm booking');
+      // Update loading toast to error
+      toast.update(loadingToastId, {
+        render: `❌ Failed to confirm booking\n${error.response?.data?.message || 'Please try again'}`,
+        type: "error",
+        isLoading: false,
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
       console.error('Error confirming booking:', error);
     } finally {
       setActionLoading(false);
@@ -150,32 +195,73 @@ const BookingConfirmationManagement = () => {
   // Bulk confirm bookings
   const handleBulkConfirm = async () => {
     if (selectedRowKeys.length === 0) {
-      message.warning('Please select bookings to confirm');
+      toast.warn('⚠️ Please select bookings to confirm', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
       return;
     }
 
     setActionLoading(true);
+
+    // Show loading toast
+    const loadingToastId = toast.loading(
+      `✅ Confirming ${selectedRowKeys.length} booking(s)...`,
+      {
+        position: "top-right",
+        autoClose: false,
+        hideProgressBar: false,
+        closeOnClick: false,
+        pauseOnHover: true,
+        draggable: true,
+      }
+    );
+
     try {
       const response = await axios.post('/api/bookings/bulk-confirm', {
         bookingIds: selectedRowKeys
       });
-      
-      message.success(response.data.message || 'Bookings confirmed successfully');
-      
+
+      // Update loading toast to success
+      toast.update(loadingToastId, {
+        render: `🎉 ${response.data.confirmedCount || selectedRowKeys.length} booking(s) confirmed successfully!\n📋 Total processed: ${response.data.totalProcessed || selectedRowKeys.length}\n✅ Customers will be notified automatically.`,
+        type: "success",
+        isLoading: false,
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+
       // Remove confirmed bookings from the list
-      setPendingBookings(prev => 
+      setPendingBookings(prev =>
         prev.filter(b => !selectedRowKeys.includes(b._id))
       );
-      
+
       // Clear selection
       setSelectedRowKeys([]);
-      
+
       // Update statistics
       const updatedBookings = pendingBookings.filter(b => !selectedRowKeys.includes(b._id));
       calculateStats(updatedBookings);
-      
+
     } catch (error) {
-      message.error(error.response?.data?.message || 'Failed to confirm bookings');
+      // Update loading toast to error
+      toast.update(loadingToastId, {
+        render: `❌ Failed to confirm bookings\n${error.response?.data?.message || 'Please try again'}`,
+        type: "error",
+        isLoading: false,
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
       console.error('Error bulk confirming bookings:', error);
     } finally {
       setActionLoading(false);
@@ -193,29 +279,7 @@ const BookingConfirmationManagement = () => {
     loadPendingBookings(newFilters);
   };
 
-  // Status color helper
-  const getStatusColor = (status) => {
-    const colors = {
-      pending: 'orange',
-      confirmed: 'green',
-      completed: 'blue',
-      cancelled: 'red',
-      no_show: 'purple'
-    };
-    return colors[status] || 'default';
-  };
-
-  // Status text helper
-  const getStatusText = (status) => {
-    const texts = {
-      pending: 'Chờ xác nhận',
-      confirmed: 'Đã xác nhận',
-      completed: 'Hoàn thành',
-      cancelled: 'Đã hủy',
-      no_show: 'Không đến'
-    };
-    return texts[status] || status;
-  };
+  // Note: Using utility functions from bookingValidation.js for status helpers
 
   // Load data on component mount
   useEffect(() => {
@@ -327,49 +391,75 @@ const BookingConfirmationManagement = () => {
     {
       title: 'Thao tác',
       key: 'actions',
-      render: (_, record) => (
-        <Space>
-          <Button
-            size="small"
-            icon={<EyeOutlined />}
-            onClick={() => {
-              setSelectedBooking(record);
-              setDetailModalVisible(true);
-            }}
-          >
-            Chi tiết
-          </Button>
-          {/* Chỉ hiển thị nút xác nhận khi status là 'pending' */}
-          {record.status === 'pending' && (
-            <Popconfirm
-              title="Xác nhận booking này?"
-              description="Sau khi xác nhận, booking sẽ hiển thị cho thợ cắt tóc."
-              onConfirm={() => handleConfirmBooking(record._id)}
-              okText="Xác nhận"
-              cancelText="Hủy"
+      render: (_, record) => {
+        const confirmationValidation = canConfirmBooking(record);
+
+        return (
+          <Space>
+            <Button
+              size="small"
+              icon={<EyeOutlined />}
+              onClick={() => {
+                setSelectedBooking(record);
+                setDetailModalVisible(true);
+              }}
             >
+              Chi tiết
+            </Button>
+
+            {/* Enhanced confirmation button with validation */}
+            {confirmationValidation.canConfirm ? (
+              <Popconfirm
+                title="Xác nhận booking này?"
+                description="Sau khi xác nhận, booking sẽ hiển thị cho thợ cắt tóc."
+                onConfirm={() => handleConfirmBooking(record._id)}
+                okText="Xác nhận"
+                cancelText="Hủy"
+              >
+                <Button
+                  size="small"
+                  type="primary"
+                  icon={<CheckCircleOutlined />}
+                  loading={actionLoading}
+                >
+                  Xác nhận
+                </Button>
+              </Popconfirm>
+            ) : (
               <Button
                 size="small"
                 type="primary"
                 icon={<CheckCircleOutlined />}
-                loading={actionLoading}
+                disabled
+                title={confirmationValidation.reason}
               >
                 Xác nhận
               </Button>
-            </Popconfirm>
-          )}
-        </Space>
-      )
+            )}
+
+            {/* Show status message for non-confirmable bookings */}
+            {!confirmationValidation.canConfirm && isBookingFinal(record) && (
+              <span style={{ fontSize: '12px', color: '#999', marginLeft: '8px' }}>
+                {getDisabledActionMessage(record, 'confirm')}
+              </span>
+            )}
+          </Space>
+        );
+      }
     }
   ];
 
-  // Row selection config
+  // Row selection config with enhanced validation
   const rowSelection = {
     selectedRowKeys,
     onChange: setSelectedRowKeys,
-    getCheckboxProps: (record) => ({
-      disabled: record.status !== 'pending'
-    })
+    getCheckboxProps: (record) => {
+      const confirmationValidation = canConfirmBooking(record);
+      return {
+        disabled: !confirmationValidation.canConfirm,
+        title: confirmationValidation.reason
+      };
+    }
   };
 
   return (
@@ -464,27 +554,45 @@ const BookingConfirmationManagement = () => {
           <Button key="close" onClick={() => setDetailModalVisible(false)}>
             Đóng
           </Button>,
-          selectedBooking && (
-            <Popconfirm
-              key="confirm"
-              title="Xác nhận booking này?"
-              description="Sau khi xác nhận, booking sẽ hiển thị cho thợ cắt tóc."
-              onConfirm={() => {
-                handleConfirmBooking(selectedBooking._id);
-                setDetailModalVisible(false);
-              }}
-              okText="Xác nhận"
-              cancelText="Hủy"
-            >
-              <Button
-                type="primary"
-                icon={<CheckCircleOutlined />}
-                loading={actionLoading}
-              >
-                Xác nhận booking
-              </Button>
-            </Popconfirm>
-          )
+          selectedBooking && (() => {
+            const confirmationValidation = canConfirmBooking(selectedBooking);
+
+            if (confirmationValidation.canConfirm) {
+              return (
+                <Popconfirm
+                  key="confirm"
+                  title="Xác nhận booking này?"
+                  description="Sau khi xác nhận, booking sẽ hiển thị cho thợ cắt tóc."
+                  onConfirm={() => {
+                    handleConfirmBooking(selectedBooking._id);
+                    setDetailModalVisible(false);
+                  }}
+                  okText="Xác nhận"
+                  cancelText="Hủy"
+                >
+                  <Button
+                    type="primary"
+                    icon={<CheckCircleOutlined />}
+                    loading={actionLoading}
+                  >
+                    Xác nhận booking
+                  </Button>
+                </Popconfirm>
+              );
+            } else {
+              return (
+                <Button
+                  key="confirm"
+                  type="primary"
+                  icon={<CheckCircleOutlined />}
+                  disabled
+                  title={confirmationValidation.reason}
+                >
+                  Xác nhận booking
+                </Button>
+              );
+            }
+          })()
         ]}
         width={800}
       >

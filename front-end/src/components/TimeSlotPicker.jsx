@@ -1,15 +1,46 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import {
+  Card,
+  DatePicker,
+  Typography,
+  Row,
+  Col,
+  Button,
+  Spin,
+  Alert,
+  Tag,
+  Tooltip,
+  Modal,
+  Space,
+  Divider,
+  Empty
+} from 'antd';
+import { toast } from 'react-toastify';
+import {
+  CalendarOutlined,
+  ClockCircleOutlined,
+  CheckCircleOutlined,
+  ExclamationCircleOutlined,
+  ReloadOutlined,
+  InfoCircleOutlined,
+  UserDeleteOutlined
+} from '@ant-design/icons';
+import dayjs from 'dayjs';
 import { fetchAvailableSlots, checkBarberOff, validateTimeSlotAvailability } from '../services/barberScheduleApi';
-import ToastService from '../services/toastService.jsx';
+
+const { Title, Text } = Typography;
 
 const TimeSlotPicker = ({ barberId, serviceId, durationMinutes, onSelect }) => {
-  const [date, setDate] = useState('');
+  const [selectedDate, setSelectedDate] = useState(null);
   const [slots, setSlots] = useState([]);
   const [isOff, setIsOff] = useState(false);
+  const [offReason, setOffReason] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [selectedSlot, setSelectedSlot] = useState('');
   const [validatingSlot, setValidatingSlot] = useState(null);
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  const [pendingSlot, setPendingSlot] = useState(null);
 
   // Ensure durationMinutes has a default value
   const serviceDuration = durationMinutes || 30;
@@ -39,45 +70,43 @@ const TimeSlotPicker = ({ barberId, serviceId, durationMinutes, onSelect }) => {
 
   // Load available slots when barberId or date changes
   const loadAvailableSlots = useCallback(async () => {
-    if (!barberId || !date) return;
+    if (!barberId || !selectedDate) return;
+
+    const dateString = selectedDate.format('YYYY-MM-DD');
 
     setLoading(true);
     setError('');
     setSlots([]);
     setIsOff(false);
-
-    // Show loading toast for longer operations
-    if (serviceDuration > 60) {
-      ToastService.showLoadingToast('Loading available slots for extended service...', 'slot-loading');
-    }
+    setOffReason('');
 
     try {
       // Check if barber is off
-      const offRes = await checkBarberOff(barberId, date);
+      const offRes = await checkBarberOff(barberId, dateString);
       if (offRes.isOff) {
         setIsOff(true);
+        setOffReason(offRes.reason || 'day off');
         setSlots([]);
 
-        // Show appropriate message based on reason
+        // Show toast notification based on reason
         if (offRes.reason === 'absence') {
-          ToastService.showInfo(
-            'Barber Unavailable',
-            'This barber is not available on the selected date due to approved absence.',
-            5
-          );
+          toast.warn('⚠️ Barber is unavailable due to approved absence', {
+            position: "top-right",
+            autoClose: 4000,
+          });
         } else {
-          ToastService.showInfo(
-            'Barber Off Day',
-            `This barber is not working on the selected date (${offRes.reason || 'day off'}).`,
-            5
-          );
+          toast.warn(`⚠️ Barber is not working on this date (${offRes.reason || 'day off'})`, {
+            position: "top-right",
+            autoClose: 4000,
+          });
         }
+
         setLoading(false);
         return;
       }
 
       // Fetch available slots with customer ID for conflict checking
-      const slotsData = await fetchAvailableSlots(barberId, date, {
+      const slotsData = await fetchAvailableSlots(barberId, dateString, {
         serviceId,
         durationMinutes: serviceDuration,
         customerId
@@ -88,30 +117,42 @@ const TimeSlotPicker = ({ barberId, serviceId, durationMinutes, onSelect }) => {
         setSlots([]);
       } else {
         setSlots(slotsData.slots);
+        if (slotsData.slots.length > 0) {
+          toast.success(`✅ Found ${slotsData.slots.length} available time slots`, {
+            position: "top-right",
+            autoClose: 2000,
+            hideProgressBar: true,
+          });
+        }
       }
     } catch (error) {
       console.error('Error loading slots:', error);
       setError('Failed to fetch available slots');
-
-      // Show network error toast
-      ToastService.showNetworkError('loading available time slots');
+      toast.error('Failed to load available time slots. Please try again.');
     } finally {
       setLoading(false);
-      // Hide loading toast
-      ToastService.hideLoadingToast('slot-loading');
     }
-  }, [barberId, date, serviceId, serviceDuration]);
+  }, [barberId, selectedDate, serviceId, serviceDuration, customerId]);
 
   useEffect(() => {
     loadAvailableSlots();
   }, [loadAvailableSlots]);
 
-  const handleSlotSelect = async (slot) => {
-    setValidatingSlot(slot);
+  const handleSlotSelect = (slot) => {
+    setPendingSlot(slot);
+    setConfirmModalVisible(true);
+  };
+
+  const confirmSlotSelection = async () => {
+    if (!pendingSlot || !selectedDate) return;
+
+    setValidatingSlot(pendingSlot);
+    setConfirmModalVisible(false);
 
     try {
-      // Validate time slot before selection with customer ID for conflict checking
-      const bookingDateTime = new Date(`${date}T${slot}:00.000Z`);
+      const dateString = selectedDate.format('YYYY-MM-DD');
+      const bookingDateTime = new Date(`${dateString}T${pendingSlot}:00.000Z`);
+
       const validation = await validateTimeSlotAvailability({
         barberId,
         bookingDate: bookingDateTime.toISOString(),
@@ -120,166 +161,399 @@ const TimeSlotPicker = ({ barberId, serviceId, durationMinutes, onSelect }) => {
       });
 
       if (!validation.available) {
-        // Show enhanced error notifications based on conflict type
+        // Show error message based on conflict type
         if (validation.conflictType === 'CUSTOMER_CONFLICT') {
-          ToastService.showValidationError({
-            conflictType: 'CUSTOMER_CONFLICT',
-            reason: validation.reason,
-            conflictingBarber: validation.conflictingBooking?.barberName
+          toast.error(`You already have a booking with ${validation.conflictingBooking?.barberName || 'another barber'} at this time`, {
+            position: "top-right",
+            autoClose: 5000,
           });
         } else if (validation.conflictType === 'BARBER_CONFLICT') {
-          ToastService.showValidationError({
-            conflictType: 'BARBER_CONFLICT',
-            reason: validation.reason
+          toast.error('This time slot is no longer available', {
+            position: "top-right",
+            autoClose: 4000,
           });
         } else {
-          ToastService.showValidationError({
-            reason: validation.reason || 'Time slot is no longer available'
+          toast.error(validation.reason || 'Time slot is no longer available', {
+            position: "top-right",
+            autoClose: 4000,
           });
         }
 
         // Refresh slots to show current availability
         await loadAvailableSlots();
         setValidatingSlot(null);
+        setPendingSlot(null);
         return;
       }
 
-      // Show success notification for valid slot
-      ToastService.showValidationSuccess('Time slot is available and ready for booking');
+      setSelectedSlot(pendingSlot);
 
-      // If validation was skipped due to auth issues, show a warning but continue
-      if (validation.message && validation.message.includes('Validation skipped')) {
-        ToastService.showWarning(
-          'Validation Warning',
-          'Unable to validate time slot in real-time. Please proceed with caution.',
-          6
-        );
-      }
-
-      setSelectedSlot(slot);
-      // Tạo object chứa cả ngày và giờ
+      // Create selected datetime object
       const selectedDateTime = {
-        date: date,
-        time: slot,
-        dateTime: `${date} ${slot}`, // Format: "2024-07-15 14:30"
-        label: `${new Date(date).toLocaleDateString('vi-VN')} lúc ${slot}`,
+        date: dateString,
+        time: pendingSlot,
+        dateTime: `${dateString} ${pendingSlot}`,
+        label: `${selectedDate.format('DD/MM/YYYY')} at ${pendingSlot}`,
         barberId,
         serviceId,
         durationMinutes: serviceDuration
       };
 
+      toast.success('🎉 Time slot selected successfully!', {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+
       if (onSelect) onSelect(selectedDateTime);
     } catch (error) {
       console.error('Error validating slot:', error);
-
-      // Show network error for validation failure
-      ToastService.showNetworkError('validating time slot');
+      toast.error('Failed to validate time slot. Please try again.', {
+        position: "top-right",
+        autoClose: 4000,
+      });
     } finally {
       setValidatingSlot(null);
+      setPendingSlot(null);
     }
   };
 
+  // Helper function to get slot status
+  const getSlotStatus = (slot) => {
+    if (selectedSlot === slot) return 'selected';
+    if (validatingSlot === slot) return 'validating';
+    return 'available';
+  };
+
+  // Helper function to calculate end time
+  const calculateEndTime = (startTime) => {
+    const start = dayjs(`2000-01-01 ${startTime}`);
+    const end = start.add(serviceDuration, 'minute');
+    return end.format('HH:mm');
+  };
+
+  // Disable past dates
+  const disabledDate = (current) => {
+    const isPastDate = current && current < dayjs().startOf('day');
+    if (isPastDate && current.isAfter(dayjs().subtract(1, 'day'))) {
+      // Show toast for dates that are just past (yesterday or today before current time)
+      toast.warn('📅 Past dates cannot be selected for booking', {
+        position: "top-right",
+        autoClose: 3000,
+        toastId: 'past-date-warning', // Prevent duplicate toasts
+      });
+    }
+    return isPastDate;
+  };
+
   return (
-    <div>
-      <h3>Select Date & Time</h3>
-      {serviceDuration && (
-        <div style={{ fontSize: '14px', color: '#666', marginBottom: '10px' }}>
-          Service duration: {serviceDuration} minutes
-          {serviceDuration > 30 && (
-            <span style={{ color: '#ff6b35', fontWeight: 'bold' }}>
-              {' '}(Will block {Math.ceil(serviceDuration / 30)} time slots)
-            </span>
-          )}
+    <Card
+      style={{
+        borderRadius: '12px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+        border: '1px solid #f0f0f0'
+      }}
+    >
+      {/* Header */}
+      <div style={{ marginBottom: 24 }}>
+        <Title level={4} style={{ margin: 0, color: '#1890ff' }}>
+          <CalendarOutlined style={{ marginRight: 8 }} />
+          Select Date & Time
+        </Title>
+
+        {serviceDuration && (
+          <div style={{ marginTop: 8 }}>
+            <Tag color="blue" icon={<ClockCircleOutlined />}>
+              Service Duration: {serviceDuration} minutes
+            </Tag>
+            {serviceDuration > 30 && (
+              <Tag color="orange" style={{ marginLeft: 8 }}>
+                Will reserve {Math.ceil(serviceDuration / 30)} time slots
+              </Tag>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Date Selection */}
+      <div style={{ marginBottom: 24 }}>
+        <Text strong style={{ display: 'block', marginBottom: 8 }}>
+          Choose Date:
+        </Text>
+        <DatePicker
+          value={selectedDate}
+          onChange={(date) => {
+            setSelectedDate(date);
+            setSelectedSlot('');
+            setError('');
+            if (date) {
+              toast.info(`📅 Date selected: ${date.format('DD/MM/YYYY')}`, {
+                position: "top-right",
+                autoClose: 2000,
+                hideProgressBar: true,
+              });
+            }
+          }}
+          disabledDate={disabledDate}
+          placeholder="Select a date"
+          style={{ width: '100%' }}
+          size="large"
+          format="DD/MM/YYYY"
+          allowClear={false}
+        />
+        <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginTop: 4 }}>
+          <InfoCircleOutlined style={{ marginRight: 4 }} />
+          Past dates are disabled for booking
+        </Text>
+      </div>
+
+      {/* Loading State */}
+      {loading && (
+        <div style={{ textAlign: 'center', padding: '40px 0' }}>
+          <Spin size="large" />
+          <div style={{ marginTop: 16 }}>
+            <Text>Loading available time slots...</Text>
+          </div>
         </div>
       )}
-      <input
-        type="date"
-        value={date}
-        min={new Date().toISOString().split('T')[0]}
-        onChange={e => { setDate(e.target.value); setSelectedSlot(''); }}
-      />
 
-      {loading && <p>Loading available slots...</p>}
-      {isOff && <p style={{ color: 'red' }}>Barber is off on this day.</p>}
-      {error && (
-        <div style={{ color: 'red' }}>
-          <p>{error}</p>
-          <button onClick={loadAvailableSlots} style={{ fontSize: '12px' }}>
-            Retry
-          </button>
-        </div>
-      )}
-
-      {!loading && !isOff && !error && date && (
-        <div>
-          {slots.length === 0 ? (
+      {/* Barber Off Day */}
+      {isOff && !loading && (
+        <Alert
+          message="Barber Unavailable"
+          description={
             <div>
-              <p>No available slots for this day. All time slots are booked.</p>
-              <button onClick={loadAvailableSlots} style={{ fontSize: '12px' }}>
-                Refresh availability
-              </button>
+              <div style={{ marginBottom: 8 }}>
+                {offReason === 'absence' ? (
+                  <>
+                    <UserDeleteOutlined style={{ marginRight: 8 }} />
+                    This barber is not available on the selected date due to approved absence.
+                  </>
+                ) : (
+                  <>
+                    <ExclamationCircleOutlined style={{ marginRight: 8 }} />
+                    This barber is not working on the selected date ({offReason}).
+                  </>
+                )}
+              </div>
+              <Button
+                type="link"
+                size="small"
+                onClick={loadAvailableSlots}
+                icon={<ReloadOutlined />}
+              >
+                Check Again
+              </Button>
             </div>
+          }
+          type="warning"
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+      )}
+
+      {/* Error State */}
+      {error && !loading && (
+        <Alert
+          message="Unable to Load Time Slots"
+          description={
+            <div>
+              <div style={{ marginBottom: 8 }}>{error}</div>
+              <Button
+                type="primary"
+                size="small"
+                onClick={loadAvailableSlots}
+                icon={<ReloadOutlined />}
+              >
+                Try Again
+              </Button>
+            </div>
+          }
+          type="error"
+          showIcon
+          style={{ marginBottom: 16 }}
+        />
+      )}
+
+      {/* Time Slots */}
+      {!loading && !isOff && !error && selectedDate && (
+        <div>
+          <Divider />
+
+          {slots.length === 0 ? (
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description={
+                <div>
+                  <Text>No available time slots for this date</Text>
+                  <br />
+                  <Text type="secondary" style={{ fontSize: '12px' }}>
+                    All slots are booked or unavailable
+                  </Text>
+                </div>
+              }
+            >
+              <Button
+                type="primary"
+                onClick={loadAvailableSlots}
+                icon={<ReloadOutlined />}
+              >
+                Refresh Availability
+              </Button>
+            </Empty>
           ) : (
             <div>
-              <p style={{ color: 'green', fontSize: '14px' }}>
-                {slots.length} available time slots for {serviceDuration}-minute service
-                <button
+              <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text strong>
+                  Available Time Slots ({slots.length})
+                </Text>
+                <Button
+                  type="text"
+                  size="small"
                   onClick={loadAvailableSlots}
-                  style={{ marginLeft: '10px', fontSize: '12px' }}
+                  icon={<ReloadOutlined />}
                 >
                   Refresh
-                </button>
-              </p>
+                </Button>
+              </div>
+
               {serviceDuration > 30 && (
-                <p style={{ fontSize: '12px', color: '#666', fontStyle: 'italic' }}>
-                  Note: Each selected time will reserve {Math.ceil(serviceDuration / 30)} consecutive slots
-                </p>
+                <Alert
+                  message={`Extended Service Notice`}
+                  description={`This ${serviceDuration}-minute service will reserve ${Math.ceil(serviceDuration / 30)} consecutive time slots.`}
+                  type="info"
+                  showIcon
+                  style={{ marginBottom: 16 }}
+                />
               )}
-              <ul>
+
+              <Row gutter={[12, 12]}>
                 {slots.map(slot => {
-                  // Calculate end time for display
-                  const startTime = new Date(`2000-01-01T${slot}:00`);
-                  const endTime = new Date(startTime.getTime() + serviceDuration * 60000);
-                  const endTimeStr = endTime.toTimeString().substring(0, 5);
+                  const status = getSlotStatus(slot);
+                  const endTime = calculateEndTime(slot);
 
                   return (
-                    <li key={slot}>
-                      <button
-                        disabled={selectedSlot === slot || validatingSlot === slot}
-                        onClick={() => handleSlotSelect(slot)}
+                    <Col xs={12} sm={8} md={6} key={slot}>
+                      <Card
+                        hoverable={status === 'available'}
+                        onClick={() => status === 'available' ? handleSlotSelect(slot) : null}
                         style={{
-                          backgroundColor: selectedSlot === slot ? '#1890ff' : 'white',
-                          color: selectedSlot === slot ? 'white' : 'black',
-                          opacity: validatingSlot === slot ? 0.6 : 1,
-                          border: '1px solid #ccc',
-                          padding: '8px 12px',
-                          margin: '2px',
-                          borderRadius: '4px',
-                          cursor: validatingSlot === slot ? 'wait' : 'pointer',
-                          minWidth: '120px',
-                          textAlign: 'left'
+                          textAlign: 'center',
+                          cursor: status === 'available' ? 'pointer' : 'default',
+                          border: status === 'selected' ? '2px solid #52c41a' : '1px solid #d9d9d9',
+                          backgroundColor:
+                            status === 'selected' ? '#f6ffed' :
+                            status === 'validating' ? '#f0f0f0' : 'white',
+                          transition: 'all 0.3s ease',
+                          opacity: status === 'validating' ? 0.7 : 1
                         }}
+                        styles={{ body: { padding: '12px 8px' } }}
                       >
                         <div>
-                          <strong>{slot}</strong>
+                          <Text strong style={{
+                            fontSize: '16px',
+                            color: status === 'selected' ? '#52c41a' : '#1890ff'
+                          }}>
+                            {slot}
+                          </Text>
+
                           {serviceDuration > 30 && (
-                            <div style={{ fontSize: '10px', opacity: 0.8 }}>
-                              to {endTimeStr}
+                            <div style={{ marginTop: 4 }}>
+                              <Text type="secondary" style={{ fontSize: '11px' }}>
+                                to {endTime}
+                              </Text>
                             </div>
                           )}
+
+                          <div style={{ marginTop: 8 }}>
+                            {status === 'selected' && (
+                              <Tag color="success" icon={<CheckCircleOutlined />}>
+                                Selected
+                              </Tag>
+                            )}
+                            {status === 'validating' && (
+                              <Tag color="processing">
+                                <Spin size="small" style={{ marginRight: 4 }} />
+                                Validating
+                              </Tag>
+                            )}
+                            {status === 'available' && (
+                              <Tag color="blue">
+                                Available
+                              </Tag>
+                            )}
+                          </div>
                         </div>
-                        {selectedSlot === slot && ' ✓ Selected'}
-                        {validatingSlot === slot && ' ⏳ Validating...'}
-                      </button>
-                    </li>
+                      </Card>
+                    </Col>
                   );
                 })}
-              </ul>
+              </Row>
             </div>
           )}
         </div>
       )}
-    </div>
+
+      {/* Confirmation Modal */}
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <CheckCircleOutlined style={{ color: '#52c41a', marginRight: 8 }} />
+            Confirm Time Slot Selection
+          </div>
+        }
+        open={confirmModalVisible}
+        onOk={confirmSlotSelection}
+        onCancel={() => {
+          setConfirmModalVisible(false);
+          setPendingSlot(null);
+        }}
+        okText="Confirm Selection"
+        cancelText="Cancel"
+        okButtonProps={{
+          type: 'primary',
+          icon: <CheckCircleOutlined />
+        }}
+      >
+        {pendingSlot && selectedDate && (
+          <div>
+            <Text>You are about to select the following time slot:</Text>
+
+            <Card style={{ margin: '16px 0', backgroundColor: '#f6ffed' }}>
+              <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                <div>
+                  <CalendarOutlined style={{ marginRight: 8, color: '#1890ff' }} />
+                  <Text strong>Date: </Text>
+                  <Text>{selectedDate.format('dddd, MMMM DD, YYYY')}</Text>
+                </div>
+
+                <div>
+                  <ClockCircleOutlined style={{ marginRight: 8, color: '#1890ff' }} />
+                  <Text strong>Time: </Text>
+                  <Text>{pendingSlot}</Text>
+                  {serviceDuration > 30 && (
+                    <Text type="secondary"> - {calculateEndTime(pendingSlot)}</Text>
+                  )}
+                </div>
+
+                <div>
+                  <InfoCircleOutlined style={{ marginRight: 8, color: '#1890ff' }} />
+                  <Text strong>Duration: </Text>
+                  <Text>{serviceDuration} minutes</Text>
+                </div>
+              </Space>
+            </Card>
+
+            <Text type="secondary" style={{ fontSize: '12px' }}>
+              Please confirm your selection. This time slot will be reserved for your booking.
+            </Text>
+          </div>
+        )}
+      </Modal>
+    </Card>
   );
 };
 

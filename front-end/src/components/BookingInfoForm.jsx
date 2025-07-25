@@ -34,12 +34,7 @@ const BookingInfoForm = ({ onSubmit }) => {
       <Form.Item label="Ghi chú/Yêu cầu thêm" name="note">
         <Input.TextArea rows={2} />
       </Form.Item>
-      <Form.Item label="Nhận thông báo xác nhận/nhắc lịch qua" name="notificationMethods">
-        <Checkbox.Group options={notificationOptions} />
-      </Form.Item>
-      <Form.Item>
-        <button type="submit" />
-      </Form.Item>
+    
     </Form>
   );
 };

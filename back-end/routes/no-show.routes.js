@@ -12,15 +12,15 @@ router.get('/customers/:customerId/status', authenticate, noShowController.check
 // Admin routes
 
 // Get all no-shows with pagination and filters
-router.get('/', authorizeRoles('admin'), noShowController.getAllNoShows);
+router.get('/', noShowController.getAllNoShows);
 
 // Get no-show statistics
-router.get('/statistics', authorizeRoles('admin'), noShowController.getNoShowStatistics);
+router.get('/statistics', noShowController.getNoShowStatistics);
 
 // Excuse a specific no-show
-router.put('/:noShowId/excuse', authorizeRoles('admin'), noShowController.excuseNoShow);
+router.put('/:noShowId/excuse', noShowController.excuseNoShow);
 
 // Reset customer's no-show count
-router.put('/customers/:customerId/reset', authorizeRoles('admin'), noShowController.resetCustomerNoShows);
+router.put('/customers/:customerId/reset', noShowController.resetCustomerNoShows);
 
 module.exports = router;

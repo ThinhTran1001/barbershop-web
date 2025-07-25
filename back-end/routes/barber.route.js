@@ -15,6 +15,7 @@ router.delete('/:id', authenticate,barberController.deleteBarber);
 router.get('/by-specialty', barberController.getBarbersBySpecialty);
 router.post('/auto-assign', barberController.autoAssignBarber);
 router.get('/availability', barberController.getBarberAvailability);
+router.get('/available', authenticate, authorizeRoles('admin'), barberController.getAvailableBarbers);
 
 // Barber bookings (with role-based access control)
 router.get('/:userId/bookings', authenticate, barberController.getBarberBookings);

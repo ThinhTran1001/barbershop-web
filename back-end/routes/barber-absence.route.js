@@ -1,18 +1,21 @@
 const express = require('express');
 const router = express.Router();
 const barberAbsenceController = require('../controllers/barber-absence.controller');
-const { authenticate } = require('../middlewares/auth.middleware');
+const { authenticate, authorizeRoles } = require('../middlewares/auth.middleware');
 
-// Barber absence management (admin only)
-router.post('/', authenticate, barberAbsenceController.createBarberAbsence);
-router.get('/', authenticate, barberAbsenceController.getAllAbsences);
-router.put('/:absenceId/approval', authenticate, barberAbsenceController.updateAbsenceApproval);
-router.put('/:absenceId/reschedule', authenticate, barberAbsenceController.rescheduleAffectedBookings);
-router.delete('/:absenceId', authenticate, barberAbsenceController.deleteAbsence);
+// Barber routes (barbers can create and view their own requests)
+router.post('/', authenticate, authorizeRoles('barber'), barberAbsenceController.createBarberAbsence);
+router.get('/my-requests', authenticate, authorizeRoles('barber'), barberAbsenceController.getMyAbsenceRequests);
 
-// Barber calendar view
-router.get('/calendar', authenticate, barberAbsenceController.getBarberCalendar);
+// Admin routes (admins can view all, approve/reject, manage)
+router.get('/', authenticate, authorizeRoles('admin'), barberAbsenceController.getAllAbsences);
+router.put('/:absenceId/approval', authenticate, authorizeRoles('admin'), barberAbsenceController.updateAbsenceApproval);
+router.put('/:absenceId/reschedule', authenticate, authorizeRoles('admin'), barberAbsenceController.rescheduleAffectedBookings);
+router.put('/:absenceId/reassign-bookings', authenticate, authorizeRoles('admin'), barberAbsenceController.reassignAffectedBookings);
+router.delete('/:absenceId', authenticate, authorizeRoles('admin'), barberAbsenceController.deleteAbsence);
 
-router.get('/:barberId/schedule', authenticate, barberAbsenceController.getBarberSchedule);
+// Calendar views (accessible by both barbers and admins)
+router.get('/calendar', authenticate, authorizeRoles('barber', 'admin'), barberAbsenceController.getBarberCalendar);
+router.get('/:barberId/schedule', authenticate, authorizeRoles('barber', 'admin'), barberAbsenceController.getBarberSchedule);
 
 module.exports = router;
