@@ -94,3 +94,16 @@ export const canReviewBooking = async (bookingId) => {
     throw error;
   }
 };
+
+export const getAllServiceFeedback = async (filters = {}) => {
+  const params = new URLSearchParams();
+  
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      params.append(key, value);
+    }
+  });
+
+  const res = await axios.get(`${API_BASE}/service?${params.toString()}`);
+  return res.data;
+};

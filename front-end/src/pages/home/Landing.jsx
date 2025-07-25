@@ -11,6 +11,7 @@ import ChatWidget from "../../components/chatbot/ChatWidget";
 import ShopItems from "../../components/landing/productlistd";
 import ServiceBooking from "../ServiceBooking/ServiceBooking";
 import HotDeals from "../../components/landing/HotDeals";
+import ServiceFeedbackList from "../../components/landing/ServiceFeedbackList";
 
 export default function Landing() {
   return (
@@ -24,17 +25,19 @@ export default function Landing() {
       </div>
       <VoucherSection />
       <br></br>   
+      <HotDeals />
       <br></br>
-      <ShopItems />
+      {/* <ShopItems /> */}
       <br></br>
       <br></br>
       <BusinessHours />
       <br></br>
       <br></br>
       <Barbers />
-      <BookingForm />
+      {/* <BookingForm /> */}
       {/* <ChatWidget /> */}
-
+      <br></br>
+      <ServiceFeedbackList />
     </>
   );
 }
