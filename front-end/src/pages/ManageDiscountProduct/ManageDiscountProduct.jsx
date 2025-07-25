@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { message, Spin, Form } from 'antd';
+import { message, Spin, Form, DatePicker } from 'antd';
 import dayjs from 'dayjs';
 import DiscountTable from '../../components/DiscountTable';
 import DiscountStats from '../../components/DiscountStats';
@@ -21,8 +21,10 @@ const DiscountManagement = () => {
   const [submitting, setSubmitting] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [dateRange, setDateRange] = useState([null, null]);
   const [form] = Form.useForm();
   const [addForm] = Form.useForm();
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
 
   const fetchDiscounts = useCallback(async () => {
     setLoading(true);
@@ -60,6 +62,10 @@ const DiscountManagement = () => {
     fetchDiscounts();
     fetchAvailableProducts();
   }, [fetchDiscounts, fetchAvailableProducts]);
+
+  useEffect(() => {
+    setPagination((prev) => ({ ...prev, current: 1 }));
+  }, [searchText, statusFilter, dateRange]);
 
   const handleSearch = useCallback((value) => {
     setSearchText(value);
@@ -101,8 +107,14 @@ const DiscountManagement = () => {
         }
       });
     }
+    if (dateRange[0] && dateRange[1]) {
+      filtered = filtered.filter(discount => {
+        const endDate = dayjs(discount.discountEndDate);
+        return dayjs(endDate).isSameOrAfter(dayjs(dateRange[0]).startOf('day')) && dayjs(endDate).isSameOrBefore(dayjs(dateRange[1]).endOf('day'));
+      });
+    }
     return filtered;
-  }, [discounts, searchText, statusFilter]);
+  }, [discounts, searchText, statusFilter, dateRange]);
 
   const validateDiscount = useCallback((discount, productId, isAdd = false) => {
     const numDiscount = Number(discount);
@@ -261,6 +273,8 @@ const DiscountManagement = () => {
         setAddModalVisible={setAddModalVisible}
         productsWithoutDiscount={productsWithoutDiscount}
         statistics={statistics}
+        dateRange={dateRange}
+        setDateRange={setDateRange}
       />
       <div className="mdp-discount-table-section">
         {loading ? (
@@ -275,6 +289,8 @@ const DiscountManagement = () => {
             getDiscountStatus={getDiscountStatus}
             handleEditDiscount={handleEditDiscount}
             handleDeleteDiscount={handleDeleteDiscount}
+            pagination={pagination}
+            onChangePagination={setPagination}
           />
         )}
       </div>
