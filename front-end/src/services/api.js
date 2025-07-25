@@ -151,6 +151,15 @@ export const createFeedbackOrder = (data) => api.post('/feedback-orders', data);
 export const updateFeedbackOrder = (orderId, data) => api.put(`/feedback-orders/${orderId}`, data);
 export const getFeedbackOrderByOrderId = (orderId) => api.get(`/feedback-orders/${orderId}`);
 
+export const finalizeOrder = (orderCode, orderData, userId = null) => {
+  if (userId) {
+    return api.post(`/orders/finalize-auth`, { orderCode, orderData, userId });
+  } else {
+    return api.post(`/orders/finalize-guest`, { orderCode, orderData });
+  }
+};
+
+
 // export const createFeedbackBooking = (data) => api.post('/feedback-bookings', data);
 // export const updateFeedbackBooking = (bookingId, data) => api.put(`/feedback-bookings/${bookingId}`, data);
 // export const getFeedbackBookingByBookingId = (bookingId) => api.get(`/feedback-bookings/${bookingId}`);
@@ -161,5 +170,10 @@ export const getBlogById = (id) => api.get(`/news/${id}`);
 export const createBlog = (data) => api.post('/news', data);
 export const updateBlog = (id, data) => api.put(`/news/${id}`, data);
 export const deleteBlog = (id) => api.delete(`/news/${id}`);
+
+export const getOrderByCode = (code) => api.get(`/orders/code/${code}`);
+export const updateStatusPayment = (orderId, status, paidAt) => api.put(`/payments/order/${orderId}`, { status, paidAt });
+export const markPaymentAsPaid = (orderId) => api.put(`/payments/mark-paid/${orderId}`);
+
 
 export default api;

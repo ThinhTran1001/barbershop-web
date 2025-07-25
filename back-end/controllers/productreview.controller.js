@@ -101,7 +101,7 @@ const createReview = async (req, res) => {
       rating,
       comment: comment || '',
       images: images || [],
-      status: 'inactive'
+      status: 'active'
     });
 
     const savedReview = await newReview.save();

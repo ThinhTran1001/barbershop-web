@@ -31,6 +31,7 @@ const statisticRoutes = require('./routes/statistic.route');
 const chatRoutes = require('./routes/chat.route');
 const barberRoute = require('./routes/barber.route');
 const noShowRoutes = require('./routes/no-show.routes');
+const paymentRoutes = require('./routes/payment.route');
 
 const cors = require('cors');
 const cookieParser = require("cookie-parser");
@@ -46,6 +47,14 @@ app.use(cors({
     origin: "http://localhost:5173",
     credentials: true,
 }));
+
+const PayOS = require('@payos/node');
+const payOS = new PayOS(
+  process.env.PAYOS_CLIENT_ID,
+  process.env.PAYOS_API_KEY,
+  process.env.PAYOS_CHECKSUM_KEY
+);
+app.set("payOS", payOS);
 
 connectDB();
 const kafkaConsumer = require('./services/kafka-consumer.service');
@@ -81,6 +90,7 @@ app.use('/api/statistics', statisticRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/barbers', barberRoute);
 app.use('/api/no-shows', noShowRoutes);
+app.use('/api/payments', paymentRoutes);
 
 const PORT = process.env.PORT || 3000;
 initSocket(server); 

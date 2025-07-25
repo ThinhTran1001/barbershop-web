@@ -83,62 +83,73 @@ export default function CheckoutGuest() {
 
   /* ------------------ Submit ------------------ */
   const handleSubmit = async (values) => {
-    if (!itemsToCheckout.length) {
-      notification.warning({
-        message: 'Giỏ hàng trống',
-        description: 'Vui lòng thêm sản phẩm trước khi thanh toán',
-        placement: 'topRight'
-      });
-      return;
+  if (!itemsToCheckout.length) {
+    notification.warning({
+      message: 'Giỏ hàng trống',
+      description: 'Vui lòng thêm sản phẩm trước khi thanh toán',
+      placement: 'topRight'
+    });
+    return;
+  }
+
+  if (!selectedProvince || !selectedDistrict || !selectedWard || !addressDetail) {
+    notification.warning({
+      message: 'Thiếu thông tin địa chỉ',
+      description: 'Vui lòng chọn đầy đủ Tỉnh/Thành, Quận/Huyện, Phường/Xã và nhập địa chỉ chi tiết!',
+      placement: 'topRight'
+    });
+    return;
+  }
+
+  setLoading(true);
+  try {
+    const orderItems = itemsToCheckout.map((i) => ({
+      productId: i.productId || i.id || i._id || i.product?._id,
+      quantity: i.quantity
+    }));
+
+    const fullAddress = `${addressDetail}, ${selectedWard?.name}, ${selectedDistrict?.name}, ${selectedProvince?.name}`;
+
+    const orderData = {
+      customerName: values.name,
+      customerEmail: values.email,
+      customerPhone: values.phone,
+      shippingAddress: fullAddress,
+      paymentMethod: values.paymentMethod,
+      items: orderItems
+    };
+
+    const res = await createOrderGuest(orderData);
+
+    // ✅ Nếu là bank transfer => redirect sang PayOS
+    if (values.paymentMethod === 'bank' && res.data?.redirectUrl) {
+      // Lưu đơn tạm (guest không có userId nên không cần truyền userId)
+      localStorage.setItem("pendingOrder", JSON.stringify(res.data.orderDraft || {}));
+
+      window.location.href = res.data.redirectUrl;
+      return; // dừng không thực hiện success ở dưới
     }
 
-    if (!selectedProvince || !selectedDistrict || !selectedWard || !addressDetail) {
-      notification.warning({
-        message: 'Thiếu thông tin địa chỉ',
-        description: 'Vui lòng chọn đầy đủ Tỉnh/Thành, Quận/Huyện, Phường/Xã và nhập địa chỉ chi tiết!',
-        placement: 'topRight'
-      });
-      return;
-    }
+    // Nếu thanh toán COD (cash)
+    if (!buyNowItems?.length) clearCart();
+    setOrderSuccess(true);
 
-    setLoading(true);
-    try {
-      const orderItems = itemsToCheckout.map((i) => ({
-        productId: i.productId || i.id || i._id || i.product?._id,
-        quantity: i.quantity
-      }));
+    notification.success({
+      message: 'Đặt hàng thành công!',
+      description: 'Cảm ơn bạn đã mua hàng. Chúng tôi sẽ liên hệ sớm.',
+      placement: 'topRight'
+    });
+  } catch (err) {
+    notification.error({
+      message: 'Lỗi đặt hàng',
+      description: err.response?.data?.message || 'Vui lòng thử lại sau!',
+      placement: 'topRight'
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
-      const fullAddress = `${addressDetail}, ${selectedWard?.name}, ${selectedDistrict?.name}, ${selectedProvince?.name}`;
-
-      const orderData = {
-        customerName: values.name,
-        customerEmail: values.email,
-        customerPhone: values.phone,
-        shippingAddress: fullAddress,
-        paymentMethod: values.paymentMethod,
-        items: orderItems
-      };
-
-      await createOrderGuest(orderData);
-
-      if (!buyNowItems?.length) clearCart();
-      setOrderSuccess(true);
-
-      notification.success({
-        message: 'Đặt hàng thành công!',
-        description: 'Cảm ơn bạn đã mua hàng. Chúng tôi sẽ liên hệ sớm.',
-        placement: 'topRight'
-      });
-    } catch (err) {
-      notification.error({
-        message: 'Lỗi đặt hàng',
-        description: err.response?.data?.message || 'Vui lòng thử lại sau!',
-        placement: 'topRight'
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   /* ------------------ UI khi thành công ------------------ */
   if (orderSuccess) {

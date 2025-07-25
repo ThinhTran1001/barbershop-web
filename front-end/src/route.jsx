@@ -15,6 +15,8 @@ import ProductDetail from "./components/product/ProductDetail.jsx";
 import Checkout from "./pages/checkout/Checkout.jsx";
 import CheckoutGuest from "./pages/checkout/CheckoutGuest.jsx";
 import OrderSuccess from "./pages/checkout/OrderSuccess.jsx";
+import OrderFail from "./pages/checkout/OrderFail.jsx";
+import OrderSuccessPayOS from "./pages/checkout/OrderSuccessPayOS.jsx";
 import CustomerProfile from "./components/profile/customerProfile.jsx";
 import Cart from "./components/cart/Cart";
 import UserCart from "./components/cart/UserCart";
@@ -78,6 +80,8 @@ const router = createBrowserRouter([
       { path: "/checkout", element: <Checkout /> },
       { path: "/checkout-guest", element: <CheckoutGuest /> },
       { path: "/order-success", element: <OrderSuccess /> },
+      { path: "/order-fail", element: <OrderFail /> },
+      { path: "/payos-success", element: <OrderSuccessPayOS /> },
       { path: "/cart-guest", element: <Cart /> },
       { path: "/cart", element: <UserCart /> },
       { path: "/profile", element: <CustomerProfile /> },

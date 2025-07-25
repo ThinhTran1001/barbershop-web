@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Layout, Menu, Button, Dropdown, Badge } from "antd";
 import {
   ShoppingCartOutlined,
@@ -30,6 +30,8 @@ export default function UserHeader() {
   const { getCartCount: getUserCartCount, clearCart } = useUserCart();
   const navigate = useNavigate();
   const cartCount = user ? getUserCartCount() : getGuestCartCount();
+  const [selectedKey, setSelectedKey] = useState("");
+
 
   console.log("UserHeader render, cart count:", cartCount);
 
@@ -125,11 +127,12 @@ export default function UserHeader() {
           marginRight: "32px",
         }}
         onClick={() => {
-          navigate("/");
-          setTimeout(() => {
-            window.scrollTo({ top: 0, behavior: "smooth" });
-          }, 10);
-        }}
+  setSelectedKey("logo"); // << Không có menu item key là "logo"
+  navigate("/");
+  setTimeout(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, 10);
+}}
       >
         BARBERSHOP
       </div>
@@ -139,6 +142,7 @@ export default function UserHeader() {
         mode="horizontal"
         theme="dark"
         items={navItems}
+        selectedKeys={[selectedKey]}
         className="text-uppercase fw-bold flex-grow-1"
         style={{
           backgroundColor: "transparent",
@@ -148,12 +152,14 @@ export default function UserHeader() {
         }}
         overflowedIndicator={null} // ✅ Tắt thu gọn "..."
         onClick={({ key }) => {
-          if (key === "services") {
-            scrollToSection("services");
-          } else {
-            navigate(`/${key}`);
-          }
-        }}
+  setSelectedKey(key);
+  if (key === "services") {
+    scrollToSection("services");
+  } else {
+    navigate(`/${key}`);
+  }
+}}
+
       />
 
       {/* Giỏ hàng & user dropdown */}
