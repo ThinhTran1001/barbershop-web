@@ -6,7 +6,9 @@ const { authenticate } = require('../middlewares/auth.middleware');
 router.post('/', authenticate, voucherController.createVoucher)
 router.get('/', authenticate, voucherController.getAllVoucher)
 router.get('/user', authenticate, voucherController.getAllVoucherByUser)
-router.get('/:id', authenticate, voucherController.getSingerVoucher)
+router.get('/personal', authenticate, voucherController.getPersonalVouchers);
+router.get('/public', voucherController.getPublicVouchers);
+router.get('/:id', voucherController.getSingerVoucher)
 router.put('/:id', authenticate, voucherController.updateVoucher)
 router.delete('/:id', authenticate, voucherController.deleteVoucher)
 // router.post('/', voucherController.createVoucher)

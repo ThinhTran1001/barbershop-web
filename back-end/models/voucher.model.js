@@ -27,10 +27,6 @@ const voucherSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  totalOrderAmount: {
-    type: Number,
-    default: 0
-  },
   maxDiscountAmount: {
     type: Number,
     default: 0,

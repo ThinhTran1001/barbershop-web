@@ -281,6 +281,15 @@ const Checkout = () => {
   // Hàm hiển thị chi tiết voucher
   const [viewingVoucher, setViewingVoucher] = useState(null);
 
+  // Hiển thị hạn dùng dạng đếm ngược
+  function getDaysLeft(endDate) {
+    if (!endDate) return '';
+    const now = new Date();
+    const end = new Date(endDate);
+    const diff = Math.ceil((end - now) / (1000 * 60 * 60 * 24));
+    return diff > 0 ? `Còn ${diff} ngày` : (diff === 0 ? 'Hết hạn hôm nay' : 'Đã hết hạn');
+  }
+
   /* ------------------------------ Empty / Success --------------------------- */
   if (orderSuccess) {
     return (
@@ -429,9 +438,9 @@ const Checkout = () => {
                 {selectedVoucher && (
                   <div style={{ marginTop: 8, color: '#888', fontSize: 13 }}>
                     <span>Đang áp dụng: </span>
-                    <Tag color={selectedVoucher.type === 'percent' ? 'blue' : 'green'}>{selectedVoucher.type?.toUpperCase()}</Tag>
+                    {/* <Tag color={selectedVoucher.type === 'percent' ? 'blue' : 'green'}>{selectedVoucher.type?.toUpperCase()}</Tag> */}
                     {selectedVoucher.type === 'percent' && selectedVoucher.maxDiscountAmount > 0 && (
-                      <span> (Tối đa {selectedVoucher.maxDiscountAmount.toLocaleString('vi-VN')}đ)</span>
+                      <span>Voucher - {selectedVoucher.maxDiscountAmount.toLocaleString('vi-VN')}đ</span>
                     )}
                     <Button size="small" style={{ marginLeft: 8 }} onClick={() => setSelectedVoucher(null)}>Bỏ chọn</Button>
                   </div>
@@ -455,27 +464,40 @@ const Checkout = () => {
                     return (
                       <Card
                         key={voucher._id || voucher.id}
-                        style={{ marginBottom: 16, border: selectedVoucher && selectedVoucher.code === voucher.code ? '2px solid #1890ff' : '#eee', borderRadius: 8 }}
-                        bodyStyle={{ padding: 16 }}
+                        style={{
+                          marginBottom: 20,
+                          border: selectedVoucher && selectedVoucher.code === voucher.code ? '2px solid #1890ff' : '1.5px solid #eee',
+                          borderRadius: 14,
+                          boxShadow: selectedVoucher && selectedVoucher.code === voucher.code ? '0 2px 12px #1890ff22' : '0 1px 6px #eee',
+                          background: isValid ? '#fff' : '#fafafa',
+                          transition: 'box-shadow 0.2s, border 0.2s',
+                          cursor: isValid ? 'pointer' : 'not-allowed',
+                        }}
+                        bodyStyle={{ padding: 20 }}
                         hoverable
                         onClick={() => isValid && setSelectedVoucher(voucher)}
                       >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div>
-                            <b>{voucher.name || voucher.code}</b>
-                          </div>
+                        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+                          <Tag color="blue" style={{ fontSize: 16, fontWeight: 700, padding: '2px 16px', marginRight: 12 }}>
+                            {voucher.code}
+                          </Tag>
+                          <span style={{ fontWeight: 700, fontSize: 17 }}>{voucher.name || ''}</span>
                         </div>
-                        <div>Giảm: {voucher.type === 'percent' ? `${voucher.value}%` : `${voucher.value.toLocaleString()}đ`}</div>
+                        <div style={{ fontSize: 16, fontWeight: 600, color: '#43a047', marginBottom: 4 }}>
+                          Giảm: {voucher.type === 'percent' ? `${voucher.value}%` : `${voucher.value.toLocaleString()}đ`}
+                        </div>
                         {voucher.type === 'percent' && voucher.maxDiscountAmount > 0 && (
-                          <div>Giảm tối đa: {voucher.maxDiscountAmount.toLocaleString()}đ</div>
+                          <div style={{ color: '#bfa43a', fontSize: 15, marginBottom: 2 }}>Giảm tối đa: {voucher.maxDiscountAmount.toLocaleString()}đ</div>
                         )}
-                        <div>Đơn từ: {(voucher.minOrderAmount || 0).toLocaleString('vi-VN')}đ</div>
-                        <div>Hạn dùng: {new Date(voucher.endDate).toLocaleDateString()}</div>
-                        {!isValid && <div style={{ color: '#ff4d4f' }}>Không khả dụng cho đơn này</div>}
-                        {selectedVoucher && selectedVoucher.code === voucher.code && <div style={{ color: '#1890ff' }}>Đang chọn</div>}
+                        {voucher.minOrderAmount > 0 && (
+                          <div style={{ color: '#bfa43a', fontSize: 15, marginBottom: 2 }}>Đơn từ: {voucher.minOrderAmount.toLocaleString('vi-VN')}đ</div>
+                        )}
+                        <div style={{ color: '#d9534f', fontSize: 15, marginBottom: 2 }}>{getDaysLeft(voucher.endDate)}</div>
+                        {!isValid && <div style={{ color: '#ff4d4f', fontWeight: 600, marginTop: 4 }}>Không khả dụng cho đơn này</div>}
+                        {selectedVoucher && selectedVoucher.code === voucher.code && <div style={{ color: '#1890ff', fontWeight: 600, marginTop: 4 }}>Đang chọn</div>}
                         <Button
                           type="primary"
-                          style={{ marginTop: 8 }}
+                          style={{ marginTop: 12, fontWeight: 700, fontSize: 15, borderRadius: 8, width: '100%' }}
                           disabled={!isValid}
                           onClick={e => { e.stopPropagation(); setSelectedVoucher(voucher); setVoucherModalOpen(false); }}
                         >Chọn voucher này</Button>

@@ -58,8 +58,6 @@ import ManageBlog from "./pages/ManageBlog/ManageBlog.jsx";
 import BarberProfile from "./components/profile/baberProfile.jsx";
 
 
-
-
 const router = createBrowserRouter([
   {
     element: <CommonLayout />,
