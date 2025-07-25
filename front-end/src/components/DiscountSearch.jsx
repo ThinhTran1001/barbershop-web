@@ -1,10 +1,11 @@
 import React from 'react';
-import { Button, Select, Input, Space, Tooltip, Row, Col } from 'antd';
+import { Button, Select, Input, Space, Tooltip, Row, Col, DatePicker } from 'antd';
 import { SearchOutlined, FilterOutlined, ClearOutlined, ReloadOutlined, PlusOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import '../pages/ManageDiscountProduct/ManageDiscountProduct.css';
 
 const { Search } = Input;
 const { Option } = Select;
+const { RangePicker } = DatePicker;
 
 const DiscountSearch = ({
   searchText = '',
@@ -16,7 +17,9 @@ const DiscountSearch = ({
   loading = false,
   setAddModalVisible,
   productsWithoutDiscount = [],
-  statistics = { filtered: 0, total: 0 }
+  statistics = { filtered: 0, total: 0 },
+  dateRange = [null, null],
+  setDateRange = () => {},
 }) => {
   return (
     <div className="discount-product-container">
@@ -47,9 +50,19 @@ const DiscountSearch = ({
             <Option value="inactive">Inactive</Option>
           </Select>
         </Col>
-        <Col xs={24} sm={24} md={10} lg={14}>
+        <Col xs={24} sm={12} md={8} lg={6}>
+          <RangePicker
+            value={dateRange}
+            onChange={setDateRange}
+            format="DD/MM/YYYY"
+            style={{ width: '100%' }}
+            allowEmpty={[true, true]}
+            placeholder={["Start date", "End date"]}
+          />
+        </Col>
+        <Col xs={24} sm={24} md={10} lg={8}>
           <Space wrap>
-            {(searchText || statusFilter !== 'all') && (
+            {(searchText || statusFilter !== 'all' || (dateRange && (dateRange[0] || dateRange[1]))) && (
               <Button
                 icon={<ClearOutlined />}
                 onClick={handleClearFilters}
@@ -82,8 +95,7 @@ const DiscountSearch = ({
           </Space>
         </Col>
       </Row>
-
-      {(searchText || statusFilter !== 'all') && (
+      {(searchText || statusFilter !== 'all' || (dateRange && (dateRange[0] || dateRange[1]))) && (
         <div style={{ marginTop: 8, color: '#666', fontSize: '14px' }}>
           Showing {statistics.filtered} / {statistics.total} discounts
           {searchText && ` | Search: "${searchText}"`}
@@ -93,6 +105,7 @@ const DiscountSearch = ({
             statusFilter === 'expired' ? 'Expired' :
             statusFilter === 'inactive' ? 'Inactive' : 'All'
           }`}
+          {dateRange && (dateRange[0] || dateRange[1]) && ` | Date: ${dateRange[0] ? dateRange[0].format('DD/MM/YYYY') : ''} - ${dateRange[1] ? dateRange[1].format('DD/MM/YYYY') : ''}`}
         </div>
       )}
     </div>

@@ -3,6 +3,7 @@ import { Table, Button, Modal, Form, Input, message, Select, DatePicker, Tag, Sw
 import { getAllVoucher, createVoucher, updateVoucher, deleteVoucher } from '../services/api';
 import { InfoCircleFilled, SortAscendingOutlined, SortDescendingOutlined, EyeOutlined, EditOutlined, DeleteFilled } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 const { Option } = Select;
 
@@ -33,6 +34,13 @@ const VoucherManagement = () => {
     const [sortAmount, setSortAmount] = useState(null);
     const [sortUsageLimit, setSortUsageLimit] = useState(null);
     const [sortUsedCount, setSortUsedCount] = useState(null);
+
+    // Toast notification
+    const [toast, setToast] = useState({ show: false, message: '', variant: 'success' });
+    const showToast = (variant, message) => {
+        setToast({ show: true, message, variant });
+        setTimeout(() => setToast(t => ({ ...t, show: false })), 3000);
+    };
 
     useEffect(() => {
         fetchInitialData();
@@ -94,9 +102,17 @@ const VoucherManagement = () => {
                 ...values,
                 startDate: values.startDate ? dayjs(values.startDate).toISOString() : null,
                 endDate: values.endDate ? dayjs(values.endDate).toISOString() : null,
-                // Đảm bảo isActive luôn có giá trị boolean
                 isActive: values.isActive !== undefined ? values.isActive : true
             };
+            // Nếu type là percent thì giữ maxDiscountAmount, nếu không thì bỏ trường này
+            if (voucherData.type !== 'percent') {
+                delete voucherData.maxDiscountAmount;
+            } else {
+                // Nếu không nhập thì truyền 0
+                if (voucherData.maxDiscountAmount === undefined || voucherData.maxDiscountAmount === null || voucherData.maxDiscountAmount === '') {
+                    voucherData.maxDiscountAmount = 0;
+                }
+            }
             
             console.log('Payload sent:', voucherData);
 
@@ -107,7 +123,11 @@ const VoucherManagement = () => {
             console.log('Response:', response.data);
 
             if ([200, 201, 204].includes(response.status)) {
-                message.success(`${editingVoucher ? 'Updated' : 'Added'} voucher successfully`);
+                if (!editingVoucher) {
+                    showToast('success', 'Voucher create successfully!');
+                } else {
+                    showToast('success', 'Updated voucher successfully');
+                }
                 fetchInitialData();
                 setIsModalVisible(false);
                 form.resetFields();
@@ -118,7 +138,7 @@ const VoucherManagement = () => {
         } catch (error) {
             const errorMessage = error.response?.data?.message || error.message;
             console.error('Error details:', error.response?.data || error.message);
-            message.error(`Failed to ${editingVoucher ? 'update' : 'add'} voucher: ${errorMessage}`);
+            showToast('danger', `Failed to ${editingVoucher ? 'update' : 'add'} voucher: ${errorMessage}`);
         }
     }
 
@@ -141,7 +161,7 @@ const VoucherManagement = () => {
                 ...voucher,
                 startDate: voucher.startDate ? dayjs(voucher.startDate).format('YYYY-MM-DD') : '',
                 endDate: voucher.endDate ? dayjs(voucher.endDate).format('YYYY-MM-DD') : '',
-                totalOrderAmount: voucher.totalOrderAmount || 0,
+                maxDiscountAmount: voucher.maxDiscountAmount ?? 0,
             };
             form.setFieldsValue(formattedVoucher);
         } else {
@@ -150,7 +170,8 @@ const VoucherManagement = () => {
             form.setFieldsValue({ 
                 usedCount: 0,
                 type: 'percent',
-                isActive: true // Set default value cho isActive
+                isActive: true,
+                maxDiscountAmount: 0
             });
         }
         setIsModalVisible(true);
@@ -245,12 +266,6 @@ const VoucherManagement = () => {
             render: (amount) => amount?.toLocaleString('vi-VN') + ' VND',
         },
         {
-            title: 'Total Order Amount',
-            dataIndex: 'totalOrderAmount',
-            key: 'totalOrderAmount',
-            render: (amount) => ((amount ?? 0).toLocaleString('vi-VN') + ' VND'),
-        },
-        {
             title: 'Start Date',
             dataIndex: 'startDate',
             key: 'startDate',
@@ -261,7 +276,7 @@ const VoucherManagement = () => {
             dataIndex: 'endDate',
             key: 'endDate',
             render: (date, record) => {
-                const status = getDateStatus(record.startDate, record.endDate);
+                const status = getDateStatus(record.startDate, record.endDate)
                 return (
                     <Tag color={status === 'expired' ? 'red' : status === 'active' ? 'green' : 'default'}>
                         {formatDate(date)}
@@ -295,7 +310,7 @@ const VoucherManagement = () => {
                 <Space>
                     <Button onClick={() => showViewModal(record)} icon={<EyeOutlined />} />
                     <Button onClick={() => showModal(record)} icon={<InfoCircleFilled />} />
-                    <Button onClick={() => handleDeleteVoucher(record._id)} icon={<DeleteFilled />} danger />
+                    {/* <Button onClick={() => handleDeleteVoucher(record._id)} icon={<DeleteFilled />} danger /> */}
                 </Space>
             ),
         },
@@ -303,6 +318,17 @@ const VoucherManagement = () => {
     
     return (
         <div className="container mt-4">
+            {/* Toast */}
+            <div className="position-fixed" style={{ top: '4rem', right: '1rem', zIndex: 1060 }}>
+                {toast.show && (
+                    <div className={`toast align-items-center text-bg-${toast.variant} border-0 show`}>
+                        <div className="d-flex">
+                            <div className="toast-body">{toast.message}</div>
+                            <button type="button" className="btn-close btn-close-white me-2 m-auto" aria-label="Close" onClick={() => setToast(t => ({ ...t, show: false }))} />
+                        </div>
+                    </div>
+                )}
+            </div>
             <div className="mb-3 d-flex align-items-center" style={{ gap: '10px', flexWrap: 'wrap' }}>
                 <Input
                     placeholder="Search by code"
@@ -439,6 +465,32 @@ const VoucherManagement = () => {
                         </Form.Item>
                     </div>
                     
+                    {/* Max Discount Amount chỉ hiện khi type là percent */}
+                    {form.getFieldValue('type') === 'percent' && (
+                        <Form.Item
+                            name="maxDiscountAmount"
+                            label="Max Discount Amount (for percent type)"
+                            rules={[
+                                {
+                                    validator(_, value) {
+                                        if (value === undefined || value === null || value === '') {
+                                            return Promise.resolve(); // Không required
+                                        }
+                                        if (typeof value === 'string' && value.trim() === '') {
+                                            return Promise.reject('Không được nhập toàn dấu cách');
+                                        }
+                                        if (isNaN(value) || Number(value) < 0) {
+                                            return Promise.reject('Must be >= 0');
+                                        }
+                                        return Promise.resolve();
+                                    }
+                                }
+                            ]}
+                        >
+                            <Input type="number" min={0} placeholder="Enter max discount amount (VND)" />
+                        </Form.Item>
+                    )}
+                    
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                         <Form.Item
                             name="usedCount"
@@ -489,13 +541,6 @@ const VoucherManagement = () => {
                         </Form.Item>
                     </div>
                     
-                    <Form.Item
-                        label="Total Order Amount"
-                        name="totalOrderAmount"
-                    >
-                        <Input type="number" min={0} />
-                    </Form.Item>
-                    
                     {/* Thêm field isActive với Switch component */}
                     <Form.Item
                         name="isActive"
@@ -508,28 +553,6 @@ const VoucherManagement = () => {
                             unCheckedChildren="Inactive"
                         />
                     </Form.Item>
-
-                    {form.getFieldValue('type') === 'percent' && (
-                        <Form.Item
-                            name="maxDiscountAmount"
-                            label="Max Discount Amount (for percent type)"
-                            rules={[
-                                ({ getFieldValue }) => ({
-                                    validator(_, value) {
-                                        if (getFieldValue('type') === 'percent' && (value === undefined || value === null)) {
-                                            return Promise.reject('Please enter max discount amount for percent voucher!');
-                                        }
-                                        if (value !== undefined && value < 0) {
-                                            return Promise.reject('Max discount amount must be >= 0');
-                                        }
-                                        return Promise.resolve();
-                                    },
-                                }),
-                            ]}
-                        >
-                            <Input type="number" min={0} placeholder="Enter max discount amount (VND)" />
-                        </Form.Item>
-                    )}
                     
                     <Form.Item style={{ marginTop: '24px', textAlign: 'right' }}>
                         <Button onClick={() => setIsModalVisible(false)} style={{ marginRight: '8px' }}>
@@ -564,11 +587,16 @@ const VoucherManagement = () => {
                         <Descriptions.Item label="Value">
                             {viewingVoucher.type === 'percent' ? `${viewingVoucher.value}%` : `${viewingVoucher.value?.toLocaleString('vi-VN')} VND`}
                         </Descriptions.Item>
+                        {/* Max Discount Amount chỉ hiện khi type là percent */}
+                        {viewingVoucher.type === 'percent' && (
+                            <Descriptions.Item label="Max Discount Amount">
+                                {viewingVoucher.maxDiscountAmount > 0
+                                    ? viewingVoucher.maxDiscountAmount.toLocaleString('vi-VN') + ' VND'
+                                    : '-'}
+                            </Descriptions.Item>
+                        )}
                         <Descriptions.Item label="Min Order Amount">
                             {`${(viewingVoucher.minOrderAmount || 0).toLocaleString('vi-VN')} VND`}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Total Order Amount">
-                            {(viewingVoucher?.totalOrderAmount ?? 0).toLocaleString('vi-VN')} VND
                         </Descriptions.Item>
                         <Descriptions.Item label="Usage Limit">{viewingVoucher.usageLimit || 'Unlimited'}</Descriptions.Item>
                         <Descriptions.Item label="Used Count">{viewingVoucher.usedCount}</Descriptions.Item>
@@ -578,11 +606,6 @@ const VoucherManagement = () => {
                             <Tag color={viewingVoucher.isActive ? 'green' : 'red'}>
                                 {viewingVoucher.isActive ? 'Active' : 'Inactive'}
                             </Tag>
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Max Discount Amount">
-                            {viewingVoucher.type === 'percent' && viewingVoucher.maxDiscountAmount > 0
-                                ? viewingVoucher.maxDiscountAmount.toLocaleString('vi-VN') + ' VND'
-                                : '-'}
                         </Descriptions.Item>
                         <Descriptions.Item label="Created At">{dayjs(viewingVoucher.createdAt).format('DD/MM/YYYY HH:mm')}
                         </Descriptions.Item>

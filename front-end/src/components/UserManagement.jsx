@@ -3,6 +3,7 @@ import { Table, Button, Modal, Form, Input, message, Select, Descriptions, Space
 import { getAllUser, updateUser, createUser, deleteUser } from '../services/api';
 import { EditOutlined, EyeOutlined, SortAscendingOutlined, SortDescendingOutlined, InfoCircleFilled, DeleteFilled } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 const { Option } = Select;
 
@@ -36,6 +37,11 @@ const UserManagement = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
   const [sortName, setSortName] = useState(null);
+  const [toast, setToast] = useState({ show: false, message: '', variant: 'success' });
+  const showToast = (variant, message) => {
+    setToast({ show: true, message, variant });
+    setTimeout(() => setToast(t => ({ ...t, show: false })), 3000);
+  };
 
   useEffect(() => {
     fetchInitialData();
@@ -89,7 +95,6 @@ const UserManagement = () => {
         : {
             ...values,
             role: 'barber',
-
           };
 
       console.log('Payload sent:', userData);
@@ -101,7 +106,11 @@ const UserManagement = () => {
       console.log('Response from updateUser:', response.data);
 
       if ([200, 201, 204].includes(response.status)) {
-        message.success(`${editingUser ? 'Updated' : 'Added'} user successfully`);
+        if (editingUser) {
+          showToast('success', 'Cập nhật tài khoản thành công!');
+        } else {
+          showToast('success', 'Thêm tài khoản thành công!');
+        }
         fetchInitialData();
         setIsModalVisible(false);
         form.resetFields();
@@ -112,7 +121,7 @@ const UserManagement = () => {
     } catch (error) {
       const errorMessage = error.response?.data?.message || error.message;
       console.error('Error details:', error.response?.data || error.message);
-      message.error(`Failed to ${editingUser ? 'update' : 'add'} user: ${errorMessage}`);
+      showToast('danger', `Thao tác thất bại: ${errorMessage}`);
     }
   };
 
@@ -232,6 +241,25 @@ const UserManagement = () => {
 
   return (
     <div className="container mt-4">
+      {/* Toast */}
+      <div
+        className="position-fixed"
+        style={{ top: '4rem', right: '1rem', zIndex: 1060 }}
+      >
+        {toast.show && (
+          <div className={`toast align-items-center text-bg-${toast.variant} border-0 show`}>
+            <div className="d-flex">
+              <div className="toast-body">{toast.message}</div>
+              <button
+                type="button"
+                className="btn-close btn-close-white me-2 m-auto"
+                aria-label="Close"
+                onClick={() => setToast(t => ({ ...t, show: false }))}
+              />
+            </div>
+          </div>
+        )}
+      </div>
       <div className="mb-3 d-flex align-items-center">
         <Input
           placeholder="Search by name"

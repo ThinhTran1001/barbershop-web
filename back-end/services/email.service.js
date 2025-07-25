@@ -25,20 +25,50 @@ const sendEmail = async (to, subject, html) => {
         html,
     });
 };
-const sendOrderCodeToGuestEmail = async (to, orderCode) => {
-    const subject = 'Mã đơn hàng của bạn từ Barber App';
-    const html = `
-        <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-            <h3>Xin chào,</h3>
-            <p>Cảm ơn bạn đã đặt hàng tại <strong>Barber App</strong>.</p>
-            <p>Mã đơn hàng của bạn là: <strong style="color: #007bff;">${orderCode}</strong></p>
-            <p>Hãy giữ lại mã này để tra cứu hoặc hỗ trợ nếu cần.</p>
-            <br />
-            <p>Trân trọng,<br/>Barber App Team</p>
-        </div>
-    `;
+const sendOrderCodeToGuestEmail = async (to, {
+  orderCode,
+  orderDate,
+  items = [],
+  totalAmount,
+  customerName
+}) => {
+  const subject = 'Xác nhận đơn hàng từ Barber App';
+  const itemsHtml = items.map(item => `
+    <tr>
+      <td style="padding: 8px; border: 1px solid #eee; text-align: center;">
+        <img src="${item.productImage || ''}" alt="${item.productName}" style="width: 48px; height: 48px; object-fit: cover; border-radius: 4px;" />
+      </td>
+      <td style="padding: 8px; border: 1px solid #eee;">${item.productName}</td>
+      <td style="padding: 8px; border: 1px solid #eee; text-align: center;">${item.quantity}</td>
+    </tr>
+  `).join('');
 
-    await sendEmail(to, subject, html);
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto;">
+      <h2 style="color: #6C47FF;">Xác nhận đơn hàng từ Barber App</h2>
+      <p>Xin chào${customerName ? ' ' + customerName : ''}, cảm ơn bạn đã đặt hàng tại <strong>Barber App</strong>.</p>
+      <p><b>Mã đơn hàng:</b> <span style="color: #007bff;">${orderCode}</span></p>
+      <p><b>Ngày đặt hàng:</b> ${orderDate ? new Date(orderDate).toLocaleString('vi-VN') : ''}</p>
+      <h3>Đơn hàng của bạn gồm:</h3>
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px;">
+        <thead>
+          <tr style="background: #f8f9fa;">
+            <th style="padding: 8px; border: 1px solid #eee;">Ảnh</th>
+            <th style="padding: 8px; border: 1px solid #eee;">Tên sản phẩm</th>
+            <th style="padding: 8px; border: 1px solid #eee;">Số lượng</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemsHtml}
+        </tbody>
+      </table>
+      <div><b>Tổng cộng:</b> <span style="color: #e74c3c;">${totalAmount?.toLocaleString('vi-VN')} đ</span></div>
+      <p style="margin-top:8px;">Giữ lại mã đơn hàng để tra cứu hoặc hỗ trợ nếu cần.</p>
+      <p style="margin-top:8px;">Trân trọng, Barber App Team</p>
+    </div>
+  `;
+
+  await sendEmail(to, subject, html);
 };
 
 

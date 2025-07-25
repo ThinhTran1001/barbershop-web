@@ -15,6 +15,8 @@ import ProductDetail from "./components/product/ProductDetail.jsx";
 import Checkout from "./pages/checkout/Checkout.jsx";
 import CheckoutGuest from "./pages/checkout/CheckoutGuest.jsx";
 import OrderSuccess from "./pages/checkout/OrderSuccess.jsx";
+import OrderFail from "./pages/checkout/OrderFail.jsx";
+import OrderSuccessPayOS from "./pages/checkout/OrderSuccessPayOS.jsx";
 import CustomerProfile from "./components/profile/customerProfile.jsx";
 import Cart from "./components/cart/Cart";
 import UserCart from "./components/cart/UserCart";
@@ -57,10 +59,9 @@ import MyBookingsPage from "./pages/ServiceBooking/MyBookingsPage.jsx";
 import UserVouchers from "./pages/user/UserVouchers.jsx";
 import ManageBlog from "./pages/ManageBlog/ManageBlog.jsx";
 import BarberProfile from "./components/profile/baberProfile.jsx";
+import FeedbackBarber from "./pages/FeedbackBarber/FeedbackBarber.jsx";
 import NoShowManagement from "./pages/Admin/NoShowManagement.jsx";
 import BarberAbsencePage from "./pages/barber/BarberAbsencePage.jsx";
-
-
 
 
 const router = createBrowserRouter([
@@ -78,6 +79,8 @@ const router = createBrowserRouter([
       { path: "/checkout", element: <Checkout /> },
       { path: "/checkout-guest", element: <CheckoutGuest /> },
       { path: "/order-success", element: <OrderSuccess /> },
+      { path: "/order-fail", element: <OrderFail /> },
+      { path: "/payos-success", element: <OrderSuccessPayOS /> },
       { path: "/cart-guest", element: <Cart /> },
       { path: "/cart", element: <UserCart /> },
       { path: "/profile", element: <CustomerProfile /> },
@@ -93,10 +96,12 @@ const router = createBrowserRouter([
       { path: "/news/:id", element: <BlogDetail /> },
       { path: "/contact", element: <ContactPage /> },
       { path: "/feedback-order/:orderId", element: <FeedbackProduct /> },
+      { path: "/feedback-barber/:bookingId", element: <FeedbackBarber/> },
       // Protected Customer Routes
       {
         element: <RequireAuth allowedRoles={["customer"]} />,
         children: [
+          
           { path: "/my-orders", element: <ListOfOrder /> },
           { path: "/my-orders/:id", element: <OrderDetail /> },
           { path: "/feedback/:orderId", element: <FeedbackProduct /> },
@@ -124,7 +129,7 @@ const router = createBrowserRouter([
           { path: "voucher", element: <VoucherManagement /> },
           { path: "user-vouchers", element: <UserVoucherManagement /> },
           { path: "order", element: <OrderManagement /> },
-          { path: "-product", element: <ManageFeedbackProduct /> },
+          { path: "feedback-product", element: <ManageFeedbackProduct /> },
           { path: "feedback-barber", element: <ManageFeedbackBarber /> },
           { path: "discount-product", element: <ManageDiscountProduct /> },
           { path: "appointment", element: <Appointment /> },

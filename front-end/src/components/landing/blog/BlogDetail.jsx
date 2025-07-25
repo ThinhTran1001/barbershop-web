@@ -143,7 +143,11 @@ const BlogDetail = () => {
                   </Space>
                   <Space>
                     <Text type="secondary">Danh mục:</Text>
-                    <Text strong>{blog.category}</Text>
+                    <Text strong>
+                      {Array.isArray(blog.categories) && blog.categories.length > 0
+                        ? blog.categories.join(', ')
+                        : (blog.category || 'Không có')}
+                    </Text>
                   </Space>
                   <Space>
                     <Text type="secondary">Ngày cập nhật:</Text>

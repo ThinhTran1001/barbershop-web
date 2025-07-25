@@ -44,12 +44,21 @@ exports.getAllProducts = async (req, res) => {
 
     const discountMap = {};
     discounts.forEach(d => {
-      discountMap[d.productId.toString()] = d.discount;
+      discountMap[d.productId.toString()] = {
+        discount: d.discount,
+        discountEndDate: d.discountEndDate
+      };
     });
 
     const result = products.map(p => {
       const obj = p.toObject();
-      obj.discount = discountMap[p._id.toString()] || 0;
+      if (discountMap[p._id.toString()]) {
+        obj.discount = discountMap[p._id.toString()].discount;
+        obj.discountEndDate = discountMap[p._id.toString()].discountEndDate;
+      } else {
+        obj.discount = 0;
+        obj.discountEndDate = null;
+      }
       return obj;
     });
 
@@ -73,6 +82,7 @@ exports.getProductById = async (req, res) => {
 
     const obj = product.toObject();
     obj.discount = discount ? discount.discount : 0;
+    obj.discountEndDate = discount ? discount.discountEndDate : null;
 
     res.status(200).json(obj);
   } catch (error) {

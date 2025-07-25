@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Breadcrumb } from 'antd';
 import { useNavigate } from 'react-router-dom';
 
@@ -9,6 +9,7 @@ import './About.css';
 
 const AboutPage = () => {
   const navigate = useNavigate();
+  useEffect(() => { window.scrollTo(0, 0); }, []);
 
   return (
     <> 

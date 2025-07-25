@@ -1,5 +1,6 @@
-// back-end/services/socket.service.js
 const { Server } = require("socket.io");
+const User = require("../models/user.model");
+const ChatMessage = require("../models/chatMessage.model");
 
 let io;
 
@@ -35,7 +36,7 @@ const initSocket = (server) => {
       if (role === 'admin') {
         const ChatMessage = require("../models/chatMessage.model");
         ChatMessage.distinct('roomId').then((rooms) => {
-          socket.emit("updateRooms", rooms); 
+          socket.emit("updateRooms", rooms);
         });
       }
     });
@@ -58,10 +59,24 @@ const initSocket = (server) => {
       try {
         const ChatMessage = require("../models/chatMessage.model");
         ChatMessage.create(message).then(async () => {
-          io.to(roomId).emit("receiveMessage", message);
+          let senderName = 'Unknown';
+
+          if (senderRole === 'admin') {
+            // Gửi từ admin → lấy từ DB hoặc hardcode
+            const admin = await User.findById(senderId).select('name');
+            senderName = admin?.name || 'Admin';
+          } else {
+            // Gửi từ user
+            const user = await User.findById(senderId).select('name');
+            senderName = user?.name || 'Unknown';
+          }
+
+          const messageWithName = { ...message, senderName };
+
+          io.to(roomId).emit("receiveMessage", messageWithName);
 
           const rooms = await ChatMessage.distinct('roomId');
-          io.emit("updateRooms", rooms); 
+          io.emit("updateRooms", rooms);
 
           if (callback) callback({ success: true });
         }).catch((err) => {

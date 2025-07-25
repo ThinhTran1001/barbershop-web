@@ -31,10 +31,12 @@ import {
   getServices,
   getBarbers
 } from '../../services/serviceApi.js';
-import {
-  getFeedbackBookingByBookingId,
-  createFeedbackBooking
-} from '../../services/api';
+// import {
+//   getFeedbackBookingByBookingId,
+//   createFeedbackBooking,
+//   getBarberFeedbackById,
+//   createBarberFeedback
+// } from '../../services/api';
 import {
   CalendarOutlined,
   ClockCircleOutlined,
@@ -67,7 +69,9 @@ const MyBookingsPage = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
-  const [feedbackStatuses, setFeedbackStatuses] = useState({});
+  // const [feedbackStatuses, setFeedbackStatuses] = useState({});
+  // const [barberFeedbackStatuses, setBarberFeedbackStatuses] = useState({});
+  const [reviewableBookings, setReviewableBookings] = useState({});
 
   // Filter state
   const [filters, setFilters] = useState({
@@ -104,41 +108,71 @@ const MyBookingsPage = () => {
   const [barbersLoading, setBarbersLoading] = useState(false);
 
   // Load bookings with filters
-  const loadBookings = async (newFilters = filters) => {
-    setLoading(true);
-    try {
-      const response = await getMyBookings(newFilters);
-      const data = response.bookings || response;
-      const paginationData = response.pagination;
 
-      setBookings(Array.isArray(data) ? data : []);
+const loadBookings = async (newFilters = filters) => {
+  setLoading(true);
+  try {
+    // 1. Lấy thông tin user hiện tại
+    const meRes = await getMe();
+    const me = meRes.data || meRes;
 
-      // Fetch feedback status for each booking
-      const statuses = {};
-      for (const booking of data) {
-        try {
-          const feedbackResponse = await getFeedbackBookingByBookingId(booking._id);
-          statuses[booking._id] = feedbackResponse.data.status;
-        } catch (feedbackError) {
-          statuses[booking._id] = null; // Chưa có feedback hoặc lỗi
-        }
+    // 2. Lấy danh sách lịch hẹn
+    const response = await getMyBookings(newFilters);
+    const data = response.bookings || response;
+    const paginationData = response.pagination;
+
+    setBookings(Array.isArray(data) ? data : []);
+
+    // 3. Lấy toàn bộ feedback barber của người dùng
+    const barberFeedbackRes = await getBarberFeedbacks({ customerId: me._id });
+    const barberFeedbacks = Array.isArray(barberFeedbackRes?.data)
+  ? barberFeedbackRes.data
+  : barberFeedbackRes?.data?.data || [];
+
+
+    // Tạo Set chứa các bookingId đã feedback barber
+    const barberFeedbackBookingIds = new Set(
+      barberFeedbacks.map(fb => fb.bookingId?._id || fb.bookingId)
+    );
+
+    // 4. Check feedback cho mỗi booking
+    const reviewMap = {};
+    for (const booking of data) {
+      let hasServiceFeedback = false;
+
+      try {
+        await getBookingFeedback(booking._id);
+        hasServiceFeedback = true;
+      } catch (err) {
+        if (err.response?.status === 404) hasServiceFeedback = false;
+        else console.error('Error checking service feedback:', err);
       }
-      setFeedbackStatuses(statuses);
 
-      if (paginationData) {
-        setPagination({
-          current: paginationData.page,
-          pageSize: paginationData.limit,
-          total: paginationData.total
-        });
-      }
-    } catch (error) {
-      message.error('Không thể tải danh sách đặt lịch!');
-      console.error('Error loading bookings:', error);
-    } finally {
-      setLoading(false);
+      const hasBarberFeedback = barberFeedbackBookingIds.has(booking._id);
+
+      reviewMap[booking._id] = {
+        hasServiceFeedback,
+        hasBarberFeedback
+      };
     }
-  };
+
+    setReviewableBookings(reviewMap);
+
+    if (paginationData) {
+      setPagination({
+        current: paginationData.page,
+        pageSize: paginationData.limit,
+        total: paginationData.total
+      });
+    }
+  } catch (error) {
+    message.error('Không thể tải danh sách đặt lịch!');
+    console.error('Error loading bookings:', error);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   useEffect(() => {
     loadBookings();
@@ -504,34 +538,39 @@ const MyBookingsPage = () => {
   };
 
   // Check if booking can be reviewed
-  const canReviewBooking = (booking) => {
-    return booking.status === 'completed' && !feedbackStatuses[booking._id];
+  //   const canReviewBooking = async (bookingId) => {
+  //   try {
+  //     const res = await getFeedbackBookingByBookingId(bookingId);
+  //     return !res?.data;
+  //   } catch {
+  //     return true; // Nếu không có feedback => cho phép đánh giá
+  //   }
+  // };
+
+  // const canReviewBarber = async (bookingId) => {
+  //   try {
+  //     const res = await getBarberFeedbackById(bookingId);
+  //     return !res?.data;
+  //   } catch {
+  //     return true; // Nếu không có feedback => cho phép đánh giá
+  //   }
+  // };
+
+
+  // Handle feedback navigation for service
+  const handleServiceFeedback = async (booking) => {
+    try {
+      navigate(`/feedback/${booking._id}`);
+      return;
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  // Handle feedback navigation (giống OrderDetail)
-  const handleFeedback = async (booking) => {
-    try {
-      const existing = await getFeedbackBookingByBookingId(booking._id);
-      if (existing?.data) {
-        navigate(`/feedback/${booking._id}`);
-        return;
-      }
-    } catch (err) {
-      if (err.response?.status === 404) {
-        try {
-          await createFeedbackBooking({ bookingId: booking._id, userId: booking.customerId });
-          navigate(`/feedback/${booking._id}`);
-          return;
-        } catch (createError) {
-          console.error('Lỗi tạo mới feedback:', createError);
-          message.error('Không thể tạo feedback mới.');
-          return;
-        }
-      } else {
-        console.error('Lỗi kiểm tra feedback:', err);
-        message.error('Không thể kiểm tra trạng thái feedback.');
-      }
-    }
+  // Handle feedback navigation for barber
+  const handleBarberFeedback = async (booking) => {
+    navigate(`/feedback-barber/${booking._id}`);
+    return;
   };
 
   const columns = [
@@ -692,6 +731,7 @@ const MyBookingsPage = () => {
           </Space>
         );
       }
+
     }
   ];
 
@@ -908,17 +948,30 @@ const MyBookingsPage = () => {
                 ))}
               </Descriptions.Item>
             )}
-            {canReviewBooking(selectedBooking) && (
-              <Descriptions.Item label="Đánh giá">
+            {selectedBooking.status === 'completed' && !reviewableBookings[selectedBooking._id]?.hasServiceFeedback && (
+              <Descriptions.Item label="Đánh giá dịch vụ">
                 <Button
                   type="primary"
                   icon={<StarOutlined />}
-                  onClick={() => handleFeedback(selectedBooking)}
+                  onClick={() => handleServiceFeedback(selectedBooking)}
+                >
+                  Đánh giá dịch vụ
+                </Button>
+              </Descriptions.Item>
+            )}
+
+            {selectedBooking.status === 'completed' && !reviewableBookings[selectedBooking._id]?.hasBarberFeedback && (
+              <Descriptions.Item label="Đánh giá barber">
+                <Button
+                  type="primary"
+                  icon={<StarOutlined />}
+                  onClick={() => handleBarberFeedback(selectedBooking)}
                 >
                   Đánh giá barber
                 </Button>
               </Descriptions.Item>
             )}
+
           </Descriptions>
         )}
       </Modal>

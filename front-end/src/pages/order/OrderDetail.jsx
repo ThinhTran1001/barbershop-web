@@ -3,11 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getOrderById, updateOrder, createFeedbackOrder, getFeedbackOrderByOrderId } from '../../services/api';
 import {
-  Spin, Alert, Button, Typography, Tag, List, Avatar, Popconfirm, message, Descriptions, Form, Input, Card, Steps, Divider, notification } from 'antd';
+  Spin, Alert, Button, Typography, Tag, List, Avatar, Popconfirm, message, Descriptions, Form, Input, Card, Steps, Divider, notification
+} from 'antd';
 import {
   ArrowLeftOutlined, CopyOutlined, CheckCircleFilled, ShoppingOutlined, CarOutlined, HomeOutlined
 } from '@ant-design/icons';
 import './OrderDetail.css';
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -24,6 +26,7 @@ const getStatusStep = (status) => {
 
 const getDynamicSteps = (currentStatus) => {
   const currentStep = getStatusStep(currentStatus);
+  const isDelivered = currentStatus === 'delivered';
   const icons = [
     <CheckCircleFilled style={{ color: '#52c41a' }} />, // Thành công
     <ShoppingOutlined />, // Đang xử lý
@@ -51,9 +54,11 @@ const getDynamicSteps = (currentStatus) => {
   return stepsData.map((step, idx) => ({
     ...step,
     icon:
-      idx < currentStep
+      isDelivered
         ? <CheckCircleFilled style={{ color: '#52c41a' }} />
-        : icons[idx],
+        : idx < currentStep
+          ? <CheckCircleFilled style={{ color: '#52c41a' }} />
+          : icons[idx],
   }));
 };
 
@@ -75,7 +80,11 @@ const OrderDetail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [form] = Form.useForm();
-  const [showToast, setShowToast] = useState(false);
+  const [toast, setToast] = useState({ show: false, message: '', variant: 'success' });
+  const showToast = (variant, message) => {
+    setToast({ show: true, message, variant });
+    setTimeout(() => setToast(t => ({ ...t, show: false })), 3000);
+  };
   const [feedbackStatus, setFeedbackStatus] = useState(null);
 
   const fetchOrderDetail = async () => {
@@ -127,10 +136,9 @@ const OrderDetail = () => {
     }
   };
 
-  const copyOrderId = () => {
+  const handleCopyOrderId = () => {
     navigator.clipboard.writeText(order.orderCode);
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 2000);
+    showToast('success', 'Đã copy thành công mã đơn hàng!');
   };
 
   const handleStartFeedback = async () => {
@@ -174,27 +182,18 @@ const OrderDetail = () => {
   const discount = subtotal - order.totalAmount;
 
   return (
-    <div className="order-success-container">
-      {/* Bootstrap Toast thông báo copy thành công */}
-      {/* <div
-          className="toast show position-fixed top-0 end-0 m-3"
-          role="alert"
-          aria-live="assertive"
-          aria-atomic="true"
-          style={{ zIndex: 9999, minWidth: 250 }}
-        >
-          <div className="toast-header">
-            <strong className="me-auto text-success">Thành công</strong>
-            <button
-              type="button"
-              className="btn-close"
-              onClick={() => setShowToast(false)}
-            ></button>
+    <div className="order-detail-container">
+      {/* Toast */}
+      <div className="position-fixed" style={{ top: '4rem', right: '1rem', zIndex: 1060 }}>
+        {toast.show && (
+          <div className={`toast align-items-center text-bg-${toast.variant} border-0 show`}>
+            <div className="d-flex">
+              <div className="toast-body">{toast.message}</div>
+              <button type="button" className="btn-close btn-close-white me-2 m-auto" aria-label="Close" onClick={() => setToast(t => ({ ...t, show: false }))} />
+            </div>
           </div>
-          <div className="toast-body">
-            Đã copy thành công mã đơn hàng!
-          </div>
-        </div> */}
+        )}
+      </div>
 
       <div className="order-success-content">
         {/* Đưa nút back-button lên sát Card tiêu đề */}
@@ -222,38 +221,10 @@ const OrderDetail = () => {
                   <Button 
                     type="text" 
                     icon={<CopyOutlined />} 
-                    onClick={copyOrderId}
+                    onClick={handleCopyOrderId}
                     className="copy-button"
                     title="Sao chép mã đơn hàng"
                   />
-                  {showToast && (
-                    <div
-                      className="toast show"
-                      role="alert"
-                      aria-live="assertive"
-                      aria-atomic="true"
-                      style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: 0,
-                        marginTop: 8,
-                        zIndex: 100,
-                        minWidth: 200
-                      }}
-                    >
-                      <div className="toast-header">
-                        <strong className="me-auto text-success">Thành công</strong>
-                        <button
-                          type="button"
-                          className="btn-close"
-                          onClick={() => setShowToast(false)}
-                        ></button>
-                      </div>
-                      <div className="toast-body">
-                        Đã copy thành công mã đơn hàng!
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
               <Paragraph className="order-id-note">
@@ -420,6 +391,7 @@ const OrderDetail = () => {
             </Popconfirm>
           )}
           {order.status === 'delivered' && order.payment?.status === 'paid' && !feedbackStatus && (
+          // {order.status === 'delivered' && !feedbackStatus && (
             <Button 
               type="primary" 
               onClick={handleStartFeedback}

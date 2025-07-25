@@ -12,6 +12,8 @@ router.get('/booking/:bookingId', authenticate, bookingFeedbackController.getBoo
 // Get all feedback for a barber
 router.get('/barber/:barberId', bookingFeedbackController.getBarberFeedback);
 
+router.get('/service', bookingFeedbackController.getAllServiceFeedback);
+
 // Get all feedback for a service
 router.get('/service/:serviceId', bookingFeedbackController.getServiceFeedback);
 
