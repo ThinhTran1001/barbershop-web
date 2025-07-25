@@ -29,6 +29,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { getMyBookings } from '../../services/serviceApi.js';
 import { createBookingFeedback, getBookingFeedback } from '../../services/bookingFeedbackApi.js';
+import { uploadImage } from '../../services/api.js';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
@@ -95,38 +96,60 @@ const BookingFeedbackPage = () => {
   };
 
   const handleSubmit = async (values) => {
-    setSubmitting(true);
-    try {
-      const feedbackData = {
-        bookingId,
-        rating: values.rating,
-        comment: values.comment,
-        serviceQuality: values.serviceQuality,
-        barberProfessionalism: values.barberProfessionalism,
-        cleanliness: values.cleanliness,
-        valueForMoney: values.valueForMoney,
-        wouldRecommend: values.wouldRecommend,
-        images: fileList.map(file => file.response?.url || file.url).filter(Boolean),
-        isAnonymous: values.isAnonymous || false
-      };
+  setSubmitting(true);
+  try {
+    // ✅ Upload ảnh
+    let uploadedImages = [];
+    if (fileList.length > 0) {
+      const uploadPromises = fileList.map(async (file) => {
+        if (file.originFileObj) {
+          try {
+            const response = await uploadImage(file.originFileObj);
+            return response.data.url;
+          } catch (err) {
+            console.error('Upload image error:', err);
+            message.error('Không thể tải ảnh lên. Vui lòng thử lại.');
+            return null;
+          }
+        }
+        return file.url;
+      });
 
-      await createBookingFeedback(feedbackData);
-
-      message.success('Cảm ơn bạn đã đánh giá! Phản hồi của bạn rất quan trọng với chúng tôi.');
-
-      // Redirect to bookings page after successful submission
-      setTimeout(() => {
-        navigate('/my-booking');
-      }, 2000);
-
-    } catch (error) {
-      const errorMessage = error.response?.data?.message || 'Không thể gửi đánh giá. Vui lòng thử lại.';
-      message.error(errorMessage);
-      console.error('Error submitting feedback:', error);
-    } finally {
-      setSubmitting(false);
+      uploadedImages = (await Promise.all(uploadPromises))
+        .filter(url => url !== null)
+        .map(url => ({
+          url,
+          caption: '',
+          uploadedAt: new Date()
+        }));
     }
-  };
+
+    const feedbackData = {
+      bookingId,
+      rating: values.rating,
+      serviceQuality: values.serviceQuality,
+      barberProfessionalism: values.barberProfessionalism,
+      cleanliness: values.cleanliness,
+      valueForMoney: values.valueForMoney,
+      wouldRecommend: values.wouldRecommend,
+      comment: values.comment,
+      images: uploadedImages, // ✅ Đây là định dạng đúng
+      isAnonymous: values.isAnonymous || false
+    };
+
+    await createBookingFeedback(feedbackData);
+
+    message.success('Cảm ơn bạn đã đánh giá!');
+    setTimeout(() => navigate('/my-booking'), 2000);
+  } catch (error) {
+    const errorMessage = error?.response?.data?.message || 'Không thể gửi đánh giá. Vui lòng thử lại.';
+    message.error(errorMessage);
+    console.error('Error submitting feedback:', error);
+  } finally {
+    setSubmitting(false);
+  }
+};
+
 
   const handleImageUpload = ({ fileList: newFileList }) => {
     setFileList(newFileList);
