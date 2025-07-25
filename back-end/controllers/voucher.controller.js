@@ -4,6 +4,10 @@ const User_Voucher = require('../models/user_voucher.model');
 exports.createVoucher = async(req,res) =>{
     try {
         const voucherData = { ...req.body };
+        // Nếu type là percent và không nhập maxDiscountAmount, bỏ qua trường này để không giới hạn số tiền giảm tối đa
+        if (voucherData.type === 'percent' && (voucherData.maxDiscountAmount === undefined || voucherData.maxDiscountAmount === null || voucherData.maxDiscountAmount === '' || isNaN(voucherData.maxDiscountAmount))) {
+            delete voucherData.maxDiscountAmount;
+        }
         const voucher = new Voucher(voucherData)
         const newVoucher = await voucher.save();
         res.status(201).json(newVoucher);
@@ -72,7 +76,7 @@ exports.getAllVoucherByUser = async(req,res) =>{
         const now = new Date();
         
         const assignedToOthers = await User_Voucher.distinct('voucherId', { 
-            userId: { $ne: userId } // Không phải user hiện tại
+            userId: { $ne: userId } 
         });
         
         const publicVouchers = await Voucher.find({
@@ -173,3 +177,32 @@ exports.deleteVoucher = async(req,res) =>{
     res.status(500).json({ success: false, message: error.message });
     }
 }
+
+exports.getPublicVouchers = async (req, res) => {
+  try {
+    const now = new Date();
+    const personalizedVoucherIds = await User_Voucher.distinct('voucherId');
+    const vouchers = await Voucher.find({
+      isActive: true,
+      startDate: { $lte: now },
+      endDate: { $gte: now },
+      _id: { $nin: personalizedVoucherIds }
+    }).select('code type value minOrderAmount usageLimit usedCount maxDiscountAmount endDate description');
+    res.json({ success: true, data: vouchers });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.getPersonalVouchers = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const userVouchers = await require('../models/user_voucher.model').find({ userId }).populate('voucherId');
+    const vouchers = userVouchers
+      .map(uv => uv.voucherId)
+      .filter(v => v); // loại bỏ null nếu có
+    res.status(200).json({ success: true, data: vouchers });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};

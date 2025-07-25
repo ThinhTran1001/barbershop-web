@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Row, Col, Button, Tag, Typography, message, Tooltip, Spin, Empty } from 'antd';
 import { CopyOutlined, GiftOutlined, ClockCircleOutlined } from '@ant-design/icons';
-import { getVoucherByUser } from '../../services/api';
+import { getPersonalVouchers } from '../../services/api';
 
 const { Title, Text } = Typography;
 
@@ -41,6 +41,14 @@ function getMinOrderText(voucher) {
   
     return '';
   }
+
+function getDaysLeft(endDate) {
+  if (!endDate) return '';
+  const now = new Date();
+  const end = new Date(endDate);
+  const diff = Math.ceil((end - now) / (1000 * 60 * 60 * 24));
+  return diff > 0 ? `Còn ${diff} ngày` : (diff === 0 ? 'Hết hạn hôm nay' : 'Đã hết hạn');
+}
   
 
 const UserVouchers = () => {
@@ -51,7 +59,7 @@ const UserVouchers = () => {
     const fetchVouchers = async () => {
       setLoading(true);
       try {
-        const res = await getVoucherByUser();
+        const res = await getPersonalVouchers();
         setVouchers(res.data.data || []);
       } catch (err) {
         message.error('Không thể lấy danh sách voucher.');
@@ -68,55 +76,55 @@ const UserVouchers = () => {
   };
 
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto', padding: 24 }}>
-      <Title level={2} style={{ marginBottom: 24 }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto', padding: 24 }}>
+      <Title level={2} style={{ marginBottom: 24, textAlign: 'center' }}>
         <GiftOutlined style={{ color: '#faad14', marginRight: 8 }} />
-        Voucher khả dụng của bạn
+        Voucher của tôi
       </Title>
       {loading ? (
         <Spin size="large" style={{ display: 'block', margin: '60px auto' }} />
       ) : vouchers.length === 0 ? (
         <Empty description="Bạn chưa có voucher khả dụng" style={{ marginTop: 60 }} />
       ) : (
-        <Row gutter={[16, 16]}>
+        <Row gutter={[32, 32]} justify="center">
           {vouchers.map((voucher) => (
-            <Col xs={24} sm={12} md={8} key={voucher.id || voucher._id}>
+            <Col xs={24} sm={12} md={8} key={voucher.id || voucher._id} style={{ display: 'flex', justifyContent: 'center' }}>
               <Card
                 bordered={false}
-                style={{ borderRadius: 12, boxShadow: '0 2px 8px #f0f1f2', minHeight: 170, cursor: 'pointer', marginBottom: 8 }}
-                bodyStyle={{ padding: 20 }}
+                style={{
+                  width: 220,
+                  minHeight: 120,
+                  borderRadius: 10,
+                  boxShadow: '0 1px 4px #eee',
+                  background: '#fff',
+                  marginBottom: 16,
+                  border: '1px solid #eee',
+                  transition: 'box-shadow 0.2s, border 0.2s',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
+                  alignItems: 'flex-start',
+                  padding: 0
+                }}
+                bodyStyle={{ padding: 10 }}
               >
-                <Title level={4} style={{ margin: 0, color: '#1890ff', fontWeight: 700, lineHeight: 1.2 }}>
-                  {voucher.name}
-                </Title>
-                <div style={{ margin: '10px 0 6px 0' }}>
-                  <Tag color="blue" style={{ fontSize: 15, padding: '2px 10px' }}>
-                     {voucher.code}
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
+                  <Tag color="blue" style={{ fontSize: 15, fontWeight: 700, padding: '2px 10px', marginRight: 8 }}>
+                    {voucher.code}
                   </Tag>
-                  <Tooltip title="Sao chép mã">
-                    <Button
-                      icon={<CopyOutlined />}
-                      size="small"
-                      onClick={() => handleCopy(voucher.code)}
-                      style={{ marginLeft: 8 }}
-                    />
-                  </Tooltip>
+                  <span style={{ fontWeight: 700, fontSize: 14 }}>{voucher.name || ''}</span>
                 </div>
-                <div style={{ margin: '8px 0' }}>
-  <Tag color="green" style={{ fontSize: 16, padding: '4px 16px', fontWeight: 600 }}>
-    {getDiscountText(voucher)}
-  </Tag>
-  {getMinOrderText(voucher) && (
-    <div style={{ marginTop: 6 }}>
-      <Tag color="orange" style={{ fontSize: 14 }}>
-        {getMinOrderText(voucher)}
-      </Tag>
-    </div>
-  )}
-</div>
-                <div style={{ margin: '8px 0', color: '#888', fontSize: 15 }}>
-                  <ClockCircleOutlined style={{ marginRight: 4 }} />
-                  Hạn sử dụng: {formatDate(voucher.expiry || voucher.expiryDate || voucher.endDate)}
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#43a047', marginBottom: 3 }}>
+                  Giảm: {voucher.type === 'percent' ? `${voucher.value}%` : `${voucher.value?.toLocaleString('vi-VN')}đ`}
+                </div>
+                {voucher.type === 'percent' && voucher.maxDiscountAmount > 0 && (
+                  <div style={{ color: '#bfa43a', fontSize: 13, marginBottom: 2 }}>Giảm tối đa: {voucher.maxDiscountAmount.toLocaleString('vi-VN')}đ</div>
+                )}
+                {voucher.minOrderAmount > 0 && (
+                  <div style={{ color: '#bfa43a', fontSize: 13, marginBottom: 2 }}>Đơn từ: {voucher.minOrderAmount.toLocaleString('vi-VN')}đ</div>
+                )}
+                <div style={{ color: '#d9534f', fontSize: 13, marginBottom: 2 }}>
+                  {getDaysLeft(voucher.endDate || voucher.expiry || voucher.expiryDate)}
                 </div>
               </Card>
             </Col>
