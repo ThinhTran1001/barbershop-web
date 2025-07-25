@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import "./ProductDetail.css";
 import {
   Rate,
   Tabs,
@@ -9,8 +10,8 @@ import {
   Skeleton,
   notification,
   Avatar,
-  List,
   Typography,
+  Modal,
 } from "antd";
 import {
   ShoppingCartOutlined,
@@ -19,6 +20,7 @@ import {
   ShareAltOutlined,
   CheckCircleFilled,
 } from "@ant-design/icons";
+import dayjs from 'dayjs';
 
 import "../../css/product/productdetail.css";
 import { useAuth } from "../../context/AuthContext";
@@ -56,6 +58,8 @@ const ProductDetail = () => {
   const [quantity, setQuantity] = useState(1);
   const [isFavorite, setIsFavorite] = useState(false);
   const [brandName, setBrandName] = useState("");
+  const [previewImage, setPreviewImage] = useState("");
+  const [isModalVisible, setIsModalVisible] = useState(false);
 
   const addToCart = async (product, quantity) => {
     try {
@@ -80,6 +84,7 @@ const ProductDetail = () => {
         setProduct(productData);
         setMainImage(productData.image);
 
+        // Fetch brand
         if (productData.details?.brandId) {
           const brandRes = await fetch(`http://localhost:3000/api/brands/${productData.details.brandId}`);
           if (brandRes.ok) {
@@ -88,17 +93,16 @@ const ProductDetail = () => {
           }
         }
 
-        console.log("Fetching reviews for productId:", id);
+        // Fetch reviews
         const reviewRes = await getFeedbacksByProduct(id);
-console.log("reviewRes.data:", reviewRes.data); // giữ lại để debug
+        const extracted = reviewRes?.data?.data || reviewRes?.data || [];
+        console.log("Extracted reviews from API:", extracted);
 
-if (reviewRes.success && Array.isArray(reviewRes.data?.data)) {
-  setReviews(reviewRes.data.data); // <-- Đây là mảng đánh giá thực sự
-  console.log("Updated reviews state:", reviewRes.data.data);
-} else {
-  setReviews([]);
-}
-          console.log("reviewRes.data:", reviewRes.data);
+        if (Array.isArray(extracted)) {
+          setReviews(extracted);
+        } else {
+          setReviews([]);
+        }
 
         setLoading(false);
       } catch (err) {
@@ -169,6 +173,16 @@ if (reviewRes.success && Array.isArray(reviewRes.data?.data)) {
       message: isFavorite ? "Đã xóa khỏi yêu thích" : "Đã thêm vào yêu thích",
       placement: "topRight",
     });
+  };
+
+  const showImagePreview = (image) => {
+    setPreviewImage(image);
+    setIsModalVisible(true);
+  };
+
+  const handleModalClose = () => {
+    setIsModalVisible(false);
+    setPreviewImage("");
   };
 
   if (loading) return <Skeleton active paragraph={{ rows: 10 }} />;
@@ -338,7 +352,63 @@ if (reviewRes.success && Array.isArray(reviewRes.data?.data)) {
 
       <div className="product-details-tabs">
         <Tabs defaultActiveKey="1" type="card">
-          <TabPane tab="Mô tả chi tiết" key="1">
+          <TabPane tab="Đánh giá sản phẩm" key="1">
+            <div className="tab-content">
+              <Title level={3} className="review-title">Đánh giá sản phẩm</Title>
+              {reviews.length > 0 ? (
+                <div className="review-list">
+                  {reviews.map((review, idx) => (
+                    <div key={idx} className="review-card">
+                      <div className="review-header">
+                        <Avatar
+                          size={48}
+                          src={review.userId?.avatar || undefined}
+                          className="review-avatar"
+                        >
+                          {review.userId?.name?.charAt(0) || "K"}
+                        </Avatar>
+                        <div className="review-details">
+                          <Text strong className="review-author">{review.userId?.name || "Khách hàng ẩn danh"}</Text>
+                          <div className="review-rating-row">
+                            <div className="review-rating">
+                              <Rate disabled allowHalf value={review.rating || 0} />
+                              {/* <span className="review-rating-text">{review.rating || 0}/5</span> */}
+                            </div>
+                            <Text className="review-date">
+                              {dayjs(review.createdAt).format('DD MMMM YYYY, HH:mm')}
+                            </Text>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="review-comment-container">
+                        <Text className="review-comment">{review.comment || "Không có bình luận"}</Text>
+                      </div>
+                      {review.images && review.images.length > 0 && (
+                        <div className="review-images-container">
+                          {review.images.map((img, imgIdx) => (
+                            <img
+                              key={imgIdx}
+                              src={getImage(img)}
+                              alt={`review-image-${imgIdx}`}
+                              className="review-image"
+                              onClick={() => showImagePreview(getImage(img))}
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = "";
+                              }}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <Text className="no-reviews">Chưa có đánh giá nào cho sản phẩm này.</Text>
+              )}
+            </div>
+          </TabPane>
+          <TabPane tab="Mô tả chi tiết" key="4">
             <div className="tab-content">
               <h3>Thông tin sản phẩm</h3>
               <p>{product.description}</p>
@@ -375,65 +445,18 @@ if (reviewRes.success && Array.isArray(reviewRes.data?.data)) {
               </table>
             </div>
           </TabPane>
-          <TabPane tab="Đánh giá sản phẩm" key="4">
-            <div className="tab-content">
-              <Title level={3}>Đánh giá sản phẩm</Title>
-              {reviews.length > 0 ? (
-                <List
-                  dataSource={reviews}
-                  renderItem={(review) => (
-                    <div className="review-item">
-                      <div className="review-header">
-                        <Avatar>{review.userId?.name?.charAt(0) || "K"}</Avatar>
-                        <div className="review-author">
-                          <Text strong>{review.userId?.name || "Khách hàng ẩn danh"}</Text>
-                          <Text type="secondary" style={{ fontSize: 12 }}>
-                            {new Date(review.createdAt).toLocaleString("vi-VN", {
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </Text>
-                        </div>
-                      </div>
-                      <div className="review-content">
-                        <Rate disabled allowHalf value={review.rating} style={{ marginBottom: 8 }} />
-                        <Text>{review.comment || "Không có bình luận."}</Text>
-                        {review.images?.length > 0 && (
-                          <div className="review-images">
-                            {review.images.map((img, idx) => (
-                              <img
-                                key={idx}
-                                src={getImage(img)}
-                                alt={`review-img-${idx}`}
-                                style={{
-                                  width: 100,
-                                  height: 100,
-                                  objectFit: "cover",
-                                  marginRight: 8,
-                                  borderRadius: 4,
-                                }}
-                                onError={(e) => {
-                                  e.target.onerror = null;
-                                  e.target.src = ""; // Fallback to empty src on error
-                                }}
-                              />
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                />
-              ) : (
-                <Text>Chưa có đánh giá nào cho sản phẩm này.</Text>
-              )}
-            </div>
-          </TabPane>
+          
         </Tabs>
       </div>
+
+      <Modal
+        visible={isModalVisible}
+        footer={null}
+        onCancel={handleModalClose}
+        className="image-preview-modal"
+      >
+        <img src={previewImage} alt="Preview" className="preview-image" />
+      </Modal>
 
       {relatedProducts.length > 0 && (
         <div className="related-products-section">
