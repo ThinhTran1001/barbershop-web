@@ -88,10 +88,13 @@ export default function ServiceFeedbackList() {
                   <Text strong className="review-author">
                     {review.customerId?.name || "Khách hàng ẩn danh"}
                   </Text>
+                  <Text type="secondary" className="review-service-name">
+                    <b>Dịch vụ:</b> {review.serviceId?.name || "Không rõ"}
+                  </Text>
                   <div className="review-rating-row">
                     <Rate disabled allowHalf value={review.rating || 0} />
                     <Text className="review-date">
-                      {dayjs(review.createdAt).format("DD MMMM YYYY, HH:mm")}
+                      at: {dayjs(review.createdAt).format("DD MMMM YYYY, HH:mm")}
                     </Text>
                   </div>
                 </div>
