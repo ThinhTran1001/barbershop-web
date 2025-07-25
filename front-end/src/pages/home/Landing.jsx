@@ -9,13 +9,15 @@ import '../../css/landing/container.css'
 import ChatWidget from "../../components/chatbot/ChatWidget";
 import ShopItems from "../../components/landing/productlistd";
 import ServiceBooking from "../ServiceBooking/ServiceBooking";
+import HotDeals from "../../components/landing/HotDeals";
 
 export default function Landing() {
   return (
     <>
       
       <HeroSection />
-        <AboutSection />
+      <HotDeals />
+      <AboutSection />
 
         {/* <Services /> */}
         <div id="services">

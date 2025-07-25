@@ -7,6 +7,9 @@ import product2 from "../../assets/images/product2.jpg";
 import product3 from "../../assets/images/product3.jpg";
 import product4 from "../../assets/images/product4.jpg";
 import { getProducts } from "../../services/api";
+import dayjs from "dayjs";
+import duration from "dayjs/plugin/duration";
+dayjs.extend(duration);
 
 const imageMap = {
   "/assets/images/product1.jpg": product1,

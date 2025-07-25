@@ -85,7 +85,7 @@ const DiscountModal = ({
               >
                 {availableProducts.map((product) => (
                   <Option key={product._id} value={product._id}>
-                    {product.name} - ${product.price?.toFixed(2)}
+                    {product.name} - {product.price?.toLocaleString('vi-VN', { style: 'currency', currency: 'VND' })}
                   </Option>
                 ))}
               </Select>
