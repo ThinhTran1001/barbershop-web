@@ -69,7 +69,7 @@ const VoucherManagement = () => {
             setPagination(prev => ({ ...prev, totalVouchers: response.data.totalVouchers }));
             // setVouchers(response.data); // This is handled by filterVouchers
         } catch (error) {
-            message.error('Failed to load voucher list: ' + error.message);
+            showToast('danger', 'Failed to load voucher list: ' + error.message);
         }
     }; 
 
@@ -146,10 +146,10 @@ const VoucherManagement = () => {
         if (window.confirm('Are you sure you want to delete this voucher?')) {
             try {
               await deleteVoucher(voucherId);
-              message.success('Voucher deleted successfully');
+              showToast('success', 'Voucher deleted successfully');
               fetchInitialData();
             } catch (error) {
-              message.error('Failed to delete voucher: ' + error.message);
+              showToast('danger', 'Failed to delete voucher: ' + error.message);
             }
         }
     };
@@ -171,7 +171,8 @@ const VoucherManagement = () => {
                 usedCount: 0,
                 type: 'percent',
                 isActive: true,
-                maxDiscountAmount: 0
+                maxDiscountAmount: 0,
+                minOrderAmount: 0
             });
         }
         setIsModalVisible(true);
@@ -428,8 +429,15 @@ const VoucherManagement = () => {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                         <Form.Item
                             name="code"
-                            label="Code"
-                            rules={[{ required: true, message: 'Please enter the code of voucher!' }]}
+                            label={<span><span style={{ color: 'red' }}>*</span> Code</span>}
+                            rules={[
+                                { validator: (_, value) => {
+                                    if (!value || value.trim() === '') {
+                                        return Promise.reject('Code không được để trống hoặc chỉ chứa khoảng trắng!');
+                                    }
+                                    return Promise.resolve();
+                                }}
+                            ]}
                         >
                             <Input disabled={!!editingVoucher} placeholder="Enter voucher code" />
                         </Form.Item>
@@ -451,17 +459,41 @@ const VoucherManagement = () => {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                         <Form.Item
                             name="value"
-                            label="Value"
-                            rules={[{required : true, message: 'Please enter value' }]}
+                            label={<span><span style={{ color: 'red' }}>*</span> Value</span>}
+                            rules={[
+                                { validator: (_, value) => {
+                                    const type = form.getFieldValue('type');
+                                    if (!value || value.trim() === '') {
+                                        return Promise.reject('Vui lòng nhập số hợp lệ!');
+                                    }
+                                    if (isNaN(value) || Number(value) < 0) {
+                                        return Promise.reject('Vui lòng nhập số hợp lệ!');
+                                    }
+                                    if (type === 'percent' && Number(value) > 100) {
+                                        return Promise.reject('Phần trăm giảm giá không được vượt quá 100!');
+                                    }
+                                    return Promise.resolve();
+                                }}
+                            ]}
                         >
-                            <Input type='number' placeholder="Enter value" min={0} />
+                            <Input placeholder="Enter value" />
                         </Form.Item>
                         <Form.Item
                             name="usageLimit"
-                            label="Usage Limit"
-                            rules={[{ required: true, message: 'Please enter usage limit' }]}
+                            label={<span><span style={{ color: 'red' }}>*</span> Usage Limit</span>}
+                            rules={[
+                                { validator: (_, value) => {
+                                    if (!value || value.trim() === '') {
+                                        return Promise.reject('Vui lòng nhập số hợp lệ!');
+                                    }
+                                    if (isNaN(value) || Number(value) < 1) {
+                                        return Promise.reject('Vui lòng nhập số hợp lệ!');
+                                    }
+                                    return Promise.resolve();
+                                }}
+                            ]}
                         >
-                            <Input type='number' placeholder="Enter usage limit" min={1} />
+                            <Input placeholder="Enter usage limit" />
                         </Form.Item>
                     </div>
                     
@@ -471,23 +503,21 @@ const VoucherManagement = () => {
                             name="maxDiscountAmount"
                             label="Max Discount Amount (for percent type)"
                             rules={[
-                                {
-                                    validator(_, value) {
-                                        if (value === undefined || value === null || value === '') {
-                                            return Promise.resolve(); // Không required
-                                        }
-                                        if (typeof value === 'string' && value.trim() === '') {
-                                            return Promise.reject('Không được nhập toàn dấu cách');
-                                        }
-                                        if (isNaN(value) || Number(value) < 0) {
-                                            return Promise.reject('Must be >= 0');
-                                        }
-                                        return Promise.resolve();
+                                { validator: (_, value) => {
+                                    if (value === undefined || value === null || value === '') {
+                                        return Promise.resolve(); // Không required
                                     }
-                                }
+                                    if (typeof value === 'string' && value.trim() === '') {
+                                        return Promise.reject('Vui lòng nhập số hợp lệ!');
+                                    }
+                                    if (isNaN(value) || Number(value) < 0) {
+                                        return Promise.reject('Vui lòng nhập số hợp lệ!');
+                                    }
+                                    return Promise.resolve();
+                                }}
                             ]}
                         >
-                            <Input type="number" min={0} placeholder="Enter max discount amount (VND)" />
+                            <Input placeholder="Enter max discount amount (VND)" />
                         </Form.Item>
                     )}
                     
@@ -505,8 +535,25 @@ const VoucherManagement = () => {
                         <Form.Item
                             name="minOrderAmount"
                             label="Min Order Amount"
+                            rules={[
+                                { validator: (_, value) => {
+                                    // Nếu không nhập gì hoặc để trống thì cho phép (sẽ dùng default 0)
+                                    if (value === undefined || value === null || String(value).trim() === '') {
+                                        return Promise.resolve();
+                                    }
+                                    // Nếu nhập toàn dấu cách thì báo lỗi
+                                    if (typeof value === 'string' && value.trim() === '') {
+                                        return Promise.reject('Vui lòng nhập số hợp lệ!');
+                                    }
+                                    // Kiểm tra có phải số không và không âm
+                                    if (isNaN(value) || Number(value) < 0) {
+                                        return Promise.reject('Vui lòng nhập số hợp lệ!');
+                                    }
+                                    return Promise.resolve();
+                                }}
+                            ]}
                         >
-                            <Input type='number' placeholder="Enter min order amount" min={0} />
+                            <Input placeholder="Enter min order amount" />
                         </Form.Item>
                     </div>
                     
