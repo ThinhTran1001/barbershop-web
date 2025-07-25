@@ -20,4 +20,8 @@ router.delete('/:id', authenticate, orderController.deleteOrder);
 
 router.get('/code/:code', authenticate, orderController.getOrderByCode);
 
+router.post('/finalize-auth', orderController.finalizeOrderAuth);
+
+router.post('/finalize-guest', orderController.finalizeOrderGuest);
+
 module.exports = router;

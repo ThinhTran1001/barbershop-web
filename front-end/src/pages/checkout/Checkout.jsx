@@ -126,6 +126,19 @@ const Checkout = () => {
     }).format(price);
 
   const handleSubmit = async (values) => {
+
+    let userId = user?._id;
+
+    if (!userId) {
+      try {
+        const profileRes = await getProfile();
+        userId = profileRes.data?.data?._id || null;
+      } catch (e) {
+        console.warn("Không lấy được userId từ getProfile()", e);
+        userId = null;
+      }
+    }
+
     if (itemsToCheckout.length === 0) {
       notification.warning({
         message: "Giỏ hàng trống",
@@ -220,6 +233,13 @@ const Checkout = () => {
       const res = await createOrder(orderData);
 
       if (orderData.paymentMethod === 'bank' && res.data?.redirectUrl) {
+        // Lưu thông tin đơn hàng tạm vào localStorage
+        const draftToStore = {
+          ...res.data.orderDraft,
+          userId
+        };
+        localStorage.setItem("pendingOrder", JSON.stringify(draftToStore));
+
         window.location.href = res.data.redirectUrl; // chuyển sang trang PayOS
       } else {
         if (!buyNowItems?.length) clearCart();

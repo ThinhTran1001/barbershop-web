@@ -8,6 +8,6 @@ router.post('/unpaid/:orderId', paymentController.createUnpaidPayment);
 router.put('/status/:transactionId', paymentController.updatePaymentStatus);
 router.put('/order/:orderId', paymentController.updatePaymentByOrderId);
 
-router.put('/mark-paid/:orderId', authenticate, paymentController.markPaymentAsPaidByOrderId);
+router.put('/mark-paid/:orderId', paymentController.markPaymentAsPaidByOrderId);
 
 module.exports = router;
