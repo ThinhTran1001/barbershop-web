@@ -120,11 +120,7 @@ exports.checkBookingUpdatePermission = async (req, res, next) => {
           });
         }
         
-        if (status !== 'cancelled') {
-          return res.status(403).json({ 
-            message: 'Customers can only cancel bookings' 
-          });
-        }
+  
         
         if (booking.status !== 'pending') {
           return res.status(403).json({ 

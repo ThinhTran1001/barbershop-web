@@ -24,6 +24,7 @@ router.post('/bulk-confirm', authenticate, requireAdminForBookingConfirmation, b
 // Booking status management
 router.put('/:bookingId/status', authenticate, checkBookingUpdatePermission, bookingController.updateBookingStatus);
 router.put('/:bookingId/cancel', authenticate, bookingController.cancelBooking);
+router.put('/:bookingId', authenticate, checkBookingUpdatePermission, bookingController.updateBookingDetails);
 
 // Booking conflict checking
 router.post('/check-availability', authenticate, bookingController.checkAvailability);

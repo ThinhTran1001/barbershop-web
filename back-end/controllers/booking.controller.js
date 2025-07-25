@@ -4,6 +4,7 @@ const BarberSchedule = require('../models/barber-schedule.model');
 const BarberAbsence = require('../models/barber-absence.model');
 const CustomerServiceHistory = require('../models/customer-service-history.model');
 const NoShow = require('../models/no-show.model');
+const { validateBookingConfirmation, validateBookingStatusUpdate, getBulkConfirmationError } = require('../utils/bookingValidation');
 
 // Create a new booking with enhanced validation and conflict checking
 exports.createBooking = async (req, res) => {
@@ -380,10 +381,10 @@ exports.confirmBooking = async (req, res) => {
       return res.status(404).json({ message: 'Booking not found' });
     }
 
-    if (booking.status !== 'pending') {
-      return res.status(400).json({
-        message: `Cannot confirm booking with status: ${booking.status}. Only pending bookings can be confirmed.`
-      });
+    // Validate booking confirmation using utility function
+    const validation = validateBookingConfirmation(booking);
+    if (!validation.valid) {
+      return res.status(400).json({ message: validation.error });
     }
 
     // Update booking status and audit fields
@@ -439,11 +440,12 @@ exports.bulkConfirmBookings = async (req, res) => {
           continue;
         }
 
-        if (booking.status !== 'pending') {
+        const validation = validateBookingConfirmation(booking);
+        if (!validation.valid) {
           results.push({
             bookingId,
             status: 'error',
-            message: `Cannot confirm booking with status: ${booking.status}`
+            message: getBulkConfirmationError(booking.status)
           });
           continue;
         }
@@ -512,11 +514,10 @@ exports.updateBookingStatus = async (req, res) => {
       }
     };
 
-    const allowedTransitions = validTransitions[userRole]?.[booking.status] || [];
-    if (!allowedTransitions.includes(status)) {
-      return res.status(400).json({
-        message: `${userRole} cannot change status from ${booking.status} to ${status}`
-      });
+    // Validate status update using utility function
+    const validation = validateBookingStatusUpdate(booking, status, userRole);
+    if (!validation.valid) {
+      return res.status(400).json({ message: validation.error });
     }
 
     // Additional validation for barbers: date-based status restrictions
@@ -1167,5 +1168,188 @@ exports.createBookingFromBot = async (payload, userId) => {
   } catch (err) {
     console.error('Lỗi trong createBookingFromBot:', err.message);
     return { statusCode: 500, message: 'Đã xảy ra lỗi nội bộ khi tạo booking.' };
+  }
+};
+
+// Update booking details (edit booking)
+exports.updateBookingDetails = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { serviceId, barberId, bookingDate, note, durationMinutes } = req.body;
+    const userId = req.userId;
+    const userRole = req.role;
+
+    // Find the booking
+    const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    // Check if user can edit this booking
+    if (userRole === 'customer' && booking.customerId.toString() !== userId) {
+      return res.status(403).json({ message: 'You can only edit your own bookings' });
+    }
+
+    // Validate booking can be edited (only pending or confirmed)
+    if (!['pending', 'confirmed'].includes(booking.status)) {
+      return res.status(400).json({
+        message: `Cannot edit ${booking.status} bookings`
+      });
+    }
+
+    // Check if booking is in the past
+    const bookingTime = new Date(bookingDate || booking.bookingDate);
+    const now = new Date();
+
+    if (bookingTime < now) {
+      return res.status(400).json({
+        message: 'Cannot edit past bookings'
+      });
+    }
+
+    // Check if booking is within 24 hours (for customers)
+    if (userRole === 'customer') {
+      const hoursDifference = (bookingTime - now) / (1000 * 60 * 60);
+      if (hoursDifference < 24) {
+        return res.status(400).json({
+          message: 'Cannot edit bookings within 24 hours of appointment time'
+        });
+      }
+    }
+
+    // If changing time slot, validate availability
+    if (bookingDate && bookingDate !== booking.bookingDate.toISOString()) {
+      try {
+        const targetBarberId = barberId || booking.barberId;
+        const targetDuration = durationMinutes || booking.durationMinutes;
+        const requestedStart = new Date(bookingDate);
+        const requestedEnd = new Date(requestedStart.getTime() + targetDuration * 60000);
+        const dateStr = requestedStart.toISOString().split('T')[0];
+
+        // Check for barber conflicts (excluding current booking)
+        const barberBookings = await Booking.find({
+          barberId: targetBarberId,
+          _id: { $ne: bookingId }, // Exclude current booking
+          bookingDate: {
+            $gte: new Date(dateStr + 'T00:00:00.000Z'),
+            $lt: new Date(dateStr + 'T23:59:59.999Z')
+          },
+          status: { $in: ['pending', 'confirmed'] }
+        });
+
+        // Check for customer conflicts (excluding current booking)
+        const customerBookings = await Booking.find({
+          customerId: booking.customerId,
+          _id: { $ne: bookingId }, // Exclude current booking
+          bookingDate: {
+            $gte: new Date(dateStr + 'T00:00:00.000Z'),
+            $lt: new Date(dateStr + 'T23:59:59.999Z')
+          },
+          status: { $in: ['pending', 'confirmed'] }
+        });
+
+        // Check for time conflicts
+        const allConflictingBookings = [...barberBookings, ...customerBookings];
+        for (const conflictBooking of allConflictingBookings) {
+          const conflictStart = new Date(conflictBooking.bookingDate);
+          const conflictEnd = new Date(conflictStart.getTime() + (conflictBooking.durationMinutes || 30) * 60000);
+
+          if (
+            (requestedStart >= conflictStart && requestedStart < conflictEnd) ||
+            (requestedEnd > conflictStart && requestedEnd <= conflictEnd) ||
+            (requestedStart <= conflictStart && requestedEnd >= conflictEnd)
+          ) {
+            const isCustomerConflict = conflictBooking.customerId.toString() === booking.customerId.toString();
+            return res.status(409).json({
+              message: isCustomerConflict
+                ? 'You already have a booking at this time'
+                : 'Selected time slot is not available',
+              conflictType: isCustomerConflict ? 'CUSTOMER_CONFLICT' : 'BARBER_CONFLICT',
+              conflictDetails: {
+                conflictingTime: conflictBooking.bookingDate,
+                conflictingBarber: isCustomerConflict ? null : targetBarberId
+              }
+            });
+          }
+        }
+
+        // Check if barber is available (not absent)
+        const BarberAbsence = require('../models/barber-absence.model');
+        const isBarberAbsent = await BarberAbsence.isBarberAbsent(targetBarberId, requestedStart);
+        if (isBarberAbsent) {
+          return res.status(409).json({
+            message: 'Barber is not available on this date',
+            conflictType: 'BARBER_ABSENCE'
+          });
+        }
+
+      } catch (validationError) {
+        console.error('Time slot validation failed:', validationError);
+        // Continue with update but log the error
+      }
+    }
+
+    // Update booking fields
+    const updateFields = {};
+    if (serviceId) updateFields.serviceId = serviceId;
+    if (barberId) updateFields.barberId = barberId;
+    if (bookingDate) updateFields.bookingDate = new Date(bookingDate);
+    if (note !== undefined) updateFields.note = note;
+    if (durationMinutes) updateFields.durationMinutes = durationMinutes;
+
+    // Update the booking
+    const updatedBooking = await Booking.findByIdAndUpdate(
+      bookingId,
+      updateFields,
+      { new: true }
+    ).populate('serviceId', 'name price durationMinutes')
+     .populate({
+       path: 'barberId',
+       populate: { path: 'userId', select: 'name email' }
+     })
+     .populate('customerId', 'name email phone');
+
+    // If time slot changed, update barber schedule
+    if (bookingDate && bookingDate !== booking.bookingDate.toISOString()) {
+      const BarberSchedule = require('../models/barber-schedule.model');
+
+      try {
+        // Unmark old time slot
+        const oldDate = booking.bookingDate;
+        const oldDateStr = oldDate.toISOString().split('T')[0];
+
+        await BarberSchedule.unmarkSlotsAsBooked(
+          booking.barberId,
+          oldDateStr,
+          bookingId
+        );
+
+        // Mark new time slot
+        const newDate = new Date(bookingDate);
+        const newDateStr = newDate.toISOString().split('T')[0];
+        const newStartTime = newDate.toTimeString().substring(0, 5);
+
+        await BarberSchedule.markSlotsAsBooked(
+          barberId || booking.barberId,
+          newDateStr,
+          [newStartTime],
+          bookingId
+        );
+
+        console.log(`Updated schedule: unmarked old slot on ${oldDateStr}, marked ${newStartTime} on ${newDateStr}`);
+      } catch (scheduleError) {
+        console.error('Error updating barber schedule:', scheduleError);
+        // Don't fail the booking update if schedule update fails
+      }
+    }
+
+    res.json({
+      booking: updatedBooking,
+      message: 'Booking updated successfully'
+    });
+
+  } catch (err) {
+    console.error('Error in updateBookingDetails:', err);
+    res.status(500).json({ message: err.message });
   }
 };

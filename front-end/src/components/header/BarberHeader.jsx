@@ -8,7 +8,8 @@ import {
   StarOutlined,
   BarChartOutlined,
   LogoutOutlined,
-  SettingOutlined
+  SettingOutlined,
+  ExclamationCircleOutlined
 } from "@ant-design/icons";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -35,9 +36,8 @@ const BarberHeader = () => {
     if (path === '/barber' || path === '/barber/dashboard') return '/barber/dashboard';
     if (path.includes('/calendar')) return '/barber/calendar';
     if (path.includes('/bookings')) return '/barber/bookings';
-    if (path.includes('/customers')) return '/barber/customers';
-    if (path.includes('/feedback')) return '/barber/feedback';
-    if (path.includes('/performance')) return '/barber/performance';
+    if (path.includes('/absence')) return '/barber/absence';
+  
     return '/barber/dashboard';
   };
 
@@ -58,20 +58,10 @@ const BarberHeader = () => {
       label: 'Quản lý lịch hẹn',
     },
     {
-      key: '/barber/customers',
-      icon: <UserOutlined />,
-      label: 'Khách hàng',
-    },
-    {
-      key: '/barber/feedback',
-      icon: <StarOutlined />,
-      label: 'Đánh giá',
-    },
-    {
-      key: '/barber/performance',
-      icon: <BarChartOutlined />,
-      label: 'Báo cáo',
-    },
+      key: '/barber/absence',
+      icon: <ExclamationCircleOutlined />,
+      label: 'Quản lý nghỉ phép',
+    }
   ];
 
   const userMenuItems = [

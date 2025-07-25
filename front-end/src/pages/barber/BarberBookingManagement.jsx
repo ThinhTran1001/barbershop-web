@@ -11,7 +11,6 @@ import {
   Input,
   Modal,
   Descriptions,
-  message,
   Row,
   Col,
   Statistic,
@@ -20,6 +19,7 @@ import {
   Tooltip,
   Alert
 } from 'antd';
+import { toast } from 'react-toastify';
 import {
   SearchOutlined,
   CalendarOutlined,
@@ -35,6 +35,14 @@ import { updateBookingStatus } from '../../services/serviceApi.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { getUserIdFromToken } from '../../utils/tokenUtils.js';
 import dayjs from 'dayjs';
+import {
+  canUpdateBookingStatus,
+  getStatusText,
+  getStatusColor,
+  getDisabledActionMessage,
+  isBookingFinal,
+  BOOKING_STATUS
+} from '../../utils/bookingValidation';
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -163,43 +171,60 @@ const BarberBookingManagement = () => {
 
   const handleBookingStatusUpdate = async (bookingId, newStatus) => {
     setActionLoading(true);
+
+    // Show loading toast
+    const loadingToastId = toast.loading(
+      `${newStatus === 'completed' ? '✅ Marking booking as completed' : '❌ Marking booking as no-show'}...`,
+      {
+        position: "top-right",
+        autoClose: false,
+        hideProgressBar: false,
+        closeOnClick: false,
+        pauseOnHover: true,
+        draggable: true,
+      }
+    );
+
     try {
       await updateBookingStatus(bookingId, newStatus);
-      message.success(`Booking status updated to ${newStatus}`);
-      
+
+      // Update loading toast to success
+      toast.update(loadingToastId, {
+        render: newStatus === 'completed'
+          ? `🎉 Booking marked as completed!\n✅ Service has been successfully finished.\n💰 Payment can now be processed.`
+          : `📝 Booking marked as no-show.\n⚠️ Customer did not arrive for their appointment.\n📊 No-show record has been created.`,
+        type: "success",
+        isLoading: false,
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+
       // Reload bookings
       if (userId) {
         loadBookings(userId);
       }
-      
+
     } catch (error) {
-      message.error('Failed to update booking status');
+      // Update loading toast to error
+      toast.update(loadingToastId, {
+        render: `❌ Failed to update booking status\n${error.response?.data?.message || 'Please try again'}`,
+        type: "error",
+        isLoading: false,
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
     } finally {
       setActionLoading(false);
     }
   };
 
-  const getStatusColor = (status) => {
-    const colors = {
-      'pending': 'orange',
-      'confirmed': 'blue',
-      'completed': 'green',
-      'cancelled': 'red',
-      'no_show': 'volcano'
-    };
-    return colors[status] || 'default';
-  };
-
-  const getStatusText = (status) => {
-    const texts = {
-      'pending': 'Chờ xác nhận',
-      'confirmed': 'Đã xác nhận',
-      'completed': 'Hoàn thành',
-      'cancelled': 'Đã hủy',
-      'no_show': 'Không đến'
-    };
-    return texts[status] || status;
-  };
+  // Note: Using utility functions from bookingValidation.js for status helpers
 
   // Helper function to get available actions for a booking
   const getBookingActions = (booking) => {
@@ -312,82 +337,112 @@ const BarberBookingManagement = () => {
     {
       title: 'Thao tác',
       key: 'actions',
-      render: (_, record) => (
-        <Space>
-          <Button 
-            size="small" 
-            icon={<EyeOutlined />}
-            onClick={() => {
-              setSelectedBooking(record);
-              setDetailModalVisible(true);
-            }}
-          >
-            Chi tiết
-          </Button>
-          {/* Barbers can no longer confirm pending bookings - only admins can */}
-          {record.status === 'confirmed' && (() => {
-            const bookingDate = dayjs(record.bookingDate);
-            const today = dayjs();
-            const isToday = bookingDate.isSame(today, 'day');
-            const isPast = bookingDate.isBefore(today, 'day');
+      render: (_, record) => {
+        // Check if booking is in a final state
+        if (isBookingFinal(record)) {
+          return (
+            <Space>
+              <Button
+                size="small"
+                icon={<EyeOutlined />}
+                onClick={() => {
+                  setSelectedBooking(record);
+                  setDetailModalVisible(true);
+                }}
+              >
+                Chi tiết
+              </Button>
+              <span style={{ fontSize: '12px', color: '#999' }}>
+                {getDisabledActionMessage(record, 'update')}
+              </span>
+            </Space>
+          );
+        }
 
-            if (isToday) {
-              // Booking hôm nay - có thể hoàn thành hoặc không đến
-              return [
-                <Tooltip key="complete" title="Đánh dấu booking hôm nay là hoàn thành">
-                  <Button
-                    size="small"
-                    type="primary"
-                    icon={<CheckCircleOutlined />}
-                    onClick={() => handleBookingStatusUpdate(record._id, 'completed')}
-                    loading={actionLoading}
-                    style={{ marginRight: 8 }}
-                  >
-                    Hoàn thành
-                  </Button>
-                </Tooltip>,
-                <Tooltip key="no-show" title="Đánh dấu booking hôm nay là không đến">
-                  <Button
-                    size="small"
-                    type="default"
-                    danger
-                    icon={<CloseCircleOutlined />}
-                    onClick={() => handleBookingStatusUpdate(record._id, 'no_show')}
-                    loading={actionLoading}
-                  >
-                    Không đến
-                  </Button>
-                </Tooltip>
-              ];
-            } else if (isPast) {
-              // Booking ngày trước - chỉ có thể đánh dấu không đến
-              return (
-                <Tooltip title="Đánh dấu booking quá hạn là không đến">
-                  <Button
-                    size="small"
-                    type="default"
-                    danger
-                    icon={<CloseCircleOutlined />}
-                    onClick={() => handleBookingStatusUpdate(record._id, 'no_show')}
-                    loading={actionLoading}
-                  >
-                    Không đến
-                  </Button>
-                </Tooltip>
-              );
-            } else {
-              // Booking tương lai - không có action
-              return (
-                <Tooltip title="Chờ đến ngày để xử lý booking">
-                  <Button size="small" disabled>
-                    Chờ xử lý
-                  </Button>
-                </Tooltip>
-              );
-            }
-          })()}
-        </Space>
-      )
+        return (
+          <Space>
+            <Button
+              size="small"
+              icon={<EyeOutlined />}
+              onClick={() => {
+                setSelectedBooking(record);
+                setDetailModalVisible(true);
+              }}
+            >
+              Chi tiết
+            </Button>
+            {/* Enhanced validation for status updates */}
+            {record.status === 'confirmed' && (() => {
+              const bookingDate = dayjs(record.bookingDate);
+              const today = dayjs();
+              const isToday = bookingDate.isSame(today, 'day');
+              const isPast = bookingDate.isBefore(today, 'day');
+
+              // Validate each potential status update
+              const completeValidation = canUpdateBookingStatus(record, BOOKING_STATUS.COMPLETED, 'barber');
+              const noShowValidation = canUpdateBookingStatus(record, BOOKING_STATUS.NO_SHOW, 'barber');
+
+              if (isToday) {
+                // Booking hôm nay - có thể hoàn thành hoặc không đến
+                return [
+                  <Tooltip key="complete" title={completeValidation.canUpdate ? "Đánh dấu booking hôm nay là hoàn thành" : completeValidation.reason}>
+                    <Button
+                      size="small"
+                      type="primary"
+                      icon={<CheckCircleOutlined />}
+                      onClick={() => handleBookingStatusUpdate(record._id, 'completed')}
+                      loading={actionLoading}
+                      style={{ marginRight: 8 }}
+                      disabled={!completeValidation.canUpdate}
+                    >
+                      Hoàn thành
+                    </Button>
+                  </Tooltip>,
+                  <Tooltip key="no-show" title={noShowValidation.canUpdate ? "Đánh dấu booking hôm nay là không đến" : noShowValidation.reason}>
+                    <Button
+                      size="small"
+                      type="default"
+                      danger
+                      icon={<CloseCircleOutlined />}
+                      onClick={() => handleBookingStatusUpdate(record._id, 'no_show')}
+                      loading={actionLoading}
+                      disabled={!noShowValidation.canUpdate}
+                    >
+                      Không đến
+                    </Button>
+                  </Tooltip>
+                ];
+              } else if (isPast) {
+                // Booking ngày trước - chỉ có thể đánh dấu không đến
+                return (
+                  <Tooltip title={noShowValidation.canUpdate ? "Đánh dấu booking quá hạn là không đến" : noShowValidation.reason}>
+                    <Button
+                      size="small"
+                      type="default"
+                      danger
+                      icon={<CloseCircleOutlined />}
+                      onClick={() => handleBookingStatusUpdate(record._id, 'no_show')}
+                      loading={actionLoading}
+                      disabled={!noShowValidation.canUpdate}
+                    >
+                      Không đến
+                    </Button>
+                  </Tooltip>
+                );
+              } else {
+                // Booking tương lai - không có action
+                return (
+                  <Tooltip title="Chờ đến ngày để xử lý booking">
+                    <Button size="small" disabled>
+                      Chờ xử lý
+                    </Button>
+                  </Tooltip>
+                );
+              }
+            })()}
+          </Space>
+        );
+      }
     }
   ];
 
@@ -600,9 +655,17 @@ const BarberBookingManagement = () => {
               {dayjs(selectedBooking.bookingDate).format('dddd, DD/MM/YYYY HH:mm')}
             </Descriptions.Item>
             <Descriptions.Item label="Trạng thái">
-              <Tag color={getStatusColor(selectedBooking.status)}>
-                {getStatusText(selectedBooking.status)}
-              </Tag>
+              <div>
+                <Tag color={getStatusColor(selectedBooking.status)}>
+                  {getStatusText(selectedBooking.status)}
+                </Tag>
+                {isBookingFinal(selectedBooking) && (
+                  <div style={{ marginTop: 8, fontSize: '12px', color: '#999' }}>
+                    <InfoCircleOutlined style={{ marginRight: 4 }} />
+                    {getDisabledActionMessage(selectedBooking, 'update')}
+                  </div>
+                )}
+              </div>
             </Descriptions.Item>
             {selectedBooking.note && (
               <Descriptions.Item label="Ghi chú">
