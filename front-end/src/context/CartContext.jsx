@@ -85,6 +85,25 @@ export const CartProvider = ({ children }) => {
 
   // Cart actions
   const addToCart = (product, quantity = 1) => {
+    // Kiểm tra stock limit trước khi thêm
+    const existingItem = cart.items.find(item => item.id === (product.id || product._id));
+    const currentQuantity = existingItem ? existingItem.quantity : 0;
+    
+    // Nếu đã đạt stock limit, không thêm nữa
+    if (currentQuantity >= product.stock) {
+      console.log('❌ Cart quantity already at max, preventing addition');
+      return false;
+    }
+    
+    // Tính số lượng thực tế có thể thêm
+    const actualQuantityToAdd = Math.min(quantity, product.stock - currentQuantity);
+    
+    // Nếu không thể thêm gì cả
+    if (actualQuantityToAdd <= 0) {
+      console.log('❌ Cannot add any more items, stock limit reached');
+      return false;
+    }
+    
     const cartItem = {
       id: product.id || product._id,
       name: product.name,
@@ -92,9 +111,10 @@ export const CartProvider = ({ children }) => {
       discount: product.discount || 0, // Thêm discount vào cart
       image: product.image,
       stock: product.stock,
-      quantity: quantity
+      quantity: actualQuantityToAdd
     };
     dispatch({ type: ADD_TO_CART, payload: cartItem });
+    return true; // Trả về true khi thêm thành công
   };
 
   const removeFromCart = (productId) => {
