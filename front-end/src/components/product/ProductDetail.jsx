@@ -27,6 +27,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
 import { useUserCart } from "../../context/UserCartContext";
 import { getFeedbacksByProduct } from "../../services/api";
+import ToastService from "../../services/toastService";
 
 import product1 from "../../assets/images/product1.jpg";
 import product2 from "../../assets/images/product2.jpg";
@@ -43,12 +44,165 @@ const imageMap = {
 const { TabPane } = Tabs;
 const { Text, Title } = Typography;
 
+// Custom Bootstrap Toast Component
+const CustomToast = ({ show, message, onClose }) => {
+  if (!show) return null;
+
+  return (
+    <div 
+      className="custom-toast-overlay"
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 9999,
+      }}
+      onClick={onClose}
+    >
+      <div 
+        className="custom-toast"
+        style={{
+          backgroundColor: 'white',
+          borderRadius: '8px',
+          padding: '20px',
+          maxWidth: '400px',
+          width: '90%',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+          textAlign: 'center',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Success Icon */}
+        <div style={{ marginBottom: '15px' }}>
+          <div 
+            style={{
+              width: '60px',
+              height: '60px',
+              borderRadius: '50%',
+              backgroundColor: '#28a745',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto',
+            }}
+          >
+            <svg 
+              width="30" 
+              height="30" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="white" 
+              strokeWidth="3"
+            >
+              <polyline points="20,6 9,17 4,12"></polyline>
+            </svg>
+          </div>
+        </div>
+        
+        {/* Message */}
+        <h4 style={{ 
+          margin: '0 0 10px 0', 
+          color: '#333',
+          fontSize: '18px',
+          fontWeight: '600'
+        }}>
+          {message}
+        </h4>
+      </div>
+    </div>
+  );
+};
+
+// Custom Warning Toast Component for limit reached
+const CustomWarningToast = ({ show, message, onClose }) => {
+  console.log('🎭 CustomWarningToast render - show:', show, 'message:', message);
+  if (!show) return null;
+
+  return (
+    <div 
+      className="custom-toast-overlay"
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 9999,
+      }}
+      onClick={onClose}
+    >
+      <div 
+        className="custom-toast"
+        style={{
+          backgroundColor: 'white',
+          borderRadius: '8px',
+          padding: '20px',
+          maxWidth: '400px',
+          width: '90%',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+          textAlign: 'center',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Warning Icon */}
+        <div style={{ marginBottom: '15px' }}>
+          <div 
+            style={{
+              width: '60px',
+              height: '60px',
+              borderRadius: '50%',
+              backgroundColor: '#faad14',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto',
+            }}
+          >
+            <svg 
+              width="30" 
+              height="30" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="white" 
+              strokeWidth="3"
+            >
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+              <line x1="12" y1="9" x2="12" y2="13"></line>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+          </div>
+        </div>
+        
+        {/* Message */}
+        <h4 style={{ 
+          margin: '0 0 10px 0', 
+          color: '#333',
+          fontSize: '18px',
+          fontWeight: '600'
+        }}>
+          {message}
+        </h4>
+      </div>
+    </div>
+  );
+};
+
 const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { addToCart: addToGuestCart } = useCart();
-  const { addToCart: addToUserCart } = useUserCart();
+  const { addToCart: addToGuestCart, cart: guestCart } = useCart();
+  const { addToCart: addToUserCart, cart: userCart } = useUserCart();
   const [product, setProduct] = useState(null);
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [reviews, setReviews] = useState([]);
@@ -61,16 +215,113 @@ const ProductDetail = () => {
   const [previewImage, setPreviewImage] = useState("");
   const [isModalVisible, setIsModalVisible] = useState(false);
 
+  // Custom toast state
+  const [customToast, setCustomToast] = useState({
+    show: false,
+    message: ''
+  });
+
+  // Custom warning toast state
+  const [warningToast, setWarningToast] = useState({
+    show: false,
+    message: ''
+  });
+
+  // Toast notification
+  const [toast, setToast] = useState({ show: false, message: '', variant: 'success' });
+  const showToast = (variant, message) => {
+    setToast({ show: true, message, variant });
+    setTimeout(() => setToast(t => ({ ...t, show: false })), 3000);
+  };
+
+  // Show custom toast
+  const showCustomToast = (message) => {
+    setCustomToast({
+      show: true,
+      message
+    });
+    
+    // Auto hide after 3 seconds
+    setTimeout(() => {
+      hideCustomToast();
+    }, 3000);
+  };
+
+  // Hide custom toast
+  const hideCustomToast = () => {
+    setCustomToast(prev => ({ ...prev, show: false }));
+  };
+
+  // Show custom warning toast
+  const showWarningToast = (message) => {
+    console.log('🚨 Showing warning toast with message:', message);
+    console.log('🚨 Warning toast state before:', warningToast);
+    setWarningToast({
+      show: true,
+      message
+    });
+    console.log('🚨 Warning toast state after setState');
+    
+    // Auto hide after 4 seconds
+    setTimeout(() => {
+      console.log('🚨 Auto hiding warning toast');
+      hideWarningToast();
+    }, 4000);
+  };
+
+  // Hide custom warning toast
+  const hideWarningToast = () => {
+    setWarningToast(prev => ({ ...prev, show: false }));
+  };
+
   const addToCart = async (product, quantity) => {
     try {
+      console.log('=== ADD TO CART WRAPPER DEBUG ===');
+      console.log('User logged in:', !!user);
+      console.log('Product:', product.name);
+      console.log('Quantity to add:', quantity);
+      
       if (user) {
-        await addToUserCart(product, quantity);
+        const result = await addToUserCart(product, quantity);
+        console.log('UserCart result:', result);
+        return result;
       } else {
-        addToGuestCart(product, quantity);
+        const result = addToGuestCart(product, quantity);
+        console.log('GuestCart result:', result);
+        return result;
       }
-      return true;
     } catch (err) {
+      console.error('Error in addToCart wrapper:', err);
       return false;
+    }
+  };
+
+  // Kiểm tra số lượng sản phẩm đã có trong giỏ hàng
+  const getCurrentCartQuantity = () => {
+    if (!product?.id) return 0;
+    
+    try {
+      let totalQuantity = 0;
+      
+      if (user) {
+        // Sử dụng cart state từ UserCartContext cho user đã đăng nhập
+        const userItem = userCart?.items?.find(item => item.productId === product.id || item.id === product.id);
+        totalQuantity = userItem ? parseInt(userItem.quantity) : 0;
+      } else {
+        // Sử dụng cart state từ CartContext cho guest user
+        const guestItem = guestCart?.items?.find(item => item.id === product.id);
+        totalQuantity = guestItem ? parseInt(guestItem.quantity) : 0;
+      }
+      
+      console.log('=== CART QUANTITY DEBUG ===');
+      console.log('Product ID:', product.id);
+      console.log('Current cart quantity:', totalQuantity);
+      console.log('User logged in:', !!user);
+      
+      return totalQuantity;
+    } catch (error) {
+      console.error('Error getting cart quantity:', error);
+      return 0;
     }
   };
 
@@ -136,43 +387,155 @@ const ProductDetail = () => {
 
   const handleAddToCart = async () => {
     if (product) {
-      const success = await addToCart(product, quantity);
-      if (success) {
-        notification.success({
-          message: "Đã thêm vào giỏ hàng",
-          description: `Đã thêm ${quantity} x ${product.name}`,
-          icon: <CheckCircleFilled style={{ color: "#52c41a" }} />,
-          placement: "topRight",
-        });
-      } else {
-        notification.error({
-          message: "Thêm vào giỏ hàng thất bại",
-          description: "Vui lòng thử lại hoặc kiểm tra đăng nhập.",
-          placement: "topRight",
-        });
+      // Kiểm tra quantity hợp lệ
+      if (!quantity || quantity < 1 || isNaN(quantity) || 
+          (typeof quantity === 'string' && quantity.trim() === '')) {
+        console.log('❌ Invalid quantity:', quantity);
+        showWarningToast("Vui lòng nhập số lượng từ 1 trở lên.");
+        return;
       }
+      
+      // Lấy số lượng hiện tại trong giỏ hàng
+      const currentCartQuantity = getCurrentCartQuantity();
+      console.log('=== ADD TO CART DEBUG ===');
+      console.log('Product ID:', product.id);
+      console.log('Product Stock:', product.stock);
+      console.log('Current Cart Quantity:', currentCartQuantity);
+      console.log('Quantity to add:', quantity);
+      console.log('User logged in:', !!user);
+      
+      // Nếu đã đạt stock trong giỏ hàng, không thêm nữa
+      console.log('🔍 Checking if cart quantity >= product stock');
+      console.log('🔍 Current cart quantity:', currentCartQuantity);
+      console.log('🔍 Product stock:', product.stock);
+      console.log('🔍 Comparison result:', currentCartQuantity >= product.stock);
+      
+      if (currentCartQuantity >= product.stock) {
+        console.log('❌ Cart quantity already at max, preventing addition');
+        console.log('Current cart quantity:', currentCartQuantity, 'Product stock:', product.stock);
+        console.log('Showing cart limit reached toast');
+        const message = `${product.name} đã đạt số lượng tối đa trong giỏ hàng. Đã có ${currentCartQuantity} sản phẩm trong giỏ hàng (tối đa ${product.stock}).`;
+        console.log('📝 Warning message:', message);
+        showWarningToast(message);
+        return;
+      }
+
+      // Tính số lượng thực tế có thể thêm
+      const actualQuantityToAdd = Math.min(quantity, product.stock - currentCartQuantity);
+      console.log('✅ Actual quantity to add:', actualQuantityToAdd);
+      
+      // Nếu không thể thêm gì cả (đã đạt max)
+      if (actualQuantityToAdd <= 0) {
+        console.log('❌ Cannot add any more items, showing cart limit toast');
+        const message = `${product.name} đã đạt số lượng tối đa trong giỏ hàng. Đã có ${currentCartQuantity} sản phẩm trong giỏ hàng (tối đa ${product.stock}).`;
+        showWarningToast(message);
+        return;
+      }
+      
+      console.log('=== CALLING ADD TO CART ===');
+      const success = await addToCart(product, actualQuantityToAdd);
+      console.log('=== ADD TO CART RESULT ===');
+      console.log('Success:', success);
+      
+             if (success) {
+         // Chỉ hiển thị success toast nếu thực sự thêm được sản phẩm
+                   if (actualQuantityToAdd > 0) {
+            // Check if the added quantity is less than the requested quantity
+            console.log('🔍 DEBUG: actualQuantityToAdd =', actualQuantityToAdd, 'quantity =', quantity);
+            console.log('🔍 DEBUG: actualQuantityToAdd < quantity =', actualQuantityToAdd < quantity);
+            console.log('🔍 DEBUG: Types - actualQuantityToAdd:', typeof actualQuantityToAdd, 'quantity:', typeof quantity);
+            
+            if (actualQuantityToAdd < quantity) {
+              console.log('⚠️ Showing warning toast: quantity not enough');
+              showWarningToast("Số lượng sản phẩm còn lại không đủ");
+                         } else {
+               // If actualQuantityToAdd === quantity, it means the full requested quantity was added
+               console.log('✅ Showing custom success toast');
+               showCustomToast("Sản phẩm đã được thêm vào giỏ hàng");
+             }
+          } else {
+           // Nếu không thêm được gì (đã đạt max), hiển thị toast giới hạn
+           console.log('❌ Cannot add any more items, showing cart limit toast');
+           const message = `${product.name} đã đạt số lượng tối đa trong giỏ hàng. Đã có ${currentCartQuantity} sản phẩm trong giỏ hàng (tối đa ${product.stock}).`;
+           showWarningToast(message);
+         }
+               } else {
+         console.log('❌ Showing error toast');
+         showWarningToast("Thêm vào giỏ hàng thất bại. Vui lòng thử lại hoặc kiểm tra đăng nhập.");
+       }
     }
   };
 
   const handleBuyNow = async () => {
-    const success = await addToCart(product, quantity);
-    if (success) {
-      navigate(user ? "/cart" : "/cart-guest");
-    } else {
-      notification.error({
-        message: "Mua ngay thất bại",
-        description: "Vui lòng thử lại hoặc kiểm tra đăng nhập.",
-        placement: "topRight",
-      });
+    // Kiểm tra quantity hợp lệ
+    if (!quantity || quantity < 1 || isNaN(quantity) || 
+        (typeof quantity === 'string' && quantity.trim() === '')) {
+      console.log('❌ Invalid quantity in buy now:', quantity);
+      showWarningToast("Vui lòng nhập số lượng từ 1 trở lên.");
+      return;
     }
+    
+    // Lấy số lượng hiện tại trong giỏ hàng
+    const currentCartQuantity = getCurrentCartQuantity();
+    console.log('=== BUY NOW DEBUG ===');
+    console.log('Product ID:', product.id);
+    console.log('Product Stock:', product.stock);
+    console.log('Current Cart Quantity:', currentCartQuantity);
+    console.log('Quantity to add:', quantity);
+    console.log('User logged in:', !!user);
+    
+    // Nếu đã đạt stock trong giỏ hàng, không thêm nữa
+    if (currentCartQuantity >= product.stock) {
+      console.log('❌ Cart quantity already at max, preventing buy now');
+      const message = `${product.name} đã đạt số lượng tối đa trong giỏ hàng. Đã có ${currentCartQuantity} sản phẩm trong giỏ hàng (tối đa ${product.stock}).`;
+      showWarningToast(message);
+      return;
+    }
+
+    // Tính số lượng thực tế có thể thêm
+    const actualQuantityToAdd = Math.min(quantity, product.stock - currentCartQuantity);
+    console.log('✅ Actual quantity to add:', actualQuantityToAdd);
+    
+    // Nếu không thể thêm gì cả (đã đạt max)
+    if (actualQuantityToAdd <= 0) {
+      const message = `${product.name} đã đạt số lượng tối đa trong giỏ hàng. Đã có ${currentCartQuantity} sản phẩm trong giỏ hàng (tối đa ${product.stock}).`;
+      showWarningToast(message);
+      return;
+    }
+    
+         const success = await addToCart(product, actualQuantityToAdd);
+     if (success) {
+       // Chỉ chuyển hướng nếu thực sự thêm được sản phẩm vào giỏ hàng
+       if (actualQuantityToAdd > 0) {
+         // Hiển thị thông báo trước khi chuyển hướng
+         console.log('🔍 DEBUG (Buy Now): actualQuantityToAdd =', actualQuantityToAdd, 'quantity =', quantity);
+         console.log('🔍 DEBUG (Buy Now): actualQuantityToAdd < quantity =', actualQuantityToAdd < quantity);
+         console.log('🔍 DEBUG (Buy Now): Types - actualQuantityToAdd:', typeof actualQuantityToAdd, 'quantity:', typeof quantity);
+         
+         if (actualQuantityToAdd < quantity) {
+           console.log('⚠️ Showing warning toast: quantity not enough (Buy Now)');
+           showWarningToast("Số lượng sản phẩm còn lại không đủ");
+           // Do not navigate if the requested quantity was not fully added
+                   } else {
+            showCustomToast("Sản phẩm đã được thêm vào giỏ hàng");
+
+            // Delay navigation to allow user to see the toast
+            setTimeout(() => {
+              navigate(user ? "/cart" : "/cart-guest");
+            }, 1000);
+          }
+       } else {
+         const message = `${product.name} đã đạt số lượng tối đa trong giỏ hàng. Đã có ${currentCartQuantity} sản phẩm trong giỏ hàng (tối đa ${product.stock}).`;
+         showWarningToast(message);
+       }
+     } else {
+       showWarningToast("Mua ngay thất bại. Vui lòng thử lại hoặc kiểm tra đăng nhập.");
+     }
   };
 
   const toggleFavorite = () => {
     setIsFavorite((prev) => !prev);
-    notification.info({
-      message: isFavorite ? "Đã xóa khỏi yêu thích" : "Đã thêm vào yêu thích",
-      placement: "topRight",
-    });
+    showCustomToast(isFavorite ? "Đã xóa khỏi yêu thích" : "Đã thêm vào yêu thích");
   };
 
   const showImagePreview = (image) => {
@@ -184,6 +547,9 @@ const ProductDetail = () => {
     setIsModalVisible(false);
     setPreviewImage("");
   };
+
+  // Debug log for warning toast state
+  console.log('🔍 Current warningToast state:', warningToast);
 
   if (loading) return <Skeleton active paragraph={{ rows: 10 }} />;
 
@@ -296,10 +662,45 @@ const ProductDetail = () => {
               <span className="quantity-label">Số lượng:</span>
               <InputNumber
                 min={1}
-                max={product.stock}
+                max={product ? Math.max(1, product.stock - getCurrentCartQuantity()) : 1}
                 value={quantity}
-                onChange={(val) => setQuantity(val)}
+                onChange={(val) => {
+                  // Đảm bảo giá trị là số hợp lệ
+                  if (val === null || val === undefined || isNaN(val) || 
+                      (typeof val === 'string' && val.trim() === '')) {
+                    setQuantity(1);
+                  } else if (val < 1) {
+                    setQuantity(1);
+                  } else {
+                    // Tính số lượng tối đa có thể thêm
+                    const currentCartQuantity = getCurrentCartQuantity();
+                    const maxCanAdd = product.stock - currentCartQuantity;
+                    if (maxCanAdd <= 0) {
+                      setQuantity(1); // Nếu đã đạt max, set về 1
+                    } else if (val > maxCanAdd) {
+                      setQuantity(maxCanAdd);
+                    } else {
+                      setQuantity(val);
+                    }
+                  }
+                }}
+                onKeyPress={(e) => {
+                  // Chỉ cho phép số và một số ký tự đặc biệt
+                  const charCode = e.which ? e.which : e.keyCode;
+                  if (charCode > 31 && (charCode < 48 || charCode > 57)) {
+                    e.preventDefault();
+                  }
+                }}
+                disabled={getCurrentCartQuantity() >= product.stock}
               />
+              {getCurrentCartQuantity() > 0 && (
+                <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                  Đã có {getCurrentCartQuantity()} sản phẩm trong giỏ hàng
+                  {getCurrentCartQuantity() >= product.stock && (
+                    <span style={{ color: '#ff4d4f', fontWeight: 'bold' }}> (Đã đạt tối đa)</span>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="action-buttons">
@@ -308,31 +709,41 @@ const ProductDetail = () => {
                 icon={<ShoppingCartOutlined />}
                 className="add-cart-btn"
                 onClick={handleAddToCart}
+                disabled={getCurrentCartQuantity() >= product.stock}
               >
-                Thêm vào giỏ hàng
+                {getCurrentCartQuantity() >= product.stock ? 'Đã đạt giới hạn' : 'Thêm vào giỏ hàng'}
               </Button>
               <Button
                 type="default"
                 className="buy-now-btn"
                 onClick={handleBuyNow}
+                disabled={getCurrentCartQuantity() >= product.stock}
               >
-                Mua ngay
+                {getCurrentCartQuantity() >= product.stock ? 'Đã đạt giới hạn' : 'Mua ngay'}
               </Button>
             </div>
 
-            <div className="secondary-actions">
-              <Button
-                type="text"
-                icon={isFavorite ? <HeartFilled /> : <HeartOutlined />}
-                className={`favorite ${isFavorite ? "active" : ""}`}
-                onClick={toggleFavorite}
-              >
-                Yêu thích
-              </Button>
-              <Button type="text" icon={<ShareAltOutlined />}>
-                Chia sẻ
-              </Button>
-            </div>
+                         <div className="secondary-actions">
+               <Button
+                 type="text"
+                 icon={isFavorite ? <HeartFilled /> : <HeartOutlined />}
+                 className={`favorite ${isFavorite ? "active" : ""}`}
+                 onClick={toggleFavorite}
+               >
+                 Yêu thích
+               </Button>
+               <Button type="text" icon={<ShareAltOutlined />}>
+                 Chia sẻ
+               </Button>
+                               {/* Test button for warning toast */}
+                <Button 
+                  type="text" 
+                  onClick={() => showWarningToast("Số lượng sản phẩm trong giỏ hàng đã đạt đến tối đa")}
+                  style={{ color: '#faad14' }}
+                >
+                  {/* Số lượng sản phẩm trong giỏ hàng đã đạt đến tối đa! */}
+                </Button>
+             </div>
           </div>
 
           {product.details?.benefits?.length > 0 && (
@@ -503,6 +914,20 @@ const ProductDetail = () => {
           </div>
         </div>
       )}
+
+                           {/* Custom Toast Component */}
+        <CustomToast
+          show={customToast.show}
+          message={customToast.message}
+          onClose={hideCustomToast}
+        />
+        
+        {/* Custom Warning Toast Component */}
+        <CustomWarningToast
+          show={warningToast.show}
+          message={warningToast.message}
+          onClose={hideWarningToast}
+        />
     </div>
   );
 };

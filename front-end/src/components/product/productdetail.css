@@ -111,3 +111,77 @@
   max-height: 80vh;
   object-fit: contain;
 }
+
+/* Custom Toast Styles */
+.custom-toast-overlay {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.custom-toast {
+  animation: slideIn 0.3s ease-out;
+  transition: all 0.3s ease;
+}
+
+.custom-toast:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2) !important;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.custom-toast button {
+  transition: all 0.2s ease;
+}
+
+.custom-toast button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+}
+
+.custom-toast button:active {
+  transform: translateY(0);
+}
+
+/* Product image in toast */
+.custom-toast img {
+  transition: transform 0.2s ease;
+}
+
+.custom-toast img:hover {
+  transform: scale(1.05);
+}
+
+/* Responsive design for mobile */
+@media (max-width: 768px) {
+  .custom-toast {
+    max-width: 90% !important;
+    margin: 0 10px;
+  }
+  
+  .custom-toast h4 {
+    font-size: 16px !important;
+  }
+  
+  .custom-toast button {
+    padding: 10px 24px !important;
+    font-size: 16px !important;
+  }
+}
