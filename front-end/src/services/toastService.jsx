@@ -1,13 +1,17 @@
 import React from 'react';
 import { notification } from 'antd';
-import { 
-  CheckCircleOutlined, 
-  ExclamationCircleOutlined, 
-  CloseCircleOutlined, 
+import {
+  CheckCircleOutlined,
+  ExclamationCircleOutlined,
+  CloseCircleOutlined,
   InfoCircleOutlined,
   CalendarOutlined,
   UserOutlined,
-  ClockCircleOutlined
+  ClockCircleOutlined,
+  LoginOutlined,
+  UserAddOutlined,
+  MailOutlined,
+  LockOutlined
 } from '@ant-design/icons';
 
 /**

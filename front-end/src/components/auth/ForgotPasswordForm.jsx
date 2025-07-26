@@ -1,5 +1,6 @@
-import {Form, Input, Button, notification} from "antd";
+import {Form, Input, Button} from "antd";
 import { forgotPassword } from "../../services/api";
+import { toast } from "react-toastify";
 
 export default function ForgotPasswordForm() {
   const [form] = Form.useForm();
@@ -7,17 +8,23 @@ export default function ForgotPasswordForm() {
   const onFinish = async (values) => {
     try {
       await forgotPassword({ email: values.email });
-      notification.success({
-        message: "Thành công",
-        description: "Reset link has been sent to your email",
-        placement: "topRight",
+      toast.success('Password reset link sent! 📧 Please check your email inbox.', {
+        position: "top-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
       });
       form.resetFields();
     } catch (err) {
-      notification.success({
-        message: "Thành công",
-        description: err.response?.data?.message || "Failed to send reset link",
-        placement: "topRight",
+      toast.error(err.response?.data?.message || 'Failed to send reset link. Please try again.', {
+        position: "top-right",
+        autoClose: 4000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
       });
     }
   };

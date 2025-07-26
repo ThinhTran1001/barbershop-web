@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Form, Input, Button, message } from 'antd';
+import { Form, Input, Button } from 'antd';
 import {register} from "../../services/api.js";
+import { toast } from "react-toastify";
 
 export default function RegisterForm({ onOtpStage }) {
   const [form] = Form.useForm();
@@ -10,10 +11,24 @@ export default function RegisterForm({ onOtpStage }) {
     try {
       setLoading(true);
       await register(values);
-      message.success('Đăng ký thành công! Vui lòng kiểm tra email để nhận mã OTP.');
+      toast.success('Registration successful! 🎉 Please check your email for the OTP code.', {
+        position: "top-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
       onOtpStage(values.email);
     } catch (err) {
-      message.error(err.response?.data?.message || 'Đăng ký thất bại');
+      toast.error(err.response?.data?.message || 'Registration failed. Please try again.', {
+        position: "top-right",
+        autoClose: 4000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
     } finally {
       setLoading(false);
     }
