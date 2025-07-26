@@ -26,6 +26,15 @@ router.put('/:bookingId/status', authenticate, checkBookingUpdatePermission, boo
 router.put('/:bookingId/cancel', authenticate, bookingController.cancelBooking);
 router.put('/:bookingId', authenticate, checkBookingUpdatePermission, bookingController.updateBookingDetails);
 
+// Admin booking rejection
+router.put('/:bookingId/reject', authenticate, authorizeRoles('admin'), bookingController.rejectBooking);
+
+// Barber no-show management
+router.put('/:bookingId/no-show', authenticate, bookingController.markNoShow);
+
+// Time-based completion checking
+router.get('/:bookingId/completion-eligibility', authenticate, bookingController.checkCompletionEligibility);
+
 // Booking conflict checking
 router.post('/check-availability', authenticate, bookingController.checkAvailability);
 router.get('/conflicts', authenticate, bookingController.getBookingConflicts);

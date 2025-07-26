@@ -147,6 +147,11 @@ export const getBookingChartStats = (params) => api.get('/bookings/chart-stats',
 export const getBookingDetail = (id) => api.get(`/bookings/${id}`);
 export const getBookingStats = () => api.get('/bookings/stats');
 
+// Booking Status Management
+export const rejectBooking = (bookingId, data) => api.put(`/bookings/${bookingId}/reject`, data);
+export const markBookingNoShow = (bookingId, data) => api.put(`/bookings/${bookingId}/no-show`, data);
+export const updateBookingStatus = (bookingId, status) => api.put(`/bookings/${bookingId}/status`, { status });
+
 // Feedback Order & Booking
 export const createFeedbackOrder = (data) => api.post('/feedback-orders', data);
 export const updateFeedbackOrder = (orderId, data) => api.put(`/feedback-orders/${orderId}`, data);

@@ -56,9 +56,10 @@ const BarberProfile = () => {
       const res = await getProfile();
       const data = res.data;
       setProfile(data.data || data.user);
-      const barberId = (data.data || data.user)?._id;
-      if (barberId) {
-        const bookingsRes = await getBarberBookings(barberId, { limit: 50 });
+      const userId = (data.data || data.user)?._id;
+      console.log('userId', userId);
+      if (userId) {
+        const bookingsRes = await getBarberBookings(userId, { limit: 50 });
         setBookings(bookingsRes.bookings || bookingsRes);
       } else {
         setBookings([]);
