@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useCart } from '../../context/CartContext';
 import { Button, InputNumber, Empty, notification } from 'antd';
+import ToastService from '../../services/toastService';
 import { DeleteOutlined, ShoppingCartOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import '../../css/cart/cart.css';
@@ -8,6 +9,12 @@ import '../../css/cart/cart.css';
 const Cart = () => {
   const { cart, removeFromCart, updateQuantity, clearCart, getCartTotal, getCartCount } = useCart();
   const navigate = useNavigate();
+  const [confirmDialog, setConfirmDialog] = useState({
+    show: false,
+    title: '',
+    message: '',
+    onConfirm: null
+  });
 
   const formatPrice = (price) =>
     new Intl.NumberFormat("vi-VN", {
@@ -30,24 +37,54 @@ const Cart = () => {
       });
       return;
     }
+    
+    // Tìm item trong cart để kiểm tra stock
+    const item = cart.items.find(item => item.id === productId);
+    if (item && newQuantity > item.stock) {
+      ToastService.showQuantityLimitExceeded(item.stock);
+      return;
+    }
+    
     updateQuantity(productId, newQuantity);
   };
 
   const handleRemoveItem = (productId, productName) => {
-    removeFromCart(productId);
-    notification.success({
-      message: "Đã xóa sản phẩm",
-      description: `Đã xóa ${productName} khỏi giỏ hàng`,
-      placement: "topRight",
+    console.log('🔍 handleRemoveItem called with:', { productId, productName });
+    
+    setConfirmDialog({
+      show: true,
+      title: 'Xác nhận xóa sản phẩm',
+      message: `Bạn có muốn xóa sản phẩm "${productName}" khỏi giỏ hàng không?`,
+      onConfirm: () => {
+        console.log('✅ User confirmed delete for:', productName);
+        removeFromCart(productId);
+        notification.success({
+          message: "Đã xóa sản phẩm",
+          description: `Đã xóa ${productName} khỏi giỏ hàng`,
+          placement: "topRight",
+        });
+        setConfirmDialog({ show: false, title: '', message: '', onConfirm: null });
+      }
     });
   };
 
   const handleClearCart = () => {
-    clearCart();
-    notification.success({
-      message: "Đã xóa giỏ hàng",
-      description: "Tất cả sản phẩm đã được xóa khỏi giỏ hàng",
-      placement: "topRight",
+    console.log('🔍 handleClearCart called');
+    
+    setConfirmDialog({
+      show: true,
+      title: 'Xác nhận xóa giỏ hàng',
+      message: 'Bạn có muốn xóa tất cả sản phẩm khỏi giỏ hàng không?',
+      onConfirm: () => {
+        console.log('✅ User confirmed clear cart');
+        clearCart();
+        notification.success({
+          message: "Đã xóa giỏ hàng",
+          description: "Tất cả sản phẩm đã được xóa khỏi giỏ hàng",
+          placement: "topRight",
+        });
+        setConfirmDialog({ show: false, title: '', message: '', onConfirm: null });
+      }
     });
   };
 
@@ -136,6 +173,13 @@ const Cart = () => {
                   max={item.stock}
                   value={item.quantity}
                   onChange={(value) => handleQuantityChange(item.id, value)}
+                  onKeyPress={(e) => {
+                    // Chỉ cho phép số và một số ký tự đặc biệt
+                    const charCode = e.which ? e.which : e.keyCode;
+                    if (charCode > 31 && (charCode < 48 || charCode > 57)) {
+                      e.preventDefault();
+                    }
+                  }}
                 />
               </div>
 
@@ -201,10 +245,60 @@ const Cart = () => {
               Tiếp tục mua sắm
             </Button>
           </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+                 </div>
+       </div>
+       
+       {/* Custom Confirm Dialog */}
+       {confirmDialog.show && (
+         <div 
+           style={{
+             position: 'fixed',
+             top: 0,
+             left: 0,
+             right: 0,
+             bottom: 0,
+             backgroundColor: 'rgba(0, 0, 0, 0.5)',
+             display: 'flex',
+             justifyContent: 'center',
+             alignItems: 'center',
+             zIndex: 9999,
+           }}
+         >
+           <div 
+             style={{
+               backgroundColor: 'white',
+               borderRadius: '8px',
+               padding: '24px',
+               maxWidth: '400px',
+               width: '90%',
+               boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+             }}
+           >
+             <h3 style={{ margin: '0 0 16px 0', color: '#333' }}>
+               {confirmDialog.title}
+             </h3>
+             <p style={{ margin: '0 0 24px 0', color: '#666' }}>
+               {confirmDialog.message}
+             </p>
+             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+               <Button 
+                 onClick={() => setConfirmDialog({ show: false, title: '', message: '', onConfirm: null })}
+               >
+                 Hủy
+               </Button>
+               <Button 
+                 type="primary" 
+                 danger
+                 onClick={confirmDialog.onConfirm}
+               >
+                 Đồng ý
+               </Button>
+             </div>
+           </div>
+         </div>
+       )}
+     </div>
+   );
+ };
 
 export default Cart; 

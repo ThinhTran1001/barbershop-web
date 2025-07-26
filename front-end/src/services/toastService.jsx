@@ -286,6 +286,42 @@ class ToastService {
     });
   }
 
+  // Cart limit notifications
+  static showCartLimitReached(currentQuantity, maxStock, productName) {
+    notification.warning({
+      message: "Số lượng sản phẩm đã đạt tối đa",
+      description: (
+        <div style={{ fontSize: '14px', lineHeight: '1.6' }}>
+          <div style={{ marginBottom: '8px' }}>
+            {productName ? `${productName} đã đạt số lượng tối đa trong giỏ hàng.` : 'Sản phẩm đã đạt số lượng tối đa trong giỏ hàng.'}
+          </div>
+          <div style={{ color: '#666' }}>
+            Đã có {currentQuantity} sản phẩm trong giỏ hàng (tối đa {maxStock}).
+          </div>
+        </div>
+      ),
+      duration: 6,
+      icon: <ExclamationCircleOutlined style={{ color: '#faad14' }} />,
+      style: {
+        backgroundColor: '#fffbe6',
+        border: '1px solid #ffe58f',
+      }
+    });
+  }
+
+  static showQuantityLimitExceeded(maxStock) {
+    notification.warning({
+      message: "Số lượng vượt quá giới hạn",
+      description: `Số lượng tối đa cho phép là ${maxStock}`,
+      duration: 4,
+      icon: <ExclamationCircleOutlined style={{ color: '#faad14' }} />,
+      style: {
+        backgroundColor: '#fffbe6',
+        border: '1px solid #ffe58f',
+      }
+    });
+  }
+
   // Clear all notifications
   static clearAll() {
     notification.destroy(); // This is correct - without key destroys all

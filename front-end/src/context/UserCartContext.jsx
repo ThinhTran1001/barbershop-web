@@ -99,6 +99,25 @@ export const UserCartProvider = ({ children }) => {
 
   const addToCart = async (product, quantity = 1, callback) => {
     try {
+      // Kiểm tra stock limit trước khi thêm
+      const existingItem = cart.items.find(item => item.productId === (product.id || product._id));
+      const currentQuantity = existingItem ? existingItem.quantity : 0;
+      
+      // Nếu đã đạt stock limit, không thêm nữa
+      if (currentQuantity >= product.stock) {
+        console.log('❌ Cart quantity already at max, preventing addition');
+        return false;
+      }
+      
+      // Tính số lượng thực tế có thể thêm
+      const actualQuantityToAdd = Math.min(quantity, product.stock - currentQuantity);
+      
+      // Nếu không thể thêm gì cả
+      if (actualQuantityToAdd <= 0) {
+        console.log('❌ Cannot add any more items, stock limit reached');
+        return false;
+      }
+      
       // Cập nhật state cục bộ ngay lập tức
       const cartItem = {
         id: product.id || product._id,
@@ -108,21 +127,23 @@ export const UserCartProvider = ({ children }) => {
         price: product.price,
         discount: product.discount || 0,
         stock: product.stock,
-        quantity: quantity,
+        quantity: actualQuantityToAdd,
       };
       dispatch({ type: 'ADD_TO_CART', payload: cartItem });
 
       // Gọi API để thêm vào server
-      await addItem({ productId: product.id || product._id, quantity });
+      await addItem({ productId: product.id || product._id, quantity: actualQuantityToAdd });
 
       // Fetch lại để đồng bộ với server
       await fetchCart();
 
       if (callback) callback();
+      return true; // Trả về true nếu thành công
     } catch (err) {
       console.error('Failed to add item to API cart', err);
       // Revert state nếu thất bại
       await fetchCart();
+      return false; // Trả về false nếu thất bại
     }
   };
 
