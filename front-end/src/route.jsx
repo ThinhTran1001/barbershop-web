@@ -72,7 +72,7 @@ const router = createBrowserRouter([
       { path: "/login", element: <Login /> },
       { path: "/register", element: <Register /> },
       { path: "/forgot-password", element: <ForgotPasswordForm /> },
-      { path: "/reset-password/:token", element: <ResetPasswordForm /> },
+      { path: "/reset-password", element: <ResetPasswordForm /> },
       { path: "/oauth-success", element: <OauthSuccess /> },
       { path: "/products", element: <ProductList /> },
       { path: "/products/:id", element: <ProductDetail /> },
