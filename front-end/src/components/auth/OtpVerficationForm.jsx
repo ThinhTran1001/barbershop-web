@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Form, Input, Button, message, Space } from 'antd';
+import { Form, Input, Button, Space } from 'antd';
 import {resend, verify} from "../../services/api.js";
 import {useNavigate} from "react-router-dom";
+import { toast } from "react-toastify";
 
 export default function OtpVerificationForm({ email }) {
   const [otp, setOtp] = useState('');
@@ -12,10 +13,24 @@ export default function OtpVerificationForm({ email }) {
     try {
       setLoading(true);
       await verify({email, otp});
-      message.success('Xác minh email thành công!');
+      toast.success('Email verification successful! 🎉 You can now login to your account.', {
+        position: "top-right",
+        autoClose: 4000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
       navigate('/login');
     } catch (err) {
-      message.error(err.response?.data?.message || 'Xác minh thất bại');
+      toast.error(err.response?.data?.message || 'Email verification failed. Please check your OTP code.', {
+        position: "top-right",
+        autoClose: 4000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
     } finally {
       setLoading(false);
     }
@@ -25,10 +40,24 @@ export default function OtpVerificationForm({ email }) {
     try {
       setResendLoading(true);
       await resend({email});
-      message.success('OTP đã được gửi lại');
+      toast.success('OTP code resent! 📧 Please check your email for the new code.', {
+        position: "top-right",
+        autoClose: 4000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
 
     } catch (err) {
-      message.error(err.response?.data?.message || 'Không gửi lại được OTP');
+      toast.error(err.response?.data?.message || 'Failed to resend OTP. Please try again.', {
+        position: "top-right",
+        autoClose: 4000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
     } finally {
       setResendLoading(false);
     }

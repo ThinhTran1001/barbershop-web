@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Form, Input, Button, message } from "antd";
+import { Form, Input, Button } from "antd";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { resetPassword } from "../../services/api";
+import { toast } from "react-toastify";
 
 export default function ResetPasswordForm() {
   const [form] = Form.useForm();
@@ -14,7 +15,14 @@ export default function ResetPasswordForm() {
 
   const onFinish = async (values) => {
     if (!userId || !token) {
-      return message.error("Invalid reset link");
+      return toast.error("Invalid reset link. Please request a new password reset.", {
+        position: "top-right",
+        autoClose: 4000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
     }
 
     try {
@@ -24,10 +32,24 @@ export default function ResetPasswordForm() {
         token,
         newPassword: values.newPassword,
       });
-      message.success("Password reset successfully");
+      toast.success("Password reset successfully! 🎉 You can now login with your new password.", {
+        position: "top-right",
+        autoClose: 4000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
       navigate("/login");
     } catch (err) {
-      message.error(err.response?.data?.message || "Reset failed");
+      toast.error(err.response?.data?.message || "Password reset failed. Please try again.", {
+        position: "top-right",
+        autoClose: 4000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
     } finally {
       setLoading(false);
     }

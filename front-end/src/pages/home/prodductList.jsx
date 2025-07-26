@@ -246,7 +246,7 @@ navigate(user ? "/cart" : "/cart-guest");
         {/* Product Grid */}
         <div className="shop-grid-full">
           {currentProducts.map((product) => (
-            <div key={product._id} className="shop-item">
+            <div key={product._id} className="shop-item" onClick={() => goToProductDetail(product._id)}>
               <div className="item-image-wrapper" style={{ position: 'relative' }}>
                 {product.discount > 0 && (
                   <div
