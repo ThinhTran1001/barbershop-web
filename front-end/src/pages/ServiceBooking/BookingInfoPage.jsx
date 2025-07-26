@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import BookingInfoForm from '../../components/BookingInfoForm.jsx';
-import { Card, Typography, Descriptions, Divider, Button } from 'antd';
+import { Card, Typography, Descriptions, Divider, Button, Alert } from 'antd';
 import { createBooking } from '../../services/serviceApi.js';
 import { toast } from 'react-toastify';
 import Cookies from 'js-cookie';
+import { useAuth } from '../../context/AuthContext';
 
 const { Title } = Typography;
 
@@ -14,6 +15,7 @@ const BookingInfoPage = () => {
   const timeSlot = JSON.parse(localStorage.getItem('selectedTimeSlot') || '{}');
   const [submitting, setSubmitting] = useState(false);
   const token = Cookies.get('accessToken');
+  const { user } = useAuth();
 
   console.log('Selected timeSlot:', timeSlot); // Debug log
   const handleSubmit = async (formData) => {
@@ -261,10 +263,25 @@ const BookingInfoPage = () => {
 
   return (
     <div style={{ maxWidth: 700, margin: '0 auto', padding: 24 }}>
-      
+      {!user && (
+        <Alert
+          message="Bạn chưa đăng nhập"
+          description="Để có trải nghiệm tốt nhất, hãy đăng nhập để thông tin được tự động điền và quản lý lịch đặt dễ dàng hơn."
+          type="warning"
+          showIcon
+          style={{ marginBottom: 24 }}
+          action={
+            <Button size="small" type="primary" onClick={() => window.location.href = '/login'}>
+              Đăng nhập
+            </Button>
+          }
+        />
+      )}
 
       <Card>
-        <Title level={2}>Xác nhận & Nhập thông tin đặt lịch</Title>
+        <Title level={2}>
+          {user ? `Xin chào ${user.name}, ` : ''}Xác nhận & Nhập thông tin đặt lịch
+        </Title>
         <Descriptions bordered column={1} style={{ marginBottom: 24 }}>
           <Descriptions.Item label="Dịch vụ">{service.name} ({service.price?.toLocaleString()} đ)</Descriptions.Item>
           <Descriptions.Item label="Thợ cắt">{barber.userId?.name || 'Tự động chọn'}</Descriptions.Item>
