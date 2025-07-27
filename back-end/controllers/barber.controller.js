@@ -205,9 +205,9 @@ exports.getBarberBookings = async (req, res) => {
     const { date, status } = req.query;
     const requestingUserRole = req.role;
 
-    const barber = await Barber.findOne({ userId });
+    let barber = await Barber.findById(userId);
     if (!barber) {
-      return res.status(404).json({ message: 'Barber not found' });
+      barber = await Barber.findOne({ userId });
     }
 
     const barberId = barber._id;

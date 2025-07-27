@@ -711,17 +711,6 @@ const loadBookings = async (newFilters = filters) => {
                   </Button>
                 </Tooltip>
               )}
-
-              {canReviewBooking(record) && (
-                <Button
-                  size="small"
-                  type="default"
-                  icon={<StarOutlined />}
-                  onClick={() => handleFeedback(record)}
-                >
-                  Đánh giá
-                </Button>
-              )}
             </Space>
 
             {/* Show status message for non-editable/non-cancellable bookings */}

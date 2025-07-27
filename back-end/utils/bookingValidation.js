@@ -155,15 +155,20 @@ const validateBookingCancellation = (booking) => {
     return { valid: false, error: 'Booking not found' };
   }
 
-  // Check if booking is already in a final state
+  // Skip validation for completed bookings - they are finalized and exempt from cancellation rules
+  if (booking.status === BOOKING_STATUS.COMPLETED) {
+    return {
+      valid: false,
+      error: 'This booking cannot be cancelled because it has already been completed.'
+    };
+  }
+
+  // Check if booking is already in a final state (excluding completed which is handled above)
   if (FINAL_STATUSES.includes(booking.status)) {
     let error;
     switch (booking.status) {
       case BOOKING_STATUS.CANCELLED:
         error = 'This booking has already been cancelled.';
-        break;
-      case BOOKING_STATUS.COMPLETED:
-        error = 'This booking cannot be cancelled because it has already been completed.';
         break;
       case BOOKING_STATUS.NO_SHOW:
         error = 'This booking cannot be cancelled because it was marked as no-show.';
@@ -223,6 +228,53 @@ const isBookingFinal = (booking) => {
   return booking && FINAL_STATUSES.includes(booking.status);
 };
 
+/**
+ * Check if a booking can be modified (excludes completed bookings from validation)
+ * @param {Object} booking - The booking object
+ * @returns {Object} - { valid: boolean, error: string|null }
+ */
+const validateBookingModification = (booking) => {
+  if (!booking) {
+    return { valid: false, error: 'Booking not found' };
+  }
+
+  // Skip validation for completed bookings - they are finalized and exempt from modification rules
+  if (booking.status === BOOKING_STATUS.COMPLETED) {
+    return {
+      valid: false,
+      error: 'This booking cannot be modified because it has already been completed.'
+    };
+  }
+
+  // Only pending and confirmed bookings can be modified
+  if (![BOOKING_STATUS.PENDING, BOOKING_STATUS.CONFIRMED].includes(booking.status)) {
+    return {
+      valid: false,
+      error: `Cannot modify booking with status: ${booking.status}. Only pending or confirmed bookings can be modified.`
+    };
+  }
+
+  return { valid: true, error: null };
+};
+
+/**
+ * Check if time-based restrictions should apply to a booking
+ * Completed bookings are exempt from time restrictions
+ * @param {Object} booking - The booking object
+ * @returns {boolean} - True if time restrictions should apply
+ */
+const shouldApplyTimeRestrictions = (booking) => {
+  if (!booking) return false;
+
+  // Completed bookings are exempt from time restrictions
+  if (booking.status === BOOKING_STATUS.COMPLETED) {
+    return false;
+  }
+
+  // Apply time restrictions only to pending and confirmed bookings
+  return [BOOKING_STATUS.PENDING, BOOKING_STATUS.CONFIRMED].includes(booking.status);
+};
+
 module.exports = {
   BOOKING_STATUS,
   FINAL_STATUSES,
@@ -230,6 +282,8 @@ module.exports = {
   validateBookingConfirmation,
   validateBookingStatusUpdate,
   validateBookingCancellation,
+  validateBookingModification,
+  shouldApplyTimeRestrictions,
   getBulkConfirmationError,
   isBookingActive,
   isBookingFinal
