@@ -35,19 +35,25 @@ const ManagingService = () => {
   const fetchServices = async () => {
     try {
       const res = await getAllServices();
-      
-      // Kiểm tra cấu trúc response
       let servicesArray = [];
+
       if (res.data && res.data.services) {
         servicesArray = res.data.services;
       } else if (Array.isArray(res.data)) {
         servicesArray = res.data;
-      } else {
-        servicesArray = [];
       }
-      
-      console.log('Services loaded:', servicesArray.map(s => ({ name: s.name, imageUrl: s.imageUrl })));
-      setServices(servicesArray);
+
+      const normalizedServices = servicesArray.map(s => {
+        let imgs = [];
+        if (Array.isArray(s.images)) imgs = imgs.concat(s.images);
+        if (Array.isArray(s.imageUrls)) imgs = imgs.concat(s.imageUrls);
+        if (typeof s.imageUrl === 'string') imgs.push(s.imageUrl);
+        imgs = imgs.filter(url => url && url.trim().length > 0);
+        imgs = Array.from(new Set(imgs));
+        return { ...s, images: imgs };
+      });
+
+      setServices(normalizedServices);
     } catch (error) {
       setSuccessMessage("Failed to load services!");
       setShowSuccessToast(true);
@@ -58,26 +64,42 @@ const ManagingService = () => {
 
   const showModal = (record = null) => {
     setEditingService(record);
-    
-    // Xử lý hiển thị ảnh hiện có nếu edit
-    if (record && record.imageUrl) {
+  
+    if (record && Array.isArray(record.images)) {
+      const validImages = record.images.filter(
+        (url) =>
+          typeof url === "string" &&
+          url.trim() &&
+          !url.startsWith("blob:") &&
+          !url.includes("undefined") &&
+          !url.match(/\/$/) &&
+          !url.match(/^data:/) &&
+          !url.endsWith(".svg")
+      );
+  
       const formData = {
         ...record,
-        suggestedFor: Array.isArray(record.suggestedFor) ? record.suggestedFor.join(', ') : record.suggestedFor,
-        image: [{
-          uid: '-1',
-          name: 'current-image.jpg',
-          status: 'done',
-          url: record.imageUrl,
-        }]
+        suggestedFor: Array.isArray(record.suggestedFor)
+          ? record.suggestedFor.join(", ")
+          : record.suggestedFor,
+        images:
+          validImages.length > 0
+            ? validImages.map((url, idx) => ({
+                uid: String(-1 - idx),
+                url,
+                status: "done",
+              }))
+            : [],
       };
+  
       form.setFieldsValue(formData);
     } else {
       form.setFieldsValue(record || {});
     }
-    
+  
     setIsModalVisible(true);
   };
+  
 
   const handleCancel = () => {
     setIsModalVisible(false);
@@ -148,19 +170,21 @@ const ManagingService = () => {
   const confirmSave = async () => {
     try {
       const values = await form.validateFields();
-      let imageUrl = undefined;
-      if (values.image && values.image[0]?.response?.url) {
-        imageUrl = values.image[0].response.url;
-      } else if (values.image && values.image[0]?.url) {
-        imageUrl = values.image[0].url;
+      let images = [];
+      if (values.images && Array.isArray(values.images)) {
+        images = values.images.map(img => img.response?.url || img.url).filter(Boolean);
       }
-      const serviceData = { ...values, imageUrl };
+      const serviceData = { ...values, images };
       delete serviceData.image;
+      delete serviceData.images;
+      serviceData.images = images;
+
       if (editingService) {
         await updateService(editingService._id, serviceData);
       } else {
         await createService(serviceData);
       }
+
       setSuccessMessage(editingService ? "Service edited successfully!" : "Service added successfully!");
       setShowConfirmModal(false);
       setShowSuccessToast(true);
@@ -198,75 +222,37 @@ const ManagingService = () => {
 
   const columns = [
     {
-      title: "Image",
-      dataIndex: "imageUrl",
-      key: "image",
+      title: "Images",
+      dataIndex: "images",
+      key: "images",
       width: 80,
-      render: (imageUrl, record) => {
+      render: (images, record) => {
+        const validImages = (images || []).filter(url => typeof url === 'string' && url.trim());
+        if (validImages.length === 0) return null;
         return (
-          <div style={{ textAlign: 'center' }}>
-            {imageUrl ? (
-              <div style={{ position: 'relative' }}>
-                <img
-                  src={imageUrl}
-                  alt={record.name}
-                  style={{
-                    width: '50px',
-                    height: '50px',
-                    objectFit: 'cover',
-                    borderRadius: '4px',
-                    border: '1px solid #d9d9d9'
-                  }}
-                  onError={(e) => {
-                    if (e.target) {
-                      e.target.style.display = 'none';
-                    }
-                    if (e.target && e.target.nextSibling) {
-                      e.target.nextSibling.style.display = 'flex';
-                    }
-                  }}
-                />
-                <div
-                  style={{
-                    width: '50px',
-                    height: '50px',
-                    backgroundColor: '#f5f5f5',
-                    borderRadius: '4px',
-                    display: 'none',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    border: '1px solid #d9d9d9',
-                    color: '#999',
-                    fontSize: '12px',
-                    position: 'absolute',
-                    top: 0,
-                    left: 0
-                  }}
-                >
-                  No Image
-                </div>
-              </div>
-            ) : (
-              <div
-                style={{
-                  width: '50px',
-                  height: '50px',
-                  backgroundColor: '#f5f5f5',
-                  borderRadius: '4px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: '1px solid #d9d9d9',
-                  color: '#999',
-                  fontSize: '12px'
-                }}
-              >
-                No Image
-              </div>
-            )}
+          <div style={{ position: 'relative', display: 'inline-block' }}>
+            <img
+              src={validImages[0]}
+              alt={record.name}
+              style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #d9d9d9' }}
+            />
+            <span style={{
+              position: 'absolute',
+              top: -8,
+              right: -8,
+              background: '#f5222d',
+              color: '#fff',
+              borderRadius: '50%',
+              padding: '2px 6px',
+              fontSize: 12,
+              fontWeight: 600,
+              border: '2px solid #fff'
+            }}>
+              {validImages.length}
+            </span>
           </div>
         );
-      },
+      }
     },
     { title: "Service Name", dataIndex: "name", key: "name" },
     { title: "Price", dataIndex: "price", key: "price", render: (text) => `${text} VND` },
@@ -426,19 +412,18 @@ const ManagingService = () => {
             <div className="modal-body">
               {viewingService && (
                 <div>
-                  {viewingService.imageUrl && (
-                    <div style={{ marginBottom: 16, textAlign: 'center' }}>
-                      <img 
-                        src={viewingService.imageUrl} 
-                        alt={viewingService.name}
-                        style={{ 
-                          maxWidth: '100%', 
-                          maxHeight: '200px', 
-                          objectFit: 'contain',
-                          borderRadius: '8px',
-                          border: '1px solid #d9d9d9'
-                        }} 
-                      />
+                  {(viewingService.images && viewingService.images.length > 0) && (
+                    <div style={{ marginBottom: 16, textAlign: 'center', display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+                      {viewingService.images
+                        .filter(url => typeof url === 'string' && url.trim() && !url.startsWith('blob:') && !url.includes('undefined'))
+                        .map((url, idx) => (
+                          <img
+                            key={idx}
+                            src={url}
+                            alt={viewingService.name}
+                            style={{ maxWidth: '100px', maxHeight: '100px', objectFit: 'contain', borderRadius: '8px', border: '1px solid #d9d9d9' }}
+                          />
+                        ))}
                     </div>
                   )}
                   <p><strong>Service Name:</strong> {viewingService.name}</p>

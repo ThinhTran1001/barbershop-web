@@ -16,7 +16,7 @@ const serviceSchema = new mongoose.Schema({
     enum: ['cut', 'perm', 'color', 'combo', 'styling', 'treatment'],
     default: 'cut'
   },
-  imageUrl: String, // Service image for display
+  images: { type: [String], default: [] }, // Service images for display
   popularity: { type: Number, default: 0 }, // Track service popularity
 }, {
   timestamps: true

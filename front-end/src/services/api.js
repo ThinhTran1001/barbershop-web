@@ -28,12 +28,22 @@ export const createService = (data) => {
   if (data instanceof FormData) {
     return api.post(`/services`, data);
   }
+  // Đảm bảo truyền đúng field images là mảng
+  if (data.imageUrl && !data.images) {
+    data.images = [data.imageUrl];
+    delete data.imageUrl;
+  }
   return api.post(`/services`, data);
 };
 export const updateService = (id, data) => {
   // Nếu data là FormData, không set Content-Type để browser tự set
   if (data instanceof FormData) {
     return api.put(`/services/${id}`, data);
+  }
+  // Đảm bảo truyền đúng field images là mảng
+  if (data.imageUrl && !data.images) {
+    data.images = [data.imageUrl];
+    delete data.imageUrl;
   }
   return api.put(`/services/${id}`, data);
 };
