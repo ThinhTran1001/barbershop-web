@@ -80,29 +80,44 @@ const ServiceForm = () => {
         label="Suitable For"
         rules={[
           { required: true, message: "Please enter suitability info" },
-          { validator: (_, value) => value && value.trim() !== '' ? Promise.resolve() : Promise.reject('Trường này không được để trống hoặc chỉ chứa khoảng trắng!') }
+          { validator: (_, value) => {
+              if (Array.isArray(value)) {
+                return value.length > 0 && value.some(v => typeof v === 'string' && v.trim() !== '')
+                  ? Promise.resolve()
+                  : Promise.reject('Trường này không được để trống!');
+              }
+              if (typeof value === 'string') {
+                return value && value.trim() !== ''
+                  ? Promise.resolve()
+                  : Promise.reject('Trường này không được để trống hoặc chỉ chứa khoảng trắng!');
+              }
+              return Promise.reject('Trường này không được để trống!');
+            }
+          }
         ]}
       >
         <Input placeholder="Example: Tóc ngắn, Tóc dày" />
       </Form.Item>
 
       <Form.Item
-        name="image"
-        label="Service Image"
+        name="images"
+        label="Service Images"
         getValueFromEvent={(e) => {
           if (Array.isArray(e)) {
             return e;
           }
-          return e?.fileList;
+          return e?.fileList || [];
         }}
+        valuePropName="fileList"
       >
         <Upload
           name="file"
           listType="picture"
-          maxCount={1}
+          multiple
           action="/api/upload"
+          beforeUpload={() => false} // Ngăn chặn upload tự động, chỉ hiển thị file đã chọn
         >
-          <Button icon={<UploadOutlined />}>Upload Image</Button>
+          <Button icon={<UploadOutlined />}>Upload Images</Button>
         </Upload>
       </Form.Item>
     </>
