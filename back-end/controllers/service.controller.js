@@ -3,7 +3,6 @@ const Service = require("../models/service.model");
 // Utility function to validate URLs
 const isValidUrl = (url) => {
   if (!url || typeof url !== "string") return false;
-  // Block placeholder-like URLs and invalid formats
   if (
     url.includes("placeholder.com") ||
     url.includes("example.com") ||
@@ -11,11 +10,11 @@ const isValidUrl = (url) => {
     url.includes("undefined") ||
     url.match(/\/$/) ||
     url.match(/^data:/) ||
-    url.endsWith(".svg") // Adjust based on your requirements
+    url.endsWith(".svg")
   ) return false;
   try {
-    new URL(url); // Ensures URL is well-formed
-    return true;
+    const parsedUrl = new URL(url);
+    return parsedUrl.hostname === "res.cloudinary.com" || parsedUrl.protocol === "https:";
   } catch {
     return false;
   }
@@ -61,7 +60,6 @@ exports.getAllServices = async (req, res) => {
       .skip(skip)
       .limit(Number(limit));
 
-    // Sanitize image URLs
     const sanitizedServices = services.map((service) => ({
       ...service._doc,
       images: (service.images || []).filter(isValidUrl),
@@ -88,7 +86,6 @@ exports.createService = async (req, res) => {
   try {
     const serviceData = { ...req.body };
 
-    // Handle suggestedFor
     if (serviceData.suggestedFor) {
       if (typeof serviceData.suggestedFor === "string") {
         serviceData.suggestedFor = serviceData.suggestedFor.split(",").map(s => s.trim()).filter(s => s);
@@ -97,7 +94,6 @@ exports.createService = async (req, res) => {
       }
     }
 
-    // Handle images: filter out invalid URLs
     serviceData.images = Array.isArray(serviceData.images)
       ? serviceData.images.filter(isValidUrl)
       : [];
@@ -122,7 +118,6 @@ exports.updateService = async (req, res) => {
 
     const serviceData = { ...req.body };
 
-    // Handle suggestedFor
     if (serviceData.suggestedFor) {
       if (typeof serviceData.suggestedFor === "string") {
         serviceData.suggestedFor = serviceData.suggestedFor.split(",").map(s => s.trim()).filter(s => s);
@@ -131,7 +126,6 @@ exports.updateService = async (req, res) => {
       }
     }
 
-    // Handle images: filter out invalid URLs
     serviceData.images = Array.isArray(serviceData.images)
       ? serviceData.images.filter(isValidUrl)
       : [];
@@ -175,7 +169,6 @@ exports.getServiceById = async (req, res) => {
     if (!service) {
       return res.status(404).json({ error: "Service not found" });
     }
-    // Sanitize image URLs
     const sanitizedService = {
       ...service._doc,
       images: (service.images || []).filter(isValidUrl),
