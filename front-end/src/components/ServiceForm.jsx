@@ -1,5 +1,6 @@
 import React from "react";
-import { Form, Input, InputNumber } from "antd";
+import { Form, Input, InputNumber, Upload, Button } from "antd";
+import { UploadOutlined } from "@ant-design/icons";
 
 const ServiceForm = () => {
   return (
@@ -83,6 +84,26 @@ const ServiceForm = () => {
         ]}
       >
         <Input placeholder="Example: Tóc ngắn, Tóc dày" />
+      </Form.Item>
+
+      <Form.Item
+        name="image"
+        label="Service Image"
+        getValueFromEvent={(e) => {
+          if (Array.isArray(e)) {
+            return e;
+          }
+          return e?.fileList;
+        }}
+      >
+        <Upload
+          name="file"
+          listType="picture"
+          maxCount={1}
+          action="/api/upload"
+        >
+          <Button icon={<UploadOutlined />}>Upload Image</Button>
+        </Upload>
       </Form.Item>
     </>
   );

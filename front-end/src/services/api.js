@@ -23,8 +23,20 @@ export const deleteBrand = (id) => api.delete(`/brands/${id}`);
 
 // Service
 export const getAllServices = () => api.get(`/services`);
-export const createService = (data) => api.post(`/services`, data);
-export const updateService = (id, data) => api.put(`/services/${id}`, data);
+export const createService = (data) => {
+  // Nếu data là FormData, không set Content-Type để browser tự set
+  if (data instanceof FormData) {
+    return api.post(`/services`, data);
+  }
+  return api.post(`/services`, data);
+};
+export const updateService = (id, data) => {
+  // Nếu data là FormData, không set Content-Type để browser tự set
+  if (data instanceof FormData) {
+    return api.put(`/services/${id}`, data);
+  }
+  return api.put(`/services/${id}`, data);
+};
 export const removeService = (id) => api.delete(`/services/${id}`);
 
 // User

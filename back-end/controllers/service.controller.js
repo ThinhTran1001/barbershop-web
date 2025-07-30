@@ -1,5 +1,4 @@
 const Service = require("../models/service.model");
-const CustomerServiceHistory = require("../models/customer-service-history.model");
 
 // Lấy tất cả dịch vụ với filtering
 exports.getAllServices = async (req, res) => {
@@ -47,10 +46,6 @@ exports.getAllServices = async (req, res) => {
 
     const total = await Service.countDocuments(filter);
 
-    // Log filter và số lượng trả về để debug
-    console.log('Service filter:', filter);
-    console.log('Service count:', services.length);
-
     res.json({
       services,
       pagination: {
@@ -68,21 +63,66 @@ exports.getAllServices = async (req, res) => {
 // Tạo dịch vụ mới
 exports.createService = async (req, res) => {
   try {
-    const newService = new Service(req.body);
+    const serviceData = { ...req.body };
+    
+    // Xử lý suggestedFor - luôn convert thành array
+    if (serviceData.suggestedFor) {
+      if (typeof serviceData.suggestedFor === 'string') {
+        serviceData.suggestedFor = serviceData.suggestedFor.split(',').map(s => s.trim()).filter(s => s);
+      } else if (Array.isArray(serviceData.suggestedFor)) {
+        serviceData.suggestedFor = serviceData.suggestedFor.filter(s => s && s.trim());
+      }
+    }
+    
+                    // Xử lý imageUrl từ Cloudinary
+                console.log('Create Service - data received:', serviceData);
+                if (serviceData.imageUrl) {
+                  console.log('Create Service - ImageUrl from frontend:', serviceData.imageUrl);
+                } else {
+                  serviceData.imageUrl = 'https://via.placeholder.com/500x500/cccccc/666666?text=Service+Image';
+                  console.log('Create Service - Using placeholder imageUrl');
+                }
+
+                const newService = new Service(serviceData);
     await newService.save();
     res.status(201).json(newService);
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 };
 
 // Cập nhật dịch vụ
 exports.updateService = async (req, res) => {
   try {
-    const updatedService = await Service.findByIdAndUpdate(
+    // Validate service ID
+    if (!req.params.id || !req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ error: "Invalid service ID format" });
+    }
+    
+    const serviceData = { ...req.body };
+    
+    // Xử lý suggestedFor - luôn convert thành array
+    if (serviceData.suggestedFor) {
+      if (typeof serviceData.suggestedFor === 'string') {
+        serviceData.suggestedFor = serviceData.suggestedFor.split(',').map(s => s.trim()).filter(s => s);
+      } else if (Array.isArray(serviceData.suggestedFor)) {
+        serviceData.suggestedFor = serviceData.suggestedFor.filter(s => s && s.trim());
+      }
+    }
+    
+                    // Xử lý imageUrl từ Cloudinary
+                console.log('Update Service - data received:', serviceData);
+                if (serviceData.imageUrl) {
+                  console.log('Update Service - ImageUrl from frontend:', serviceData.imageUrl);
+                } else {
+                  serviceData.imageUrl = 'https://via.placeholder.com/500x500/cccccc/666666?text=Service+Image';
+                  console.log('Update Service - Using placeholder imageUrl');
+                }
+
+                const updatedService = await Service.findByIdAndUpdate(
       req.params.id,
-      req.body,
-      { new: true } // Trả về bản ghi đã cập nhật
+      serviceData,
+      { new: true }
     );
 
     if (!updatedService) {
@@ -91,11 +131,11 @@ exports.updateService = async (req, res) => {
 
     res.json(updatedService);
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 };
 
-// Xóa (hoặc vô hiệu hóa) dịch vụ
+// Xóa dịch vụ
 exports.deleteService = async (req, res) => {
   try {
     const deletedService = await Service.findByIdAndDelete(req.params.id);
@@ -110,147 +150,19 @@ exports.deleteService = async (req, res) => {
   }
 };
 
-// Gợi ý dịch vụ thông minh dựa trên nhiều yếu tố
-exports.suggestServices = async (req, res) => {
+// Lấy dịch vụ theo ID
+exports.getServiceById = async (req, res) => {
   try {
-    const { hairType, stylePreference, userId, limit = 10 } = req.query;
-    let suggestions = [];
-    let recommendationReason = [];
-
-    if (userId) {
-      // Lấy preferences từ lịch sử khách hàng
-      const preferences = await CustomerServiceHistory.getCustomerPreferences(userId);
-
-      if (preferences) {
-        // Gợi ý dựa trên dịch vụ đã sử dụng và đánh giá cao
-        const highRatedServices = Object.entries(preferences.serviceRatings)
-          .filter(([, rating]) => rating >= 4)
-          .map(([serviceId]) => serviceId);
-
-        if (highRatedServices.length > 0) {
-          // Tìm dịch vụ tương tự với những dịch vụ đã đánh giá cao
-          const relatedServices = await Service.find({
-            _id: { $nin: highRatedServices },
-            $or: [
-              { category: { $in: await Service.find({ _id: { $in: highRatedServices } }).distinct('category') } },
-              { hairTypes: { $in: preferences.lastHairType ? [preferences.lastHairType] : [] } },
-              { styleCompatibility: { $in: preferences.lastStyle ? [preferences.lastStyle] : [] } }
-            ],
-            isActive: true
-          }).limit(Number(limit));
-
-          suggestions = relatedServices;
-          recommendationReason.push('Based on your highly rated services');
-        }
-      }
+    const service = await Service.findById(req.params.id);
+    
+    if (!service) {
+      return res.status(404).json({ error: "Service not found" });
     }
 
-    // Nếu chưa có đủ gợi ý từ lịch sử, bổ sung dựa trên hairType và stylePreference
-    if (suggestions.length < limit) {
-      const additionalFilter = { isActive: true };
-
-      if (hairType) {
-        additionalFilter.hairTypes = hairType;
-        recommendationReason.push(`Suitable for ${hairType} hair`);
-      }
-
-      if (stylePreference) {
-        additionalFilter.styleCompatibility = stylePreference;
-        recommendationReason.push(`Compatible with ${stylePreference} style`);
-      }
-
-      const additionalServices = await Service.find({
-        ...additionalFilter,
-        _id: { $nin: suggestions.map(s => s._id) }
-      })
-      .sort({ popularity: -1, averageRating: -1 })
-      .limit(Number(limit) - suggestions.length);
-
-      suggestions = [...suggestions, ...additionalServices];
-    }
-
-    // Nếu vẫn chưa đủ, lấy các dịch vụ phổ biến nhất
-    if (suggestions.length < limit) {
-      const popularServices = await Service.find({
-        isActive: true,
-        _id: { $nin: suggestions.map(s => s._id) }
-      })
-      .sort({ popularity: -1 })
-      .limit(Number(limit) - suggestions.length);
-
-      suggestions = [...suggestions, ...popularServices];
-      if (popularServices.length > 0) {
-        recommendationReason.push('Popular services');
-      }
-    }
-
-    res.json({
-      suggestions: suggestions.slice(0, Number(limit)),
-      recommendationReason,
-      total: suggestions.length
-    });
+    res.json(service);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// Get all service categories
-exports.getServiceCategories = async (req, res) => {
-  try {
-    const categories = await Service.distinct('category', { isActive: true });
-    res.json(categories);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
 
-// Get all hair types
-exports.getHairTypes = async (req, res) => {
-  try {
-    const hairTypes = await Service.distinct('hairTypes', { isActive: true });
-    res.json(hairTypes.filter(Boolean));
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-// Get all style compatibility options
-exports.getStyleCompatibility = async (req, res) => {
-  try {
-    const styles = await Service.distinct('styleCompatibility', { isActive: true });
-    res.json(styles.filter(Boolean));
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-// Search services by name or description
-exports.searchServices = async (req, res) => {
-  try {
-    const { q, limit = 10 } = req.query;
-
-    if (!q) {
-      return res.status(400).json({ error: 'Search query is required' });
-    }
-
-    const searchRegex = new RegExp(q, 'i');
-    const services = await Service.find({
-      isActive: true,
-      $or: [
-        { name: searchRegex },
-        { description: searchRegex },
-        { steps: { $in: [searchRegex] } }
-      ]
-    })
-    .sort({ popularity: -1 })
-    .limit(Number(limit));
-
-    res.json({
-      services,
-      query: q,
-      total: services.length
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};

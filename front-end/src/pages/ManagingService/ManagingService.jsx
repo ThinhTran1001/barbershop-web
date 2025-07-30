@@ -35,19 +35,47 @@ const ManagingService = () => {
   const fetchServices = async () => {
     try {
       const res = await getAllServices();
-      // Sửa lại để lấy đúng mảng services từ response
-      setServices(Array.isArray(res.data.services) ? res.data.services : []);
-    } catch {
+      
+      // Kiểm tra cấu trúc response
+      let servicesArray = [];
+      if (res.data && res.data.services) {
+        servicesArray = res.data.services;
+      } else if (Array.isArray(res.data)) {
+        servicesArray = res.data;
+      } else {
+        servicesArray = [];
+      }
+      
+      console.log('Services loaded:', servicesArray.map(s => ({ name: s.name, imageUrl: s.imageUrl })));
+      setServices(servicesArray);
+    } catch (error) {
       setSuccessMessage("Failed to load services!");
       setShowSuccessToast(true);
       setTimeout(() => setShowSuccessToast(false), 3000);
-      setServices([]); // Nếu lỗi, cũng set về array rỗng
+      setServices([]);
     }
   };
 
   const showModal = (record = null) => {
     setEditingService(record);
-    form.setFieldsValue(record || {});
+    
+    // Xử lý hiển thị ảnh hiện có nếu edit
+    if (record && record.imageUrl) {
+      const formData = {
+        ...record,
+        suggestedFor: Array.isArray(record.suggestedFor) ? record.suggestedFor.join(', ') : record.suggestedFor,
+        image: [{
+          uid: '-1',
+          name: 'current-image.jpg',
+          status: 'done',
+          url: record.imageUrl,
+        }]
+      };
+      form.setFieldsValue(formData);
+    } else {
+      form.setFieldsValue(record || {});
+    }
+    
     setIsModalVisible(true);
   };
 
@@ -120,19 +148,26 @@ const ManagingService = () => {
   const confirmSave = async () => {
     try {
       const values = await form.validateFields();
-      if (editingService) {
-        await updateService(editingService._id, values);
-        setSuccessMessage("Service edited successfully!");
-      } else {
-        await createService(values);
-        setSuccessMessage("Service added successfully!");
+      let imageUrl = undefined;
+      if (values.image && values.image[0]?.response?.url) {
+        imageUrl = values.image[0].response.url;
+      } else if (values.image && values.image[0]?.url) {
+        imageUrl = values.image[0].url;
       }
+      const serviceData = { ...values, imageUrl };
+      delete serviceData.image;
+      if (editingService) {
+        await updateService(editingService._id, serviceData);
+      } else {
+        await createService(serviceData);
+      }
+      setSuccessMessage(editingService ? "Service edited successfully!" : "Service added successfully!");
       setShowConfirmModal(false);
       setShowSuccessToast(true);
       setTimeout(() => setShowSuccessToast(false), 3000);
       fetchServices();
       handleCancel();
-    } catch {
+    } catch (error) {
       setShowConfirmModal(false);
       setSuccessMessage("Failed to save service!");
       setShowSuccessToast(true);
@@ -162,6 +197,77 @@ const ManagingService = () => {
     : [];
 
   const columns = [
+    {
+      title: "Image",
+      dataIndex: "imageUrl",
+      key: "image",
+      width: 80,
+      render: (imageUrl, record) => {
+        return (
+          <div style={{ textAlign: 'center' }}>
+            {imageUrl ? (
+              <div style={{ position: 'relative' }}>
+                <img
+                  src={imageUrl}
+                  alt={record.name}
+                  style={{
+                    width: '50px',
+                    height: '50px',
+                    objectFit: 'cover',
+                    borderRadius: '4px',
+                    border: '1px solid #d9d9d9'
+                  }}
+                  onError={(e) => {
+                    if (e.target) {
+                      e.target.style.display = 'none';
+                    }
+                    if (e.target && e.target.nextSibling) {
+                      e.target.nextSibling.style.display = 'flex';
+                    }
+                  }}
+                />
+                <div
+                  style={{
+                    width: '50px',
+                    height: '50px',
+                    backgroundColor: '#f5f5f5',
+                    borderRadius: '4px',
+                    display: 'none',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '1px solid #d9d9d9',
+                    color: '#999',
+                    fontSize: '12px',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0
+                  }}
+                >
+                  No Image
+                </div>
+              </div>
+            ) : (
+              <div
+                style={{
+                  width: '50px',
+                  height: '50px',
+                  backgroundColor: '#f5f5f5',
+                  borderRadius: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: '1px solid #d9d9d9',
+                  color: '#999',
+                  fontSize: '12px'
+                }}
+              >
+                No Image
+              </div>
+            )}
+          </div>
+        );
+      },
+    },
     { title: "Service Name", dataIndex: "name", key: "name" },
     { title: "Price", dataIndex: "price", key: "price", render: (text) => `${text} VND` },
     { title: "Description", dataIndex: "description", key: "description" },
@@ -320,6 +426,21 @@ const ManagingService = () => {
             <div className="modal-body">
               {viewingService && (
                 <div>
+                  {viewingService.imageUrl && (
+                    <div style={{ marginBottom: 16, textAlign: 'center' }}>
+                      <img 
+                        src={viewingService.imageUrl} 
+                        alt={viewingService.name}
+                        style={{ 
+                          maxWidth: '100%', 
+                          maxHeight: '200px', 
+                          objectFit: 'contain',
+                          borderRadius: '8px',
+                          border: '1px solid #d9d9d9'
+                        }} 
+                      />
+                    </div>
+                  )}
                   <p><strong>Service Name:</strong> {viewingService.name}</p>
                   <p><strong>Price:</strong> {viewingService.price} VND</p>
                   <p><strong>Description:</strong> {viewingService.description}</p>
