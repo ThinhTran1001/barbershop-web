@@ -385,6 +385,133 @@ exports.validateScheduleConsistency = async (req, res) => {
   }
 };
 
+// Get real-time availability with dynamic slot release for completed bookings
+exports.getRealTimeAvailability = async (req, res) => {
+  try {
+    const { barberId, date, fromTime, durationMinutes = 30, customerId } = req.query;
+    if (!barberId || !date) {
+      return res.status(400).json({ message: 'Missing barberId or date' });
+    }
+
+    // Validate date format
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(date)) {
+      return res.status(400).json({ message: 'Invalid date format. Use YYYY-MM-DD' });
+    }
+
+    // Get real-time availability considering completed bookings
+    const result = await BarberSchedule.getRealTimeAvailability(barberId, date, fromTime);
+
+    if (!result.available) {
+      return res.json(result);
+    }
+
+    // Get existing bookings for conflict checking
+    const barberBookings = await Booking.find({
+      barberId,
+      bookingDate: {
+        $gte: new Date(date + 'T00:00:00.000Z'),
+        $lt: new Date(date + 'T23:59:59.999Z')
+      },
+      status: { $in: ['pending', 'confirmed'] }
+    }).sort({ bookingDate: 1 });
+
+    // Get customer's existing bookings if customerId provided
+    let customerBookings = [];
+    if (customerId) {
+      customerBookings = await Booking.find({
+        customerId,
+        bookingDate: {
+          $gte: new Date(date + 'T00:00:00.000Z'),
+          $lt: new Date(date + 'T23:59:59.999Z')
+        },
+        status: { $in: ['pending', 'confirmed'] }
+      }).sort({ bookingDate: 1 });
+    }
+
+    // Combine all conflicting bookings
+    const allConflictingBookings = [...barberBookings, ...customerBookings];
+
+    // Filter slots based on duration and conflicts
+    const filteredSlots = result.slots.filter(slot => {
+      // Check if this service duration would conflict with existing bookings
+      return isSlotAvailableForDuration(slot.time, parseInt(durationMinutes), allConflictingBookings, date);
+    });
+
+    // Filter out slots that are too close to current time (if today)
+    let finalSlots = filteredSlots;
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+
+    if (date === today) {
+      const nowMinutes = now.getHours() * 60 + now.getMinutes();
+      finalSlots = filteredSlots.filter(slot => {
+        const [h, m] = slot.time.split(':').map(Number);
+        const slotMinutes = h * 60 + m;
+        return slotMinutes - nowMinutes >= 30; // 30 minutes buffer
+      });
+    }
+
+    // Convert slot objects to time strings for backward compatibility
+    const timeSlots = finalSlots.map(slot => slot.time || slot);
+
+    res.json({
+      available: true,
+      slots: timeSlots,
+      totalSlots: result.slots.length,
+      availableSlots: timeSlots.length,
+      bookedSlots: barberBookings.length,
+      customerConflicts: customerBookings.length,
+      realTimeSync: result.realTimeSync,
+      lastUpdated: result.lastUpdated,
+      dynamicAvailability: true,
+      fromTime: fromTime || null
+    });
+
+  } catch (err) {
+    console.error('Error getting real-time availability:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Force release slots for a completed booking (admin endpoint)
+exports.forceReleaseCompletedBookingSlots = async (req, res) => {
+  try {
+    const { barberId, date, bookingId, completionTime } = req.body;
+
+    if (!barberId || !date || !bookingId) {
+      return res.status(400).json({
+        message: 'Missing required fields: barberId, date, bookingId'
+      });
+    }
+
+    const actualCompletionTime = completionTime ? new Date(completionTime) : new Date();
+
+    const result = await BarberSchedule.releaseCompletedBookingSlots(
+      barberId,
+      date,
+      bookingId,
+      actualCompletionTime
+    );
+
+    if (result.success) {
+      res.json({
+        message: 'Slots released successfully',
+        result
+      });
+    } else {
+      res.status(400).json({
+        message: 'Failed to release slots',
+        error: result.message
+      });
+    }
+
+  } catch (err) {
+    console.error('Error in forceReleaseCompletedBookingSlots:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // Debug: Get schedule details for a barber on a specific date
 exports.getScheduleDetails = async (req, res) => {
   try {
@@ -402,6 +529,16 @@ exports.getScheduleDetails = async (req, res) => {
       });
     }
 
+    // Get completed bookings for this date to show dynamic availability info
+    const completedBookings = await Booking.find({
+      barberId,
+      bookingDate: {
+        $gte: new Date(date + 'T00:00:00.000Z'),
+        $lt: new Date(date + 'T23:59:59.999Z')
+      },
+      status: 'completed'
+    }).select('_id bookingDate completedAt durationMinutes');
+
     res.json({
       exists: true,
       schedule: {
@@ -415,8 +552,17 @@ exports.getScheduleDetails = async (req, res) => {
         availableSlots: schedule.availableSlots.filter(slot => !slot.isBooked && !slot.isBlocked),
         bookedSlots: schedule.availableSlots.filter(slot => slot.isBooked),
         blockedSlots: schedule.availableSlots.filter(slot => slot.isBlocked),
-        breakTimes: schedule.breakTimes
-      }
+        breakTimes: schedule.breakTimes,
+        lastUpdated: schedule.lastUpdated
+      },
+      completedBookings: completedBookings.map(booking => ({
+        id: booking._id,
+        originalTime: booking.bookingDate,
+        completedAt: booking.completedAt,
+        duration: booking.durationMinutes,
+        earlyCompletion: booking.completedAt && booking.completedAt < new Date(booking.bookingDate.getTime() + booking.durationMinutes * 60000)
+      })),
+      dynamicAvailabilityEnabled: true
     });
   } catch (err) {
     console.error('Error getting schedule details:', err);

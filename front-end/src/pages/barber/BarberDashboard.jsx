@@ -32,6 +32,7 @@ import { updateBookingStatus } from '../../services/serviceApi.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
+import BookingCompletionButton from '../../components/BookingCompletionButton.jsx';
 
 const { Title, Text } = Typography;
 
@@ -300,7 +301,7 @@ const BarberDashboard = () => {
                 renderItem={(booking) => (
                   <List.Item
                     actions={[
-                      // Barbers can no longer confirm pending bookings - only admins can
+                      // Enhanced booking actions with time-based validation
                       booking.status === 'confirmed' && (() => {
                         const bookingDate = dayjs(booking.bookingDate);
                         const today = dayjs();
@@ -308,17 +309,20 @@ const BarberDashboard = () => {
                         const isPast = bookingDate.isBefore(today, 'day');
 
                         if (isToday) {
-                          // Booking hôm nay - có thể hoàn thành hoặc không đến
+                          // Booking hôm nay - sử dụng BookingCompletionButton với time validation
                           return [
-                            <Button
+                            <BookingCompletionButton
                               key="complete"
+                              booking={booking}
+                              onStatusUpdate={() => {
+                                if (barberId) {
+                                  loadDashboardData(barberId);
+                                }
+                              }}
                               size="small"
-                              type="primary"
-                              onClick={() => handleBookingStatusUpdate(booking._id, 'completed')}
-                              loading={actionLoading}
-                            >
-                              Hoàn thành
-                            </Button>,
+                              showTimeInfo={false}
+                              showStatusMessage={false}
+                            />,
                             <Button
                               key="no-show"
                               size="small"

@@ -31,7 +31,7 @@ const bookingSchema = new Schema({
     },
     status: {
         type: String,
-        enum: ['pending', 'confirmed', 'cancelled', 'completed', 'no_show'],
+        enum: ['pending', 'confirmed', 'cancelled', 'completed', 'no_show', 'rejected'],
         default: 'pending'
     },
     notificationMethods: [{
@@ -62,6 +62,46 @@ const bookingSchema = new Schema({
     confirmedBy: {
         type: Schema.Types.ObjectId,
         ref: 'User',
+        default: null
+    },
+    // Completion tracking for dynamic availability
+    completedAt: {
+        type: Date,
+        default: null
+    },
+    // Rejection tracking
+    rejectedAt: {
+        type: Date,
+        default: null
+    },
+    rejectedBy: {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+    },
+    rejectionReason: {
+        type: String,
+        enum: ['barber_unavailable', 'service_not_available', 'customer_request', 'other'],
+        default: null
+    },
+    rejectionNote: {
+        type: String,
+        trim: true,
+        default: null
+    },
+    // No-show tracking
+    noShowAt: {
+        type: Date,
+        default: null
+    },
+    noShowBy: {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+    },
+    noShowNote: {
+        type: String,
+        trim: true,
         default: null
     }
 }, {

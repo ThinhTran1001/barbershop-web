@@ -29,8 +29,11 @@ import {
   ExclamationCircleOutlined,
   EyeOutlined,
   CheckOutlined,
-  ReloadOutlined
+  ReloadOutlined,
+  StopOutlined
 } from '@ant-design/icons';
+import BookingRejectionModal from '../../components/BookingRejectionModal.jsx';
+import { rejectBooking } from '../../services/api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import dayjs from 'dayjs';
 import axios from 'axios';
@@ -54,6 +57,8 @@ const BookingConfirmationManagement = () => {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+  const [rejectionModalVisible, setRejectionModalVisible] = useState(false);
+  const [selectedBookingForRejection, setSelectedBookingForRejection] = useState(null);
   
   // Filter state
   const [filters, setFilters] = useState({
@@ -268,6 +273,31 @@ const BookingConfirmationManagement = () => {
     }
   };
 
+  // Handle booking rejection
+  const handleRejectBooking = (booking) => {
+    setSelectedBookingForRejection(booking);
+    setRejectionModalVisible(true);
+  };
+
+  // Confirm booking rejection
+  const handleRejectConfirm = async (rejectionData) => {
+    try {
+      await rejectBooking(selectedBookingForRejection._id, rejectionData);
+
+      // Remove rejected booking from the list
+      setPendingBookings(prev =>
+        prev.filter(b => b._id !== selectedBookingForRejection._id)
+      );
+
+      // Update statistics
+      const updatedBookings = pendingBookings.filter(b => b._id !== selectedBookingForRejection._id);
+      calculateStats(updatedBookings);
+
+    } catch (error) {
+      throw error; // Let the modal handle the error display
+    }
+  };
+
   // Handle table change (pagination, sorting, filtering)
   const handleTableChange = (paginationInfo, filters, sorter) => {
     const newFilters = {
@@ -434,6 +464,20 @@ const BookingConfirmationManagement = () => {
                 title={confirmationValidation.reason}
               >
                 Xác nhận
+              </Button>
+            )}
+
+            {/* Rejection button - only for pending and confirmed bookings */}
+            {['pending', 'confirmed'].includes(record.status) && (
+              <Button
+                size="small"
+                danger
+                icon={<StopOutlined />}
+                onClick={() => handleRejectBooking(record)}
+                loading={actionLoading}
+                title="Từ chối lịch hẹn"
+              >
+                Từ chối
               </Button>
             )}
 
@@ -641,6 +685,18 @@ const BookingConfirmationManagement = () => {
           </Descriptions>
         )}
       </Modal>
+
+      {/* Booking Rejection Modal */}
+      <BookingRejectionModal
+        visible={rejectionModalVisible}
+        onCancel={() => {
+          setRejectionModalVisible(false);
+          setSelectedBookingForRejection(null);
+        }}
+        onConfirm={handleRejectConfirm}
+        booking={selectedBookingForRejection}
+        loading={actionLoading}
+      />
     </div>
   );
 };

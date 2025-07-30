@@ -152,8 +152,7 @@ const router = createBrowserRouter([
         path: "/barber",
         element: <BarberLayout />,
         children: [
-          { index: true, element: <BarberDashboard /> },
-          { path: "dashboard", element: <BarberDashboard /> },
+          { index: true, element: <BarberCalendarPage /> },
           { path: "setup", element: <BarberSetup /> },
           { path: "calendar", element: <BarberCalendarPage /> },
           { path: "bookings", element: <BarberBookingManagement /> },

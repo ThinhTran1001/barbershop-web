@@ -33,8 +33,7 @@ const BarberHeader = () => {
   // Get current selected menu key based on pathname
   const getSelectedKey = () => {
     const path = location.pathname;
-    if (path === '/barber' || path === '/barber/dashboard') return '/barber/dashboard';
-    if (path.includes('/calendar')) return '/barber/calendar';
+    if (path === '/barber' ||path.includes('/calendar')) return '/barber/calendar';
     if (path.includes('/bookings')) return '/barber/bookings';
     if (path.includes('/absence')) return '/barber/absence';
   
@@ -42,11 +41,11 @@ const BarberHeader = () => {
   };
 
   const menuItems = [
-    {
-      key: '/barber/dashboard',
-      icon: <DashboardOutlined />,
-      label: 'Dashboard',
-    },
+    // {
+    //   key: '/barber/dashboard',
+    //   icon: <DashboardOutlined />,
+    //   label: 'Dashboard',
+    // },
     {
       key: '/barber/calendar',
       icon: <CalendarOutlined />,

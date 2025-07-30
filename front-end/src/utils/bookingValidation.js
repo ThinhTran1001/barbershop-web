@@ -9,14 +9,16 @@ export const BOOKING_STATUS = {
   CONFIRMED: 'confirmed',
   COMPLETED: 'completed',
   CANCELLED: 'cancelled',
-  NO_SHOW: 'no_show'
+  NO_SHOW: 'no_show',
+  REJECTED: 'rejected'
 };
 
 // Final statuses that cannot be changed
 export const FINAL_STATUSES = [
   BOOKING_STATUS.CANCELLED,
   BOOKING_STATUS.COMPLETED,
-  BOOKING_STATUS.NO_SHOW
+  BOOKING_STATUS.NO_SHOW,
+  BOOKING_STATUS.REJECTED
 ];
 
 // Active statuses that can be modified
@@ -53,6 +55,9 @@ export const canConfirmBooking = (booking) => {
     case BOOKING_STATUS.NO_SHOW:
       reason = 'This booking cannot be confirmed because it was marked as no-show.';
       break;
+    case BOOKING_STATUS.REJECTED:
+      reason = 'This booking cannot be confirmed because it has been rejected.';
+      break;
     default:
       reason = `Cannot confirm booking with status: ${booking.status}. Only pending bookings can be confirmed.`;
   }
@@ -85,6 +90,9 @@ export const canUpdateBookingStatus = (booking, newStatus, userRole = 'customer'
       case BOOKING_STATUS.NO_SHOW:
         reason = 'This booking cannot be updated because it was marked as no-show.';
         break;
+      case BOOKING_STATUS.REJECTED:
+        reason = 'This booking cannot be updated because it has been rejected.';
+        break;
       default:
         reason = 'This booking cannot be updated because it is in a final state.';
     }
@@ -94,8 +102,8 @@ export const canUpdateBookingStatus = (booking, newStatus, userRole = 'customer'
   // Role-based validation
   const validTransitions = {
     admin: {
-      [BOOKING_STATUS.PENDING]: [BOOKING_STATUS.CONFIRMED, BOOKING_STATUS.CANCELLED],
-      [BOOKING_STATUS.CONFIRMED]: [BOOKING_STATUS.COMPLETED, BOOKING_STATUS.CANCELLED, BOOKING_STATUS.NO_SHOW]
+      [BOOKING_STATUS.PENDING]: [BOOKING_STATUS.CONFIRMED, BOOKING_STATUS.CANCELLED, BOOKING_STATUS.REJECTED],
+      [BOOKING_STATUS.CONFIRMED]: [BOOKING_STATUS.COMPLETED, BOOKING_STATUS.CANCELLED, BOOKING_STATUS.NO_SHOW, BOOKING_STATUS.REJECTED]
     },
     barber: {
       [BOOKING_STATUS.CONFIRMED]: [BOOKING_STATUS.COMPLETED, BOOKING_STATUS.NO_SHOW]
@@ -140,6 +148,9 @@ export const canCancelBooking = (booking) => {
       case BOOKING_STATUS.NO_SHOW:
         reason = 'This booking cannot be cancelled because it was marked as no-show.';
         break;
+      case BOOKING_STATUS.REJECTED:
+        reason = 'This booking cannot be cancelled because it has been rejected.';
+        break;
       default:
         reason = 'This booking cannot be cancelled.';
     }
@@ -168,7 +179,8 @@ export const getStatusText = (status) => {
     [BOOKING_STATUS.CONFIRMED]: 'Đã xác nhận',
     [BOOKING_STATUS.COMPLETED]: 'Hoàn thành',
     [BOOKING_STATUS.CANCELLED]: 'Đã hủy',
-    [BOOKING_STATUS.NO_SHOW]: 'Không đến'
+    [BOOKING_STATUS.NO_SHOW]: 'Không đến',
+    [BOOKING_STATUS.REJECTED]: 'Đã từ chối'
   };
   return statusTexts[status] || status;
 };
@@ -184,7 +196,8 @@ export const getStatusColor = (status) => {
     [BOOKING_STATUS.CONFIRMED]: 'blue',
     [BOOKING_STATUS.COMPLETED]: 'green',
     [BOOKING_STATUS.CANCELLED]: 'red',
-    [BOOKING_STATUS.NO_SHOW]: 'volcano'
+    [BOOKING_STATUS.NO_SHOW]: 'volcano',
+    [BOOKING_STATUS.REJECTED]: 'magenta'
   };
   return statusColors[status] || 'default';
 };
@@ -226,6 +239,8 @@ export const getDisabledActionMessage = (booking, action = 'update') => {
         return `Cannot ${action} this booking because it has already been completed.`;
       case BOOKING_STATUS.NO_SHOW:
         return `Cannot ${action} this booking because it was marked as no-show.`;
+      case BOOKING_STATUS.REJECTED:
+        return `Cannot ${action} this booking because it has been rejected.`;
       default:
         return `Cannot ${action} this booking because it is in a final state.`;
     }
