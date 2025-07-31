@@ -120,7 +120,7 @@ export default function HotDeals() {
 
   return (
     <div style={{ margin: '32px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      {/* Hàng ngang: countdown tổng | icon lửa + ƯU ĐÃI HOT (giữa) | chọn ngày (phải) */}
+  
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', maxWidth: 1200, margin: '0 auto 16px auto', gap: 0 }}>
         {/* Countdown tổng bên trái */}
         <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start' }}>{renderMainCountdown()}</div>

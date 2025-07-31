@@ -35,19 +35,65 @@ const ManagingService = () => {
   const fetchServices = async () => {
     try {
       const res = await getAllServices();
-      // Sửa lại để lấy đúng mảng services từ response
-      setServices(Array.isArray(res.data.services) ? res.data.services : []);
-    } catch {
-      setSuccessMessage("Failed to load services!");
+      let servicesArray = [];
+
+      if (res.data && res.data.services) {
+        servicesArray = res.data.services;
+      } else if (Array.isArray(res.data)) {
+        servicesArray = res.data;
+      }
+
+      const normalizedServices = servicesArray.map((s) => {
+        let imgs = [];
+        if (Array.isArray(s.images)) imgs = imgs.concat(s.images);
+        if (Array.isArray(s.imageUrls)) imgs = imgs.concat(s.imageUrls);
+        if (typeof s.imageUrl === "string") imgs.push(s.imageUrl);
+        imgs = imgs.filter((url) => url && url.trim().length > 0);
+        imgs = Array.from(new Set(imgs));
+        return { ...s, images: imgs };
+      });
+
+      setServices(normalizedServices);
+    } catch (error) {
+      setSuccessMessage("Tải dịch vụ thất bại!");
       setShowSuccessToast(true);
       setTimeout(() => setShowSuccessToast(false), 3000);
-      setServices([]); // Nếu lỗi, cũng set về array rỗng
+      setServices([]);
     }
   };
 
   const showModal = (record = null) => {
     setEditingService(record);
-    form.setFieldsValue(record || {});
+
+    if (record && Array.isArray(record.images)) {
+      const validImages = record.images.filter(
+        (url) =>
+          typeof url === "string" &&
+          url.trim() &&
+          !url.startsWith("blob:") &&
+          !url.includes("undefined") &&
+          !url.match(/\/$/) &&
+          !url.match(/^data:/) &&
+          !url.endsWith(".svg")
+      );
+
+      const formData = {
+        ...record,
+        suggestedFor: Array.isArray(record.suggestedFor)
+          ? record.suggestedFor.join(", ")
+          : record.suggestedFor,
+        images: validImages.map((url, idx) => ({
+          uid: String(-1 - idx),
+          url,
+          status: "done",
+        })),
+      };
+
+      form.setFieldsValue(formData);
+    } else {
+      form.setFieldsValue(record || {});
+    }
+
     setIsModalVisible(true);
   };
 
@@ -69,7 +115,7 @@ const ManagingService = () => {
 
   const handleDelete = (id, currentStatus) => {
     if (!currentStatus) {
-      setSuccessMessage("This service is already inactive!");
+      setSuccessMessage("Dịch vụ này đã bị vô hiệu hóa!");
       setShowSuccessToast(true);
       setTimeout(() => setShowSuccessToast(false), 3000);
       return;
@@ -82,13 +128,13 @@ const ManagingService = () => {
     try {
       await updateService(deleteServiceId, { isActive: false });
       setShowDeleteConfirmModal(false);
-      setSuccessMessage("Service deactivated successfully!");
+      setSuccessMessage("Dịch vụ đã được vô hiệu hóa thành công!");
       setShowSuccessToast(true);
       setTimeout(() => setShowSuccessToast(false), 3000);
       fetchServices();
     } catch {
       setShowDeleteConfirmModal(false);
-      setSuccessMessage("Failed to deactivate service!");
+      setSuccessMessage("Vô hiệu hóa dịch vụ thất bại!");
       setShowSuccessToast(true);
       setTimeout(() => setShowSuccessToast(false), 3000);
     }
@@ -103,7 +149,7 @@ const ManagingService = () => {
           (!editingService || service._id !== editingService._id)
       );
       if (isDuplicate) {
-        setSuccessMessage("Service name already exists!");
+        setSuccessMessage("Tên dịch vụ đã tồn tại!");
         setShowSuccessToast(true);
         setTimeout(() => setShowSuccessToast(false), 3000);
         return;
@@ -111,7 +157,7 @@ const ManagingService = () => {
       setModalAction(editingService ? "edit" : "add");
       setShowConfirmModal(true);
     } catch {
-      setSuccessMessage("Please complete all required fields!");
+      setSuccessMessage("Vui lòng điền đầy đủ các trường bắt buộc!");
       setShowSuccessToast(true);
       setTimeout(() => setShowSuccessToast(false), 3000);
     }
@@ -120,21 +166,34 @@ const ManagingService = () => {
   const confirmSave = async () => {
     try {
       const values = await form.validateFields();
-      if (editingService) {
-        await updateService(editingService._id, values);
-        setSuccessMessage("Service edited successfully!");
-      } else {
-        await createService(values);
-        setSuccessMessage("Service added successfully!");
+      let images = [];
+      if (values.images && Array.isArray(values.images)) {
+        images = values.images
+          .map((img) => img.response?.url || img.url)
+          .filter(Boolean);
       }
+      const serviceData = { ...values, images };
+      delete serviceData.image;
+      delete serviceData.images;
+      serviceData.images = images;
+
+      if (editingService) {
+        await updateService(editingService._id, serviceData);
+      } else {
+        await createService(serviceData);
+      }
+
+      setSuccessMessage(
+        editingService ? "Sửa dịch vụ thành công!" : "Thêm dịch vụ thành công!"
+      );
       setShowConfirmModal(false);
       setShowSuccessToast(true);
       setTimeout(() => setShowSuccessToast(false), 3000);
       fetchServices();
       handleCancel();
-    } catch {
+    } catch (error) {
       setShowConfirmModal(false);
-      setSuccessMessage("Failed to save service!");
+      setSuccessMessage("Lưu dịch vụ thất bại!");
       setShowSuccessToast(true);
       setTimeout(() => setShowSuccessToast(false), 3000);
     }
@@ -162,43 +221,76 @@ const ManagingService = () => {
     : [];
 
   const columns = [
-    { title: "Service Name", dataIndex: "name", key: "name" },
-    { title: "Price", dataIndex: "price", key: "price", render: (text) => `${text} VND` },
-    { title: "Description", dataIndex: "description", key: "description" },
     {
-      title: "Steps",
+      title: "Hình Ảnh",
+      dataIndex: "images",
+      key: "images",
+      width: 80,
+      render: (images, record) => {
+        const validImages = (images || []).filter(url => typeof url === 'string' && url.trim());
+        if (validImages.length === 0) return null;
+        return (
+          <div style={{ position: 'relative', display: 'inline-block' }}>
+            <img
+              src={validImages[0]}
+              alt={record.name}
+              style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #d9d9d9' }}
+            />
+            <span style={{
+              position: 'absolute',
+              top: -8,
+              right: -8,
+              background: '#f5222d',
+              color: '#fff',
+              borderRadius: '50%',
+              padding: '2px 6px',
+              fontSize: 12,
+              fontWeight: 600,
+              border: '2px solid #fff'
+            }}>
+              {validImages.length}
+            </span>
+          </div>
+        );
+      }
+    },
+    { title: "Tên Dịch Vụ", dataIndex: "name", key: "name" },
+    { title: "Giá", dataIndex: "price", key: "price", render: (text) => `${text} VND` },
+    { title: "Mô Tả", dataIndex: "description", key: "description" },
+    {
+      title: "Các Bước",
       dataIndex: "steps",
       key: "steps",
       render: (steps) => Array.isArray(steps) ? steps.join(", ") : steps || "N/A",
     },
-    { title: "Duration (minutes)", dataIndex: "durationMinutes", key: "durationMinutes" },
+    { title: "Thời Gian (phút)", dataIndex: "durationMinutes", key: "durationMinutes" },
     {
-      title: "Suggested For",
+      title: "Phù Hợp Với",
       dataIndex: "suggestedFor",
       key: "suggestedFor",
       render: (arr) => arr?.join(", "),
     },
     {
-      title: "Status",
+      title: "Trạng Thái",
       dataIndex: "isActive",
       key: "status",
       render: (isActive) => (
-        <Tag color={isActive ? "green" : "red"}>{isActive ? "Active" : "Inactive"}</Tag>
+        <Tag color={isActive ? "green" : "red"}>{isActive ? "Hoạt động" : "Không hoạt động"}</Tag>
       ),
     },
     {
-      title: "Actions",
+      title: "Hành Động",
       key: "action",
       render: (_, record) => (
         <Space>
-          <Tooltip title="View">
+          <Tooltip title="Xem">
             <Button
               type="text"
               icon={<EyeOutlined />}
               onClick={() => showViewModal(record)}
             />
           </Tooltip>
-          <Tooltip title="Edit">
+          <Tooltip title="Sửa">
             <Button
               type="text"
               icon={<EditOutlined />}
@@ -206,7 +298,7 @@ const ManagingService = () => {
               disabled={!record.isActive}
             />
           </Tooltip>
-          <Tooltip title="Delete (Deactivate)">
+          <Tooltip title="Xóa (Vô hiệu hóa)">
             <Button
               type="text"
               danger
@@ -224,18 +316,17 @@ const ManagingService = () => {
 
   return (
     <div className="managing-service-container">
-      {/* Search & Filter */}
       <div style={{ marginBottom: 16, display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "space-between" }}>
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap", flex: 1 }}>
           <Input
-            placeholder="Search by name"
+            placeholder="Tìm kiếm theo tên"
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             style={{ width: 200, minWidth: 150 }}
           />
           <Select
             mode="multiple"
-            placeholder="Filter by target audience"
+            placeholder="Lọc theo đối tượng"
             value={filterSuggested}
             onChange={setFilterSuggested}
             style={{ minWidth: 200 }}
@@ -246,31 +337,30 @@ const ManagingService = () => {
             ))}
           </Select>
           <Select
-            placeholder="Filter by price"
+            placeholder="Lọc theo giá"
             value={priceFilter}
             onChange={setPriceFilter}
             style={{ width: 180 }}
             allowClear
           >
-            <Option value="low">Under 100,000 VND</Option>
+            <Option value="low">Dưới 100,000 VND</Option>
             <Option value="medium">100,000 – 300,000 VND</Option>
-            <Option value="high">Over 300,000 VND</Option>
+            <Option value="high">Trên 300,000 VND</Option>
           </Select>
           <Select
-            placeholder="Filter by status"
+            placeholder="Lọc theo trạng thái"
             value={statusFilter}
             onChange={setStatusFilter}
             style={{ width: 150 }}
             allowClear
           >
-            <Option value="active">Active</Option>
-            <Option value="inactive">Inactive</Option>
+            <Option value="active">Hoạt động</Option>
+            <Option value="inactive">Không hoạt động</Option>
           </Select>
         </div>
-        <Button type="primary" onClick={() => showModal()}>Add Service</Button>
+        <Button type="primary" onClick={() => showModal()}>Thêm Dịch Vụ</Button>
       </div>
 
-      {/* Table */}
       <Table
         rowKey="_id"
         dataSource={filteredServices}
@@ -288,12 +378,11 @@ const ManagingService = () => {
         }}
       />
 
-      {/* Modal Form */}
       <div className={`modal fade ${isModalVisible ? "show d-block" : ""}`} tabIndex="-1" style={{ backgroundColor: isModalVisible ? "rgba(0,0,0,0.5)" : "transparent" }}>
         <div className="modal-dialog modal-lg">
           <div className="modal-content">
             <div className="modal-header">
-              <h5 className="modal-title">{editingService ? "Edit Service" : "Add Service"}</h5>
+              <h5 className="modal-title">{editingService ? "Sửa Dịch Vụ" : "Thêm Dịch Vụ"}</h5>
               <button type="button" className="btn-close" onClick={handleCancel}></button>
             </div>
             <div className="modal-body">
@@ -302,84 +391,94 @@ const ManagingService = () => {
               </Form>
             </div>
             <div className="modal-footer">
-              <button type="button" className="btn btn-secondary" onClick={handleCancel}>Cancel</button>
-              <button type="button" className="btn btn-primary" onClick={handleSave}>Save</button>
+              <button type="button" className="btn btn-secondary" onClick={handleCancel}>Hủy</button>
+              <button type="button" className="btn btn-primary" onClick={handleSave}>Lưu</button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* View Modal */}
       <div className={`modal fade ${isViewModalVisible ? "show d-block" : ""}`} tabIndex="-1" style={{ backgroundColor: isViewModalVisible ? "rgba(0,0,0,0.5)" : "transparent" }}>
         <div className="modal-dialog">
           <div className="modal-content">
             <div className="modal-header">
-              <h5 className="modal-title">View Service Details</h5>
+              <h5 className="modal-title">Xem Chi Tiết Dịch Vụ</h5>
               <button type="button" className="btn-close" onClick={handleViewCancel}></button>
             </div>
             <div className="modal-body">
               {viewingService && (
                 <div>
-                  <p><strong>Service Name:</strong> {viewingService.name}</p>
-                  <p><strong>Price:</strong> {viewingService.price} VND</p>
-                  <p><strong>Description:</strong> {viewingService.description}</p>
-                  <p><strong>Steps:</strong> {(viewingService.steps || []).join(", ")}</p>
-                  <p><strong>Duration (minutes):</strong> {viewingService.durationMinutes}</p>
-                  <p><strong>Suggested For:</strong> {(viewingService.suggestedFor || []).join(", ")}</p>
-                  <p><strong>Status:</strong> {viewingService.isActive ? "Active" : "Inactive"}</p>
+                  {(viewingService.images && viewingService.images.length > 0) && (
+                    <div style={{ marginBottom: 16, textAlign: 'center', display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+                      {viewingService.images
+                        .filter(url => typeof url === 'string' && url.trim() && !url.startsWith('blob:') && !url.includes('undefined'))
+                        .map((url, idx) => (
+                          <img
+                            key={idx}
+                            src={url}
+                            alt={viewingService.name}
+                            style={{ maxWidth: '100px', maxHeight: '100px', objectFit: 'contain', borderRadius: '8px', border: '1px solid #d9d9d9' }}
+                          />
+                        ))}
+                    </div>
+                  )}
+                  <p><strong>Tên Dịch Vụ:</strong> {viewingService.name}</p>
+                  <p><strong>Giá:</strong> {viewingService.price} VND</p>
+                  <p><strong>Mô Tả:</strong> {viewingService.description}</p>
+                  <p><strong>Các Bước:</strong> {(viewingService.steps || []).join(", ")}</p>
+                  <p><strong>Thời Gian (phút):</strong> {viewingService.durationMinutes}</p>
+                  <p><strong>Phù Hợp Với:</strong> {(viewingService.suggestedFor || []).join(", ")}</p>
+                  <p><strong>Trạng Thái:</strong> {viewingService.isActive ? "Hoạt động" : "Không hoạt động"}</p>
                 </div>
               )}
             </div>
             <div className="modal-footer">
-              <button type="button" className="btn btn-secondary" onClick={handleViewCancel}>Close</button>
+              <button type="button" className="btn btn-secondary" onClick={handleViewCancel}>Đóng</button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Confirm Modal */}
       <div className={`modal fade ${showConfirmModal ? "show d-block" : ""}`} tabIndex="-1" style={{ backgroundColor: showConfirmModal ? "rgba(0,0,0,0.5)" : "transparent" }}>
         <div className="modal-dialog">
           <div className="modal-content">
             <div className="modal-header">
-              <h5 className="modal-title">Confirm {modalAction === "edit" ? "Edit" : "Add"} Service</h5>
+              <h5 className="modal-title">Xác Nhận {modalAction === "edit" ? "Sửa" : "Thêm"} Dịch Vụ</h5>
               <button type="button" className="btn-close" onClick={() => setShowConfirmModal(false)}></button>
             </div>
             <div className="modal-body">
-              <p>Are you sure you want to {modalAction === "edit" ? "edit" : "add"} this service?</p>
+              <p>Bạn có chắc muốn {modalAction === "edit" ? "sửa" : "thêm"} dịch vụ này?</p>
             </div>
             <div className="modal-footer">
-              <button type="button" className="btn btn-secondary" onClick={() => setShowConfirmModal(false)}>Cancel</button>
-              <button type="button" className="btn btn-primary" onClick={confirmSave}>Confirm</button>
+              <button type="button" className="btn btn-secondary" onClick={() => setShowConfirmModal(false)}>Hủy</button>
+              <button type="button" className="btn btn-primary" onClick={confirmSave}>Xác Nhận</button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Delete Modal */}
       <div className={`modal fade ${showDeleteConfirmModal ? "show d-block" : ""}`} tabIndex="-1" style={{ backgroundColor: showDeleteConfirmModal ? "rgba(0,0,0,0.5)" : "transparent" }}>
         <div className="modal-dialog">
           <div className="modal-content">
             <div className="modal-header">
-              <h5 className="modal-title">Confirm Deactivation</h5>
+              <h5 className="modal-title">Xác Nhận Vô Hiệu Hóa</h5>
               <button type="button" className="btn-close" onClick={() => setShowDeleteConfirmModal(false)}></button>
             </div>
             <div className="modal-body">
-              <p>Are you sure you want to deactivate this service?</p>
+              <p>Bạn có chắc muốn vô hiệu hóa dịch vụ này?</p>
             </div>
             <div className="modal-footer">
-              <button type="button" className="btn btn-secondary" onClick={() => setShowDeleteConfirmModal(false)}>Cancel</button>
-              <button type="button" className="btn btn-danger" onClick={confirmDelete}>Deactivate</button>
+              <button type="button" className="btn btn-secondary" onClick={() => setShowDeleteConfirmModal(false)}>Hủy</button>
+              <button type="button" className="btn btn-danger" onClick={confirmDelete}>Vô Hiệu Hóa</button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Toast Notification */}
       <div className="position-fixed top-0 end-0 p-3" style={{ zIndex: 1050 }}>
         <div className={`toast ${showSuccessToast ? "show" : ""}`} role="alert" aria-live="assertive" aria-atomic="true">
           <div className="toast-header">
-            <strong className="me-auto">Notification</strong>
+            <strong className="me-auto">Thông Báo</strong>
             <button type="button" className="btn-close" onClick={() => setShowSuccessToast(false)}></button>
           </div>
           <div className="toast-body">{successMessage}</div>
