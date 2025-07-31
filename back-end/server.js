@@ -32,6 +32,7 @@ const chatRoutes = require('./routes/chat.route');
 const barberRoute = require('./routes/barber.route');
 const noShowRoutes = require('./routes/no-show.routes');
 const paymentRoutes = require('./routes/payment.route');
+const addressRoutes = require('./routes/address.route');
 
 const cors = require('cors');
 const cookieParser = require("cookie-parser");
@@ -91,6 +92,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/barbers', barberRoute);
 app.use('/api/no-shows', noShowRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/addresses', addressRoutes);
 
 const PORT = process.env.PORT || 3000;
 initSocket(server); 

@@ -436,12 +436,12 @@ const VoucherManagement = () => {
                 <Button type="primary" onClick={() => showModal()}>
                     Add Voucher
                 </Button>
-                <Button type="default" onClick={() => {
+                {/* <Button type="default" onClick={() => {
                     console.log('Form validation test:', form.getFieldsError());
                     console.log('Form values:', form.getFieldsValue());
                 }}>
                     Test Validation
-                </Button>
+                </Button> */}
             </div>
     
             <Table

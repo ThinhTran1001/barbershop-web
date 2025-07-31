@@ -9,12 +9,12 @@
 }
 
 .order-detail-container {
-    max-width: 800px;
+    max-width: 1000px;
     margin: 0 auto;
-    padding: 24px;
+    padding: 32px;
     background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
 }
 
 .back-button {
@@ -114,7 +114,6 @@
 .order-summary-section {
     background: #fff;
     padding: 16px;
-    border-top: 1px dashed #ccc;
     margin-top: -24px; /* Pull it up to connect with the items card */
     border-radius: 0 0 4px 4px;
 }
@@ -265,7 +264,7 @@
 .order-info-card .ant-card-head-title,
 .order-status-card .ant-card-head-title,
 .support-card .ant-card-head-title {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 700;
   color: #2c3e50;
 }
@@ -343,8 +342,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 0;
+  padding: 12px 0;
   border-bottom: 1px solid #f0f0f0;
+  font-size: 16px;
 }
 
 .summary-item:last-child {
@@ -359,16 +359,26 @@
 
 .order-steps {
   margin-bottom: 24px;
+  padding: 20px 0;
+}
+
+.order-steps .ant-steps {
+  font-size: 16px;
+}
+
+.order-steps .ant-steps-item {
+  margin-right: 16px;
 }
 
 .order-steps .ant-steps-item-title {
   font-weight: 600;
   color: #2c3e50;
+  font-size: 16px;
 }
 
 .order-steps .ant-steps-item-description {
   color: #666;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .order-steps .ant-steps-item-process .ant-steps-item-icon {
@@ -436,24 +446,48 @@
 }
 
 @media (max-width: 768px) {
+  .order-detail-container {
+    padding: 16px;
+    margin: 10px;
+  }
+  
   .order-success-container {
     padding: 10px;
   }
+  
   .order-success-header {
     padding: 10px;
   }
+  
   .order-info-card .ant-card-body,
   .order-status-card .ant-card-body,
   .support-card .ant-card-body {
-    padding: 12px;
+    padding: 16px;
   }
+  
   .order-id-display {
     flex-direction: column;
     gap: 8px;
   }
+  
   .summary-item {
     flex-direction: column;
     align-items: flex-start;
-    gap: 4px;
+    gap: 8px;
+    font-size: 14px;
+  }
+  
+  .order-steps .ant-steps-item-title {
+    font-size: 14px;
+  }
+  
+  .order-steps .ant-steps-item-description {
+    font-size: 12px;
+  }
+  
+  .order-info-card .ant-card-head-title,
+  .order-status-card .ant-card-head-title,
+  .support-card .ant-card-head-title {
+    font-size: 18px;
   }
 } 

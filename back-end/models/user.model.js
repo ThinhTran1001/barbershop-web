@@ -42,6 +42,11 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ['GOOGLE'],
     default: null
+  },
+  defaultAddressId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Address',
+    default: null
   }
 }, { timestamps: true });
 

@@ -197,10 +197,20 @@ exports.getPublicVouchers = async (req, res) => {
 exports.getPersonalVouchers = async (req, res) => {
   try {
     const userId = req.user.id;
-    const userVouchers = await require('../models/user_voucher.model').find({ userId }).populate('voucherId');
+    // Lấy tất cả voucher của user (cả đã sử dụng và chưa sử dụng)
+    const userVouchers = await require('../models/user_voucher.model').find({ 
+      userId 
+    }).populate('voucherId');
+    
+    // Map voucher và thêm thông tin isUsed
     const vouchers = userVouchers
-      .map(uv => uv.voucherId)
-      .filter(v => v); // loại bỏ null nếu có
+      .map(uv => ({
+        ...uv.voucherId.toObject(),
+        isUsed: uv.isUsed,
+        userVoucherId: uv._id
+      }))
+      .filter(v => v._id); // loại bỏ null nếu có
+      
     res.status(200).json({ success: true, data: vouchers });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

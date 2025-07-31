@@ -48,20 +48,32 @@ exports.verifyOtp = async (req, res) => {
 
         const user = await User.findOne({ email });
         if (user) {
-            const now = new Date();
-            const end = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
-            const voucher = await Voucher.create({
-                code: 'VOUCHER10%',
-                type: 'percent',
-                value: 10,
-                minOrderAmount: 0,
-                usageLimit: 1,
-                isActive: true,
-                maxDiscountAmount: 0,
-                startDate: now,
-                endDate: end
-            });
-            await User_Voucher.create({ userId: user._id, voucherId: voucher._id, isUsed: false });
+            const existingVoucher = await User_Voucher.findOne({
+                userId: user._id,
+                isUsed: false
+            }).populate('voucherId');
+
+            // Chỉ tạo voucher mới nếu user chưa có voucher nào hoặc voucher đã hết hạn
+            if (!existingVoucher || 
+                !existingVoucher.voucherId || 
+                existingVoucher.voucherId.endDate < new Date() ||
+                existingVoucher.isUsed) {
+                
+                const now = new Date();
+                const end = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+                const voucher = await Voucher.create({
+                    code: 'VOUCHER10%',
+                    type: 'percent',
+                    value: 10,
+                    minOrderAmount: 0,
+                    usageLimit: 1,
+                    isActive: true,
+                    maxDiscountAmount: 0,
+                    startDate: now,
+                    endDate: end
+                });
+                await User_Voucher.create({ userId: user._id, voucherId: voucher._id, isUsed: false });
+            }
         }
 
         res.json({ message: 'Email verified successfully' });
@@ -330,20 +342,33 @@ exports.googleOauthHandler = async (req, res) => {
 
         // Gán voucher VOUCHER10% cho user đăng nhập bằng Google
         if (user) {
-            const now = new Date();
-            const end = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
-            const voucher = await Voucher.create({
-                code: 'VOUCHER10%',
-                type: 'percent',
-                value: 10,
-                minOrderAmount: 0,
-                usageLimit: 1,
-                isActive: true,
-                maxDiscountAmount: 0,
-                startDate: now,
-                endDate: end
-            });
-            await User_Voucher.create({ userId: user._id, voucherId: voucher._id, isUsed: false });
+            // Kiểm tra xem user đã có voucher VOUCHER10% chưa
+            const existingVoucher = await User_Voucher.findOne({
+                userId: user._id,
+                isUsed: false
+            }).populate('voucherId');
+
+            // Chỉ tạo voucher mới nếu user chưa có voucher nào hoặc voucher đã hết hạn
+            if (!existingVoucher || 
+                !existingVoucher.voucherId || 
+                existingVoucher.voucherId.endDate < new Date() ||
+                existingVoucher.isUsed) {
+                
+                const now = new Date();
+                const end = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+                const voucher = await Voucher.create({
+                    code: 'VOUCHER10%',
+                    type: 'percent',
+                    value: 10,
+                    minOrderAmount: 0,
+                    usageLimit: 1,
+                    isActive: true,
+                    maxDiscountAmount: 0,
+                    startDate: now,
+                    endDate: end
+                });
+                await User_Voucher.create({ userId: user._id, voucherId: voucher._id, isUsed: false });
+            }
         }
 
         let barberId = undefined;

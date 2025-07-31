@@ -665,13 +665,8 @@ const ProductDetail = () => {
                 max={product ? Math.max(1, product.stock - getCurrentCartQuantity()) : 1}
                 value={quantity}
                 onChange={(val) => {
-                  // Đảm bảo giá trị là số hợp lệ
-                  if (val === null || val === undefined || isNaN(val) || 
-                      (typeof val === 'string' && val.trim() === '')) {
-                    setQuantity(1);
-                  } else if (val < 1) {
-                    setQuantity(1);
-                  } else {
+                  // Chỉ xử lý khi value là số hợp lệ và >= 1
+                  if (val && typeof val === 'number' && val >= 1) {
                     // Tính số lượng tối đa có thể thêm
                     const currentCartQuantity = getCurrentCartQuantity();
                     const maxCanAdd = product.stock - currentCartQuantity;
@@ -682,10 +677,13 @@ const ProductDetail = () => {
                     } else {
                       setQuantity(val);
                     }
+                  } else {
+                    // Nếu giá trị không hợp lệ, reset về 1
+                    setQuantity(1);
                   }
                 }}
                 onKeyPress={(e) => {
-                  // Chỉ cho phép số và một số ký tự đặc biệt
+                  // Chỉ cho phép nhập số từ 0-9
                   const charCode = e.which ? e.which : e.keyCode;
                   if (charCode > 31 && (charCode < 48 || charCode > 57)) {
                     e.preventDefault();
@@ -735,14 +733,6 @@ const ProductDetail = () => {
                <Button type="text" icon={<ShareAltOutlined />}>
                  Chia sẻ
                </Button>
-                               {/* Test button for warning toast */}
-                <Button 
-                  type="text" 
-                  onClick={() => showWarningToast("Số lượng sản phẩm trong giỏ hàng đã đạt đến tối đa")}
-                  style={{ color: '#faad14' }}
-                >
-                  {/* Số lượng sản phẩm trong giỏ hàng đã đạt đến tối đa! */}
-                </Button>
              </div>
           </div>
 

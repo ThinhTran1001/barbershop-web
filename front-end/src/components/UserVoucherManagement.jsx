@@ -12,6 +12,8 @@ const UserVoucherManagement = () => {
     const [vouchers, setVouchers] = useState([]);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [isViewModalVisible, setIsViewModalVisible] = useState(false);
+    const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+    const [deletingUserVoucher, setDeletingUserVoucher] = useState(null);
     const [viewingUserVoucher, setViewingUserVoucher] = useState(null);
     const [editingUserVoucher, setEditingUserVoucher] = useState(null);
     const [form] = Form.useForm();
@@ -86,6 +88,36 @@ const UserVoucherManagement = () => {
         }
     };
 
+    // Lọc voucher khả dụng (chưa được sử dụng hết, còn hiệu lực và chưa được gán hết)
+    const getAvailableVouchers = () => {
+        const now = new Date();
+        
+        // Đếm số lần mỗi voucher đã được gán cho tất cả user
+        const voucherAssignmentCount = {};
+        userVouchers.forEach(uv => {
+            const voucherId = uv.voucherId._id || uv.voucherId;
+            voucherAssignmentCount[voucherId] = (voucherAssignmentCount[voucherId] || 0) + 1;
+        });
+        
+        return vouchers.filter(voucher => {
+            // Kiểm tra voucher có active không
+            if (!voucher.isActive) return false;
+            
+            // Kiểm tra thời gian hiệu lực
+            if (voucher.startDate && new Date(voucher.startDate) > now) return false;
+            if (voucher.endDate && new Date(voucher.endDate) < now) return false;
+            
+            // Kiểm tra số lần sử dụng
+            if (voucher.usedCount >= voucher.usageLimit) return false;
+            
+            // Kiểm tra số lần đã được gán cho tất cả user
+            const assignedCount = voucherAssignmentCount[voucher._id] || 0;
+            if (assignedCount >= voucher.usageLimit) return false;
+            
+            return true;
+        });
+    };
+
     useEffect(() => {
         fetchUserVouchers(pagination.current, pagination.pageSize);
         fetchUsersAndVouchers();
@@ -154,29 +186,48 @@ const UserVoucherManagement = () => {
 
     const handleAddOrUpdate = async (values) => {
         try {
+            console.log('Submitting values:', values);
+            
             const apiCall = editingUserVoucher
                 ? updateUserVoucher(editingUserVoucher._id, values)
                 : createUserVoucher(values);
             
-            await apiCall;
+            const response = await apiCall;
+            console.log('API response:', response);
+            
             message.success(`User voucher ${editingUserVoucher ? 'updated' : 'assigned'} successfully`);
-            fetchUserVouchers(pagination.current, pagination.pageSize);
+            
+            // Reset form
+            form.resetFields();
+            setEditingUserVoucher(null);
+            
+            // Close modal
             setIsModalVisible(false);
+            
+            // Reload data
+            await fetchUserVouchers(1, pagination.pageSize);
+            
         } catch (error) {
+            console.error('Error in handleAddOrUpdate:', error);
             message.error('Operation failed: ' + (error.response?.data?.message || error.message));
         }
     };
 
     const handleDelete = async (id) => {
-        if (window.confirm('Are you sure you want to delete this assignment?')) {
-            try {
-                await deleteUserVoucher(id);
-                message.success('User voucher deleted successfully');
-                fetchUserVouchers(pagination.current, pagination.pageSize);
-            } catch (error) {
-                message.error('Failed to delete: ' + error.message);
-            }
+        try {
+            await deleteUserVoucher(id);
+            message.success('User voucher deleted successfully');
+            fetchUserVouchers(pagination.current, pagination.pageSize);
+            setIsDeleteModalVisible(false);
+            setDeletingUserVoucher(null);
+        } catch (error) {
+            message.error('Failed to delete: ' + error.message);
         }
+    };
+
+    const showDeleteModal = (record) => {
+        setDeletingUserVoucher(record);
+        setIsDeleteModalVisible(true);
     };
 
     const showModal = (record = null) => {
@@ -236,7 +287,7 @@ const UserVoucherManagement = () => {
                 <Space>
                     <Button icon={<EyeOutlined />} onClick={() => showViewModal(record)} />
                     <Button icon={<InfoCircleFilled />} onClick={() => showModal(record)} />
-                    <Button icon={<DeleteFilled />} danger onClick={() => handleDelete(record._id)} />
+                                         <Button icon={<DeleteFilled />} danger onClick={() => showDeleteModal(record)} />
                 </Space>
             ),
         },
@@ -300,7 +351,19 @@ const UserVoucherManagement = () => {
                     </Form.Item>
                     <Form.Item name="voucherId" label="Voucher" rules={[{ required: true }]}>
                         <Select showSearch placeholder="Select a voucher" optionFilterProp="children">
-                            {vouchers.map(voucher => <Option key={voucher._id} value={voucher._id}>{voucher.code}</Option>)}
+                            {getAvailableVouchers().map(voucher => {
+                                // Đếm số lần voucher này đã được gán
+                                const assignedCount = userVouchers.filter(uv => 
+                                    (uv.voucherId._id || uv.voucherId) === voucher._id
+                                ).length;
+                                
+                                return (
+                                    <Option key={voucher._id} value={voucher._id}>
+                                        {voucher.code} - {voucher.type === 'percent' ? `${voucher.value}%` : `${voucher.value?.toLocaleString('vi-VN')}đ`} 
+                                        (Đã gán: {assignedCount}/{voucher.usageLimit})
+                                    </Option>
+                                );
+                            })}
                         </Select>
                     </Form.Item>
                     <Form.Item name="isUsed" label="Status" valuePropName="checked">
@@ -312,26 +375,60 @@ const UserVoucherManagement = () => {
                 </Form>
             </Modal>
 
-            {viewingUserVoucher && (
-                <Modal
-                    title="User Voucher Details"
-                    open={isViewModalVisible}
-                    onCancel={() => setIsViewModalVisible(false)}
-                    footer={<Button onClick={() => setIsViewModalVisible(false)}>Close</Button>}
-                >
-                    <Descriptions bordered column={1}>
-                        <Descriptions.Item label="User">{viewingUserVoucher.userId?.name}</Descriptions.Item>
-                        <Descriptions.Item label="Email">{viewingUserVoucher.userId?.email}</Descriptions.Item>
-                        <Descriptions.Item label="Voucher Code">{viewingUserVoucher.voucherId?.code}</Descriptions.Item>
-                        <Descriptions.Item label="Status">
-                            <Tag color={viewingUserVoucher.isUsed ? 'red' : 'green'}>{viewingUserVoucher.isUsed ? 'Used' : 'Available'}</Tag>
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Assigned At">{dayjs(viewingUserVoucher.assignedAt).format('DD/MM/YYYY HH:mm')}</Descriptions.Item>
-                    </Descriptions>
-                </Modal>
-            )}
-        </div>
-    );
+                         {viewingUserVoucher && (
+                 <Modal
+                     title="User Voucher Details"
+                     open={isViewModalVisible}
+                     onCancel={() => setIsViewModalVisible(false)}
+                     footer={<Button onClick={() => setIsViewModalVisible(false)}>Close</Button>}
+                 >
+                     <Descriptions bordered column={1}>
+                         <Descriptions.Item label="User">{viewingUserVoucher.userId?.name}</Descriptions.Item>
+                         <Descriptions.Item label="Email">{viewingUserVoucher.userId?.email}</Descriptions.Item>
+                         <Descriptions.Item label="Voucher Code">{viewingUserVoucher.voucherId?.code}</Descriptions.Item>
+                         <Descriptions.Item label="Status">
+                             <Tag color={viewingUserVoucher.isUsed ? 'red' : 'green'}>{viewingUserVoucher.isUsed ? 'Used' : 'Available'}</Tag>
+                         </Descriptions.Item>
+                         <Descriptions.Item label="Assigned At">{dayjs(viewingUserVoucher.assignedAt).format('DD/MM/YYYY HH:mm')}</Descriptions.Item>
+                     </Descriptions>
+                 </Modal>
+             )}
+
+             {/* Delete Confirmation Modal */}
+             <div className={`modal fade ${isDeleteModalVisible ? 'show' : ''}`} 
+                  style={{display: isDeleteModalVisible ? 'block' : 'none'}} 
+                  tabIndex="-1">
+                 <div className="modal-dialog modal-dialog-centered">
+                     <div className="modal-content">
+                         <div className="modal-header">
+                             <h5 className="modal-title">Xác nhận xóa voucher</h5>
+                             <button type="button" className="btn-close" onClick={() => setIsDeleteModalVisible(false)}></button>
+                         </div>
+                         <div className="modal-body">
+                             <p>Bạn có muốn xóa voucher "{deletingUserVoucher?.voucherId?.code}" khỏi người dùng "{deletingUserVoucher?.userId?.name}" không?</p>
+                         </div>
+                         <div className="modal-footer">
+                             <button type="button" className="btn btn-secondary" onClick={() => setIsDeleteModalVisible(false)}>
+                                 Hủy
+                             </button>
+                             <button 
+                                 type="button" 
+                                 className="btn btn-danger" 
+                                 onClick={() => handleDelete(deletingUserVoucher?._id)}
+                             >
+                                 Đồng ý
+                             </button>
+                         </div>
+                     </div>
+                 </div>
+             </div>
+
+             {/* Modal Backdrop */}
+             {(isModalVisible || isViewModalVisible || isDeleteModalVisible) && (
+                 <div className="modal-backdrop fade show"></div>
+             )}
+         </div>
+     );
 };
 
 export default UserVoucherManagement; 
