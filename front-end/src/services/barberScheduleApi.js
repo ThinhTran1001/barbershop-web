@@ -33,6 +33,16 @@ export const fetchAvailableSlots = async (barberId, date, options = {}) => {
   return res.data;
 };
 
+// Fetch all available time slots for a date (regardless of barber)
+export const fetchAllAvailableSlots = async (date, options = {}) => {
+  const params = {
+    date,
+    ...options
+  };
+  const res = await axios.get(`${API_BASE}/all-available-slots`, { params });
+  return res.data;
+};
+
 export const checkBarberOff = async (barberId, date) => {
   const res = await axios.get(`${API_BASE}/is-off`, { params: { barberId, date } });
   return res.data;

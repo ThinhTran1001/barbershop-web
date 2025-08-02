@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import BookingInfoForm from '../../components/BookingInfoForm.jsx';
-import { Card, Typography, Descriptions, Divider, Button, Alert } from 'antd';
+import { Card, Typography, Descriptions, Divider, Button, Alert, Space } from 'antd';
 import { createBooking } from '../../services/serviceApi.js';
 import { toast } from 'react-toastify';
 import Cookies from 'js-cookie';
 import { useAuth } from '../../context/AuthContext';
+import { InfoCircleOutlined, ArrowRightOutlined } from '@ant-design/icons';
 
 const { Title } = Typography;
 
 const BookingInfoPage = () => {
+  const navigate = useNavigate();
+
   // Lấy thông tin đã chọn từ localStorage
   const service = JSON.parse(localStorage.getItem('selectedService') || '{}');
   const barber = JSON.parse(localStorage.getItem('selectedBarber') || '{}');
@@ -263,6 +267,29 @@ const BookingInfoPage = () => {
 
   return (
     <div style={{ maxWidth: 700, margin: '0 auto', padding: 24 }}>
+      {/* New Booking Flow Notice */}
+      <Alert
+        message="🎉 Improved Booking Experience Available!"
+        description={
+          <Space direction="vertical" size="small">
+            <div>We've launched a new single-page booking experience that's faster and easier to use.</div>
+            <Button
+              type="primary"
+              icon={<ArrowRightOutlined />}
+              onClick={() => navigate('/book-service')}
+              size="small"
+            >
+              Try New Booking Experience
+            </Button>
+          </Space>
+        }
+        type="info"
+        showIcon
+        icon={<InfoCircleOutlined />}
+        style={{ marginBottom: 24 }}
+        closable
+      />
+
       {!user && (
         <Alert
           message="Bạn chưa đăng nhập"

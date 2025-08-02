@@ -10,6 +10,7 @@ const {
 
 // Booking CRUD operations
 router.post('/', authenticate, bookingController.createBooking);
+router.post('/single-page', authenticate, bookingController.createBookingSinglePage);
 router.get('/me', authenticate, applyRoleBasedBookingFilter, bookingController.getMyBookings);
 router.get('/all', authenticate, applyRoleBasedBookingFilter, bookingController.getAllBookings);
 router.get('/stats', authenticate, bookingController.getBookingStats);

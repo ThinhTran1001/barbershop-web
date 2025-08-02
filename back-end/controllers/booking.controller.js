@@ -260,6 +260,397 @@ exports.createBooking = async (req, res) => {
   }
 };
 
+// Create booking for single-page flow with enhanced auto-assignment
+exports.createBookingSinglePage = async (req, res) => {
+  try {
+    const {
+      serviceId,
+      barberId, // Can be null, 'random', or actual barber ID
+      bookingDate,
+      timeSlot, // "HH:MM" format
+      date, // "YYYY-MM-DD" format
+      durationMinutes,
+      note,
+      notificationMethods,
+      customerName,
+      customerEmail,
+      customerPhone,
+      autoAssignBarber = false // Flag to indicate auto-assignment preference
+    } = req.body;
+
+    const customerId = req.userId;
+
+    // Validate required fields
+    if (!serviceId || !bookingDate || !date || !timeSlot) {
+      return res.status(400).json({
+        success: false,
+        message: 'Service, booking date, date, and time slot are required',
+        errorCode: 'MISSING_REQUIRED_FIELDS'
+      });
+    }
+
+    // Validation: Check if booking is at least 30 minutes in the future
+    const now = new Date();
+    const requestedDateTime = new Date(bookingDate);
+    const timeDifference = requestedDateTime.getTime() - now.getTime();
+    const minutesDifference = timeDifference / (1000 * 60);
+
+    if (minutesDifference < 30) {
+      return res.status(400).json({
+        success: false,
+        message: 'Bookings must be made at least 30 minutes in advance',
+        errorCode: 'BOOKING_TOO_SOON'
+      });
+    }
+
+    // Enhanced no-show checking
+    const isBlocked = await NoShow.isCustomerBlocked(customerId, 3);
+    if (isBlocked) {
+      const noShowCount = await NoShow.getCustomerNoShowCount(customerId);
+      return res.status(403).json({
+        success: false,
+        message: `Booking blocked due to ${noShowCount} cancellations/no-shows. Please contact support to resolve this issue.`,
+        errorCode: 'CUSTOMER_BLOCKED',
+        details: {
+          noShowCount,
+          limit: 3,
+          contactSupport: true
+        }
+      });
+    }
+
+    // Validate service exists
+    const Service = require('../models/service.model');
+    const service = await Service.findById(serviceId);
+    if (!service) {
+      return res.status(404).json({
+        success: false,
+        message: 'Service not found',
+        errorCode: 'SERVICE_NOT_FOUND'
+      });
+    }
+
+    // Use service duration if not provided
+    const finalDurationMinutes = durationMinutes || service.durationMinutes || 30;
+
+    let finalBarberId = barberId;
+    let isAutoAssigned = false;
+
+    // Handle auto-assignment logic
+    if (!barberId || barberId === 'random' || barberId === 'auto' || autoAssignBarber) {
+      try {
+        // Use the auto-assignment logic from our new endpoint
+        const Barber = require('../models/barber.model');
+        const BarberSchedule = require('../models/barber-schedule.model');
+        const BarberAbsence = require('../models/barber-absence.model');
+
+        // Get all available barbers eligible for auto-assignment
+        const barbers = await Barber.find({
+          isAvailable: true,
+          autoAssignmentEligible: true
+        }).select('userId specialties experienceYears averageRating totalBookings maxDailyBookings');
+
+        if (barbers.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: 'No barbers available for auto-assignment',
+            errorCode: 'NO_BARBERS_AVAILABLE'
+          });
+        }
+
+        // Filter and score barbers (simplified version of the auto-assignment logic)
+        const eligibleBarbers = [];
+
+        for (const barber of barbers) {
+          // Check if barber is absent
+          const isAbsent = await BarberAbsence.isBarberAbsent(barber._id, requestedDateTime);
+          if (isAbsent) continue;
+
+          // Check schedule availability
+          const schedule = await BarberSchedule.findOne({
+            barberId: barber._id,
+            date: date
+          });
+
+          if (schedule && schedule.isOffDay) continue;
+
+          if (schedule) {
+            const slot = schedule.timeSlots?.find(slot => slot.time === timeSlot);
+            if (slot && slot.isBooked) continue;
+          }
+
+          // Check for existing bookings
+          const existingBooking = await Booking.findOne({
+            barberId: barber._id,
+            bookingDate: {
+              $gte: new Date(`${date}T${timeSlot}:00.000Z`),
+              $lt: new Date(`${date}T${timeSlot}:30.000Z`)
+            },
+            status: { $in: ['pending', 'confirmed'] }
+          });
+
+          if (existingBooking) continue;
+
+          // Check daily booking limit
+          const dailyBookings = await Booking.countDocuments({
+            barberId: barber._id,
+            bookingDate: {
+              $gte: new Date(date + 'T00:00:00.000Z'),
+              $lt: new Date(date + 'T23:59:59.999Z')
+            },
+            status: { $in: ['pending', 'confirmed'] }
+          });
+
+          if (dailyBookings >= (barber.maxDailyBookings || 10)) continue;
+
+          // Calculate score
+          const maxDailyBookings = barber.maxDailyBookings || 10;
+          const workloadScore = (maxDailyBookings - dailyBookings) / maxDailyBookings;
+          const ratingScore = (barber.averageRating || 0) / 5;
+          const experienceScore = Math.min((barber.experienceYears || 0) / 10, 1);
+          const totalBookingsScore = Math.max(0, 1 - ((barber.totalBookings || 0) / 1000));
+          const finalScore = (ratingScore * 0.4) + (workloadScore * 0.3) + (experienceScore * 0.2) + (totalBookingsScore * 0.1);
+
+          eligibleBarbers.push({
+            barber,
+            score: finalScore
+          });
+        }
+
+        if (eligibleBarbers.length === 0) {
+          return res.status(404).json({
+            success: false,
+            message: `No barbers available for ${date} at ${timeSlot}`,
+            errorCode: 'NO_BARBERS_AVAILABLE_FOR_SLOT'
+          });
+        }
+
+        // Sort by score and select the best
+        eligibleBarbers.sort((a, b) => b.score - a.score);
+        finalBarberId = eligibleBarbers[0].barber._id;
+        isAutoAssigned = true;
+
+      } catch (autoAssignError) {
+        console.error('Error in auto-assignment:', autoAssignError);
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to auto-assign barber',
+          errorCode: 'AUTO_ASSIGNMENT_FAILED'
+        });
+      }
+    }
+
+    // Validate final barber
+    const Barber = require('../models/barber.model');
+    const finalBarber = await Barber.findById(finalBarberId);
+    if (!finalBarber) {
+      return res.status(404).json({
+        success: false,
+        message: 'Barber not found',
+        errorCode: 'BARBER_NOT_FOUND'
+      });
+    }
+
+    // Continue with existing validation logic...
+    // (The rest of the validation logic from the original createBooking function)
+
+    // Check if barber is absent on the requested date
+    const isBarberAbsent = await BarberAbsence.isBarberAbsent(finalBarberId, requestedDateTime);
+    if (isBarberAbsent) {
+      return res.status(400).json({
+        success: false,
+        message: 'Selected barber is not available on this date',
+        errorCode: 'BARBER_ABSENT'
+      });
+    }
+
+    // Enhanced conflict checking
+    const dateStr = requestedDateTime.toISOString().split('T')[0];
+
+    // Get all existing bookings for the barber on this date
+    const barberBookings = await Booking.find({
+      barberId: finalBarberId,
+      bookingDate: {
+        $gte: new Date(dateStr + 'T00:00:00.000Z'),
+        $lt: new Date(dateStr + 'T23:59:59.999Z')
+      },
+      status: { $in: ['pending', 'confirmed'] }
+    }).sort({ bookingDate: 1 });
+
+    // Check for customer conflicts across ALL barbers on this date
+    const customerBookings = await Booking.find({
+      customerId,
+      bookingDate: {
+        $gte: new Date(dateStr + 'T00:00:00.000Z'),
+        $lt: new Date(dateStr + 'T23:59:59.999Z')
+      },
+      status: { $in: ['pending', 'confirmed'] }
+    }).populate('barberId', 'userId')
+      .populate({
+        path: 'barberId',
+        populate: {
+          path: 'userId',
+          select: 'name'
+        }
+      });
+
+    // Enhanced conflict detection with proper time overlap checking
+    const newStart = new Date(bookingDate);
+    const newEnd = new Date(newStart.getTime() + finalDurationMinutes * 60000);
+
+    // 1. Check for barber conflicts
+    const barberConflict = barberBookings.find(booking => {
+      const existingStart = new Date(booking.bookingDate);
+      const existingEnd = new Date(existingStart.getTime() + booking.durationMinutes * 60000);
+      return (newStart < existingEnd && newEnd > existingStart);
+    });
+
+    if (barberConflict) {
+      return res.status(409).json({
+        success: false,
+        message: `Time slot conflict detected. The selected time overlaps with an existing booking.`,
+        errorCode: 'BOOKING_CONFLICT',
+        conflictDetails: {
+          conflictType: 'BARBER_CONFLICT',
+          conflictingTime: barberConflict.bookingDate,
+          conflictingDuration: barberConflict.durationMinutes,
+          requestedTime: bookingDate,
+          requestedDuration: finalDurationMinutes
+        }
+      });
+    }
+
+    // 2. Check for customer conflicts
+    const customerConflict = customerBookings.find(booking => {
+      const existingStart = new Date(booking.bookingDate);
+      const existingEnd = new Date(existingStart.getTime() + booking.durationMinutes * 60000);
+      return (newStart < existingEnd && newEnd > existingStart);
+    });
+
+    if (customerConflict) {
+      const conflictingBarberName = customerConflict.barberId?.userId?.name || 'Unknown Barber';
+      return res.status(409).json({
+        success: false,
+        message: `You already have a booking during this time period with ${conflictingBarberName}.`,
+        errorCode: 'CUSTOMER_DOUBLE_BOOKING',
+        conflictDetails: {
+          conflictType: 'CUSTOMER_CONFLICT',
+          conflictingBookingId: customerConflict._id,
+          conflictingBarber: conflictingBarberName,
+          conflictingTime: customerConflict.bookingDate,
+          conflictingDuration: customerConflict.durationMinutes
+        }
+      });
+    }
+
+    // Check barber's daily booking limit
+    if (barberBookings.length >= finalBarber.maxDailyBookings) {
+      return res.status(400).json({
+        success: false,
+        message: 'Barber has reached maximum bookings for this date',
+        errorCode: 'DAILY_LIMIT_EXCEEDED'
+      });
+    }
+
+    // Create the booking
+    const booking = new Booking({
+      customerId,
+      barberId: finalBarberId,
+      serviceId,
+      bookingDate: new Date(bookingDate),
+      durationMinutes: finalDurationMinutes,
+      note,
+      notificationMethods,
+      autoAssignedBarber: isAutoAssigned,
+      customerName,
+      customerEmail,
+      customerPhone
+    });
+
+    await booking.save();
+
+    // Mark time slots as booked in the barber schedule
+    const BarberSchedule = require('../models/barber-schedule.model');
+    const bookingStartTime = new Date(bookingDate);
+    const startTimeStr = bookingStartTime.toTimeString().substring(0, 5);
+
+    try {
+      const scheduleResult = await BarberSchedule.markSlotsAsBooked(
+        finalBarberId,
+        dateStr,
+        startTimeStr,
+        finalDurationMinutes,
+        booking._id,
+        null
+      );
+      console.log(`Successfully marked ${scheduleResult.totalSlotsBooked} slots as booked:`, scheduleResult.bookedSlots);
+    } catch (scheduleError) {
+      console.error('Error marking schedule slots as booked:', scheduleError);
+      await Booking.findByIdAndDelete(booking._id);
+      return res.status(409).json({
+        success: false,
+        message: 'Failed to reserve time slots in schedule: ' + scheduleError.message,
+        errorCode: 'SCHEDULE_UPDATE_FAILED'
+      });
+    }
+
+    // Update barber's total bookings count
+    await Barber.findByIdAndUpdate(finalBarberId, {
+      $inc: { totalBookings: 1 }
+    });
+
+    // Populate the response with enhanced information for single-page flow
+    const populatedBooking = await Booking.findById(booking._id)
+      .populate('serviceId', 'name price durationMinutes category')
+      .populate('barberId', 'userId specialties averageRating experienceYears profileImageUrl')
+      .populate({
+        path: 'barberId',
+        populate: {
+          path: 'userId',
+          select: 'name email profileImageUrl'
+        }
+      });
+
+    res.status(201).json({
+      success: true,
+      booking: populatedBooking,
+      bookingDetails: {
+        bookingId: booking._id,
+        service: {
+          name: service.name,
+          price: service.price,
+          duration: finalDurationMinutes
+        },
+        barber: {
+          name: finalBarber.userId?.name || 'Unknown',
+          isAutoAssigned: isAutoAssigned
+        },
+        schedule: {
+          date: date,
+          timeSlot: timeSlot,
+          dateTime: bookingDate
+        },
+        customer: {
+          name: customerName,
+          email: customerEmail,
+          phone: customerPhone
+        }
+      },
+      message: isAutoAssigned
+        ? `Booking created successfully with auto-assigned barber: ${finalBarber.userId?.name || 'Unknown'}`
+        : 'Booking created successfully'
+    });
+
+  } catch (err) {
+    console.error('Error in createBookingSinglePage:', err);
+    res.status(500).json({
+      success: false,
+      message: err.message,
+      errorCode: 'INTERNAL_ERROR'
+    });
+  }
+};
+
 // Lấy danh sách booking của user hiện tại với filtering và pagination
 exports.getMyBookings = async (req, res) => {
   try {
