@@ -23,6 +23,7 @@ router.get('/:id', authenticate, bookingController.getBookingDetail);
 router.get('/pending/list', authenticate, authorizeRoles('admin'), bookingController.getPendingBookings);
 router.put('/:bookingId/confirm', authenticate, requireAdminForBookingConfirmation, bookingController.confirmBooking);
 router.post('/bulk-confirm', authenticate, requireAdminForBookingConfirmation, bookingController.bulkConfirmBookings);
+router.put('/:bookingId/assign-barber', authenticate, authorizeRoles('admin'), bookingController.assignBarberToBooking);
 
 // Booking status management
 router.put('/:bookingId/status', authenticate, checkBookingUpdatePermission, bookingController.updateBookingStatus);

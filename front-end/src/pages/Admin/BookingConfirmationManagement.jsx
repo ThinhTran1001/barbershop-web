@@ -17,7 +17,11 @@ import {
   Avatar,
   Checkbox,
   Popconfirm,
-  Alert
+  Alert,
+  Radio,
+  Divider,
+  Tooltip,
+  Rate
 } from 'antd';
 import { toast } from 'react-toastify';
 import {
@@ -30,7 +34,11 @@ import {
   EyeOutlined,
   CheckOutlined,
   ReloadOutlined,
-  StopOutlined
+  StopOutlined,
+  UserSwitchOutlined,
+  InfoCircleOutlined,
+  ClockCircleOutlined,
+  WarningOutlined
 } from '@ant-design/icons';
 import BookingRejectionModal from '../../components/BookingRejectionModal.jsx';
 import { rejectBooking } from '../../services/api.js';
@@ -59,7 +67,16 @@ const BookingConfirmationManagement = () => {
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [rejectionModalVisible, setRejectionModalVisible] = useState(false);
   const [selectedBookingForRejection, setSelectedBookingForRejection] = useState(null);
-  
+
+  // Assign barber modal states
+  const [assignModalVisible, setAssignModalVisible] = useState(false);
+  const [bookingToAssign, setBookingToAssign] = useState(null);
+  const [availableBarbers, setAvailableBarbers] = useState([]);
+  const [selectedBarberId, setSelectedBarberId] = useState(null);
+  const [assignLoading, setAssignLoading] = useState(false);
+  const [barberSearchTerm, setBarberSearchTerm] = useState('');
+  const [selectedSpecialtyFilter, setSelectedSpecialtyFilter] = useState('');
+
   // Filter state
   const [filters, setFilters] = useState({
     barberId: '',
@@ -279,6 +296,82 @@ const BookingConfirmationManagement = () => {
     setRejectionModalVisible(true);
   };
 
+  // Handle assign barber
+  const handleAssignBarber = async (booking) => {
+    setBookingToAssign(booking);
+    setAssignModalVisible(true);
+
+    // Load available barbers for this booking
+    try {
+      const bookingDate = new Date(booking.bookingDate);
+      const dateStr = bookingDate.toISOString().split('T')[0];
+      const timeSlot = bookingDate.toTimeString().substring(0, 5);
+
+      const response = await axios.get('/api/barbers/available-for-customers', {
+        params: {
+          date: dateStr,
+          timeSlot: timeSlot,
+          serviceId: booking.serviceId._id
+        }
+      });
+
+      setAvailableBarbers(response.data.availableBarbers || []);
+    } catch (error) {
+      console.error('Error loading available barbers:', error);
+      toast.error('Failed to load available barbers');
+      setAvailableBarbers([]);
+    }
+  };
+
+  // Filter barbers based on search term and specialty
+  const getFilteredBarbers = () => {
+    return availableBarbers.filter(barber => {
+      const matchesSearch = !barberSearchTerm ||
+        barber.userId?.name?.toLowerCase().includes(barberSearchTerm.toLowerCase()) ||
+        barber.specialties?.some(specialty =>
+          specialty.toLowerCase().includes(barberSearchTerm.toLowerCase())
+        );
+
+      const matchesSpecialty = !selectedSpecialtyFilter ||
+        barber.specialties?.includes(selectedSpecialtyFilter);
+
+      return matchesSearch && matchesSpecialty;
+    });
+  };
+
+  const handleSaveAssignment = async () => {
+    if (!selectedBarberId || !bookingToAssign) {
+      toast.error('Please select a barber');
+      return;
+    }
+
+    setAssignLoading(true);
+    try {
+      // Use the new booking assign API
+      const response = await axios.put(`/api/bookings/${bookingToAssign._id}/assign-barber`, {
+        newBarberId: selectedBarberId
+      });
+
+      toast.success('Barber assigned successfully!');
+
+      // Close modal and refresh data
+      setAssignModalVisible(false);
+      setBookingToAssign(null);
+      setSelectedBarberId(null);
+      setAvailableBarbers([]);
+      setBarberSearchTerm('');
+      setSelectedSpecialtyFilter('');
+
+      // Refresh bookings list
+      loadPendingBookings();
+    } catch (error) {
+      console.error('Error assigning barber:', error);
+      toast.error(error.response?.data?.message || 'Failed to assign barber');
+    } finally {
+      setAssignLoading(false);
+    }
+  };
+
   // Confirm booking rejection
   const handleRejectConfirm = async (rejectionData) => {
     try {
@@ -467,6 +560,19 @@ const BookingConfirmationManagement = () => {
               </Button>
             )}
 
+            {/* Assign Barber button - for pending and confirmed bookings */}
+            {['pending', 'confirmed'].includes(record.status) && (
+              <Button
+                size="small"
+                icon={<UserSwitchOutlined />}
+                onClick={() => handleAssignBarber(record)}
+                loading={actionLoading}
+                title="Assign barber cho booking này"
+              >
+                Assign Barber
+              </Button>
+            )}
+
             {/* Rejection button - only for pending and confirmed bookings */}
             {['pending', 'confirmed'].includes(record.status) && (
               <Button
@@ -598,6 +704,18 @@ const BookingConfirmationManagement = () => {
           <Button key="close" onClick={() => setDetailModalVisible(false)}>
             Đóng
           </Button>,
+          selectedBooking && ['pending', 'confirmed'].includes(selectedBooking.status) && (
+            <Button
+              key="assign"
+              icon={<UserSwitchOutlined />}
+              onClick={() => {
+                handleAssignBarber(selectedBooking);
+                setDetailModalVisible(false);
+              }}
+            >
+              Assign Barber
+            </Button>
+          ),
           selectedBooking && (() => {
             const confirmationValidation = canConfirmBooking(selectedBooking);
 
@@ -697,6 +815,336 @@ const BookingConfirmationManagement = () => {
         booking={selectedBookingForRejection}
         loading={actionLoading}
       />
+
+      {/* Assign Barber Modal */}
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <UserSwitchOutlined />
+            <span>Assign Barber to Booking</span>
+          </div>
+        }
+        open={assignModalVisible}
+        onCancel={() => {
+          setAssignModalVisible(false);
+          setBookingToAssign(null);
+          setSelectedBarberId(null);
+          setAvailableBarbers([]);
+          setBarberSearchTerm('');
+          setSelectedSpecialtyFilter('');
+        }}
+        footer={[
+          <Button
+            key="cancel"
+            onClick={() => {
+              setAssignModalVisible(false);
+              setBookingToAssign(null);
+              setSelectedBarberId(null);
+              setAvailableBarbers([]);
+              setBarberSearchTerm('');
+              setSelectedSpecialtyFilter('');
+            }}
+          >
+            Cancel
+          </Button>,
+          <Button
+            key="save"
+            type="primary"
+            loading={assignLoading}
+            onClick={handleSaveAssignment}
+            disabled={!selectedBarberId}
+          >
+            Assign Barber
+          </Button>
+        ]}
+        width={1000}
+      >
+        {bookingToAssign && (
+          <div>
+            {/* Booking Summary */}
+            <Card size="small" style={{ marginBottom: 16, background: '#f0f2f5' }}>
+              <Row gutter={16}>
+                <Col span={12}>
+                  <div>
+                    <Typography.Text strong style={{ color: '#1890ff', fontSize: '16px' }}>
+                      {bookingToAssign.customerId?.name || bookingToAssign.customerName}
+                    </Typography.Text>
+                    <Tag color={bookingToAssign.status === 'confirmed' ? 'green' : 'orange'} style={{ marginLeft: 8 }}>
+                      {bookingToAssign.status?.toUpperCase()}
+                    </Tag>
+                  </div>
+                  <div style={{ marginTop: 4 }}>
+                    <Typography.Text type="secondary">
+                      {bookingToAssign.serviceId?.name} • {dayjs(bookingToAssign.bookingDate).format('DD/MM/YYYY HH:mm')}
+                    </Typography.Text>
+                  </div>
+                </Col>
+                <Col span={12}>
+                  <div style={{ textAlign: 'right' }}>
+                    <Typography.Text strong>Current Barber:</Typography.Text>
+                    <br />
+                    <Typography.Text>
+                      {bookingToAssign.barberId?.userId?.name || 'Auto-assigned'}
+                    </Typography.Text>
+                  </div>
+                </Col>
+              </Row>
+            </Card>
+
+            <Row gutter={24}>
+              {/* Left Column - Booking Details */}
+              <Col span={14}>
+                <Card
+                  title={
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <CalendarOutlined />
+                      <span>Booking Details</span>
+                    </div>
+                  }
+                  style={{ height: '500px', overflow: 'hidden' }}
+                >
+                  <div style={{ height: '420px', overflowY: 'auto', paddingRight: 8 }}>
+                    <Card
+                      size="small"
+                      style={{
+                        marginBottom: 16,
+                        border: selectedBarberId ? '2px solid #52c41a' : '1px solid #d9d9d9'
+                      }}
+                    >
+                      {/* Booking Header */}
+                      <div style={{ marginBottom: 12 }}>
+                        <Row justify="space-between" align="middle">
+                          <Col>
+                            <Typography.Text strong style={{ fontSize: '16px', color: '#1890ff' }}>
+                              {bookingToAssign.customerId?.name || bookingToAssign.customerName}
+                            </Typography.Text>
+                            <Tag
+                              color={bookingToAssign.status === 'confirmed' ? 'green' : 'orange'}
+                              style={{ marginLeft: 8 }}
+                            >
+                              {bookingToAssign.status?.toUpperCase()}
+                            </Tag>
+                          </Col>
+                          <Col>
+                            <Typography.Text type="secondary" style={{ fontSize: '12px' }}>
+                              ID: {bookingToAssign._id}
+                            </Typography.Text>
+                          </Col>
+                        </Row>
+                      </div>
+
+                      {/* Booking Details */}
+                      <Row gutter={16}>
+                        <Col span={12}>
+                          <div style={{ marginBottom: 8 }}>
+                            <Typography.Text strong style={{ fontSize: '13px' }}>Service:</Typography.Text>
+                            <br />
+                            <Typography.Text style={{ fontSize: '14px' }}>
+                              {bookingToAssign.serviceId?.name}
+                            </Typography.Text>
+                          </div>
+                          <div style={{ marginBottom: 8 }}>
+                            <Typography.Text strong style={{ fontSize: '13px' }}>Price:</Typography.Text>
+                            <br />
+                            <Typography.Text style={{ fontSize: '14px', color: '#52c41a' }}>
+                              {bookingToAssign.serviceId?.price?.toLocaleString()}đ
+                            </Typography.Text>
+                          </div>
+                        </Col>
+                        <Col span={12}>
+                          <div style={{ marginBottom: 8 }}>
+                            <Typography.Text strong style={{ fontSize: '13px' }}>Date & Time:</Typography.Text>
+                            <br />
+                            <Typography.Text style={{ fontSize: '14px' }}>
+                              {dayjs(bookingToAssign.bookingDate).format('DD/MM/YYYY HH:mm')}
+                            </Typography.Text>
+                          </div>
+                          <div style={{ marginBottom: 8 }}>
+                            <Typography.Text strong style={{ fontSize: '13px' }}>Duration:</Typography.Text>
+                            <br />
+                            <Typography.Text style={{ fontSize: '14px' }}>
+                              {bookingToAssign.durationMinutes || bookingToAssign.serviceId?.durationMinutes} minutes
+                            </Typography.Text>
+                          </div>
+                        </Col>
+                      </Row>
+
+                      {bookingToAssign.note && (
+                        <div style={{ marginTop: 8, padding: 8, background: '#f6ffed', borderRadius: 4 }}>
+                          <Typography.Text type="secondary" style={{ fontSize: '12px' }}>
+                            <InfoCircleOutlined style={{ marginRight: 4 }} />
+                            Note:
+                          </Typography.Text>
+                          <br />
+                          <Typography.Text style={{ fontSize: '13px' }}>{bookingToAssign.note}</Typography.Text>
+                        </div>
+                      )}
+
+                      {/* Assignment Status */}
+                      <Divider style={{ margin: '12px 0' }} />
+                      <div>
+                        {selectedBarberId ? (
+                          <Alert
+                            message="New Barber Selected"
+                            description={
+                              availableBarbers.find(b => b._id === selectedBarberId)?.userId?.name
+                            }
+                            type="success"
+                            showIcon
+                            style={{ marginBottom: 8 }}
+                          />
+                        ) : (
+                          <Alert
+                            message="Select a Barber"
+                            description="Choose a barber from the available list on the right"
+                            type="warning"
+                            showIcon
+                            style={{ marginBottom: 8 }}
+                          />
+                        )}
+                      </div>
+                    </Card>
+                  </div>
+                </Card>
+              </Col>
+
+              {/* Right Column - Available Barbers */}
+              <Col span={10}>
+                <Card
+                  title={
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <UserOutlined />
+                      <span>Available Barbers</span>
+                    </div>
+                  }
+                  extra={
+                    <Tooltip title="Search by name or specialty">
+                      <Input
+                        placeholder="Search barbers..."
+                        prefix={<SearchOutlined />}
+                        value={barberSearchTerm}
+                        onChange={(e) => setBarberSearchTerm(e.target.value)}
+                        style={{ width: 200 }}
+                        size="small"
+                      />
+                    </Tooltip>
+                  }
+                  style={{ height: '500px', overflow: 'hidden' }}
+                >
+                  {/* Specialty Filter */}
+                  <div style={{ marginBottom: 16 }}>
+                    <Select
+                      placeholder="Filter by specialty"
+                      style={{ width: '100%' }}
+                      value={selectedSpecialtyFilter}
+                      onChange={setSelectedSpecialtyFilter}
+                      allowClear
+                    >
+                      {[...new Set(availableBarbers.flatMap(b => b.specialties || []).filter(Boolean))].map(specialty => (
+                        <Select.Option key={specialty} value={specialty}>{specialty}</Select.Option>
+                      ))}
+                    </Select>
+                  </div>
+
+                  <div style={{ height: '380px', overflowY: 'auto', paddingRight: 8 }}>
+                    {availableBarbers.length > 0 ? (
+                      getFilteredBarbers().map(barber => (
+                        <Card
+                          key={barber._id}
+                          size="small"
+                          style={{
+                            marginBottom: 12,
+                            cursor: 'pointer',
+                            border: selectedBarberId === barber._id ? '2px solid #52c41a' : '1px solid #d9d9d9'
+                          }}
+                          hoverable
+                          onClick={() => setSelectedBarberId(barber._id)}
+                        >
+                          <Row align="middle" gutter={12}>
+                            <Col span={4}>
+                              <Avatar
+                                src={barber.profileImageUrl}
+                                icon={<UserOutlined />}
+                                size={40}
+                              />
+                            </Col>
+                            <Col span={20}>
+                              <div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <Typography.Text strong style={{ fontSize: '14px' }}>
+                                    {barber.userId?.name || barber.name}
+                                  </Typography.Text>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <Rate
+                                      disabled
+                                      defaultValue={barber.averageRating || 4.5}
+                                      style={{ fontSize: '12px' }}
+                                    />
+                                    <Typography.Text type="secondary" style={{ fontSize: '11px' }}>
+                                      ({barber.completedBookings || 0})
+                                    </Typography.Text>
+                                  </div>
+                                </div>
+
+                                <div style={{ marginTop: 4 }}>
+                                  <Typography.Text type="secondary" style={{ fontSize: '12px' }}>
+                                    {barber.specialties && barber.specialties.length > 0
+                                      ? barber.specialties.slice(0, 2).join(', ') + (barber.specialties.length > 2 ? '...' : '')
+                                      : 'No specialties listed'
+                                    }
+                                  </Typography.Text>
+                                </div>
+
+                                <div style={{ marginTop: 4, display: 'flex', justifyContent: 'space-between' }}>
+                                  <Typography.Text type="secondary" style={{ fontSize: '11px' }}>
+                                    <ClockCircleOutlined style={{ marginRight: 2 }} />
+                                    {barber.workingHours?.start || '09:00'} - {barber.workingHours?.end || '18:00'}
+                                  </Typography.Text>
+
+                                  {barber.isAvailableForSlot !== false ? (
+                                    <Tag color="green" style={{ fontSize: '10px', margin: 0 }}>
+                                      <CheckCircleOutlined style={{ marginRight: 2 }} />
+                                      Available
+                                    </Tag>
+                                  ) : (
+                                    <Tooltip title={barber.conflictReason || 'Time conflict'}>
+                                      <Tag color="orange" style={{ fontSize: '10px', margin: 0 }}>
+                                        <WarningOutlined style={{ marginRight: 2 }} />
+                                        Conflict
+                                      </Tag>
+                                    </Tooltip>
+                                  )}
+                                </div>
+
+                                {/* Selection indicator */}
+                                {selectedBarberId === barber._id && (
+                                  <div style={{ marginTop: 8 }}>
+                                    <Tag color="success" style={{ fontSize: '10px' }}>
+                                      <CheckCircleOutlined style={{ marginRight: 2 }} />
+                                      Selected for assignment
+                                    </Tag>
+                                  </div>
+                                )}
+                              </div>
+                            </Col>
+                          </Row>
+                        </Card>
+                      ))
+                    ) : (
+                      <Alert
+                        message="No available barbers"
+                        description="No barbers are available for this time slot."
+                        type="warning"
+                        showIcon
+                      />
+                    )}
+                  </div>
+                </Card>
+              </Col>
+            </Row>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

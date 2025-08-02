@@ -874,6 +874,131 @@ exports.bulkConfirmBookings = async (req, res) => {
   }
 };
 
+// Assign barber to booking (Admin only)
+exports.assignBarberToBooking = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { newBarberId } = req.body;
+    const adminId = req.userId;
+
+    // Only admins can assign barbers
+    if (req.role !== 'admin') {
+      return res.status(403).json({ message: 'Only administrators can assign barbers to bookings' });
+    }
+
+    // Validate input
+    if (!newBarberId) {
+      return res.status(400).json({ message: 'New barber ID is required' });
+    }
+
+    // Find the booking
+    const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    // Check if booking can be reassigned
+    if (!['pending', 'confirmed'].includes(booking.status)) {
+      return res.status(400).json({
+        message: `Cannot assign barber to ${booking.status} booking`
+      });
+    }
+
+    // Verify the new barber exists
+    const Barber = require('../models/barber.model');
+    const newBarber = await Barber.findById(newBarberId).populate('userId', 'name email');
+    if (!newBarber) {
+      return res.status(404).json({ message: 'New barber not found' });
+    }
+
+    // Store old barber info for logging
+    const oldBarberId = booking.barberId;
+
+    // Update the booking
+    booking.barberId = newBarberId;
+    booking.reassignedFrom = oldBarberId;
+    booking.reassignedAt = new Date();
+    booking.reassignedBy = adminId;
+    await booking.save();
+
+    // Update barber schedules using the same logic as confirm booking
+    try {
+      const BarberSchedule = require('../models/barber-schedule.model');
+      const bookingDate = new Date(booking.bookingDate);
+      const dateStr = bookingDate.toISOString().split('T')[0];
+      const startTimeStr = bookingDate.toTimeString().substring(0, 5);
+
+      // Get service duration for proper slot marking
+      const Service = require('../models/service.model');
+      const service = await Service.findById(booking.serviceId);
+      const durationMinutes = service ? service.durationMinutes : 30; // Default 30 minutes
+
+      // 1. Free up slots for the old barber (if exists)
+      if (oldBarberId) {
+        try {
+          await BarberSchedule.unmarkSlotsAsBooked(
+            oldBarberId,
+            dateStr,
+            booking._id,
+            null // No session for standalone operation
+          );
+          console.log(`Freed up slots for old barber ${oldBarberId}`);
+        } catch (unmaskError) {
+          console.error('Error freeing slots for old barber:', unmaskError);
+          // Continue even if this fails
+        }
+      }
+
+      // 2. Mark slots as booked for the new barber using the same method as confirm booking
+      const scheduleResult = await BarberSchedule.markSlotsAsBooked(
+        newBarberId,
+        dateStr,
+        startTimeStr,
+        durationMinutes,
+        booking._id,
+        null // No session for standalone operation
+      );
+
+      console.log(`Successfully marked ${scheduleResult.totalSlotsBooked} slots as booked for new barber ${newBarberId}:`, scheduleResult.bookedSlots);
+
+      // Recalculate available slots for both barbers after successful assignment
+      try {
+        // Recalculate for old barber (if exists)
+        if (oldBarberId) {
+          await BarberSchedule.recalculateAvailableSlots(oldBarberId, dateStr);
+          console.log(`Recalculated available slots for old barber ${oldBarberId} on ${dateStr}`);
+        }
+
+        // Recalculate for new barber
+        await BarberSchedule.recalculateAvailableSlots(newBarberId, dateStr);
+        console.log(`Recalculated available slots for new barber ${newBarberId} on ${dateStr}`);
+      } catch (recalcError) {
+        console.error('Error recalculating available slots after assignment:', recalcError);
+        // Don't fail the assignment if recalculation fails, but log the error
+      }
+    } catch (scheduleError) {
+      console.error('Error updating barber schedules:', scheduleError);
+      // Continue with the assignment even if schedule update fails
+      // But log the error for debugging
+    }
+
+    // Return simple response without complex populate
+    res.json({
+      success: true,
+      message: 'Barber assigned successfully',
+      bookingId: booking._id,
+      oldBarberId,
+      newBarberId,
+      newBarberName: newBarber.userId.name,
+      customerName: booking.customerName || 'Unknown',
+      bookingDate: booking.bookingDate
+    });
+  } catch (err) {
+    console.error('Error in assignBarberToBooking:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // Update booking status (with enhanced role-based permissions)
 exports.updateBookingStatus = async (req, res) => {
   try {
