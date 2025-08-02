@@ -8,6 +8,8 @@ import barber3 from "../../assets/images/barber3.jpg";
 import barber4 from "../../assets/images/barber4.png";
 import barber5 from "../../assets/images/barber5.png";
 import "../../css/landing/service.css";
+import { useAuth } from "../../context/AuthContext";
+import { useNavigate } from "react-router-dom"; 
 
 export default function Services() {
   const [services, setServices] = useState([]);
@@ -16,6 +18,16 @@ export default function Services() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [filteredServices, setFilteredServices] = useState([]);
   const [currentImageIndexes, setCurrentImageIndexes] = useState({});
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const handleBooking = (e) => {
+    if (!user) {
+      navigate("/login");
+    } else {
+      navigate("/book-service");
+    }
+  };
 
   // Default service images for different categories
   const defaultImages = useMemo(() => ({
@@ -482,7 +494,7 @@ export default function Services() {
           <div className="cta-content">
             <h2 className="cta-title">Sẵn sàng để thay đổi phong cách?</h2>
             <p className="cta-subtitle">Đặt lịch hẹn ngay hôm nay và trải nghiệm dịch vụ đẳng cấp</p>
-            <button className="cta-btn">
+            <button onClick={handleBooking} className="cta-btn">
               <span>Đặt lịch ngay</span>
               <span className="btn-shine"></span>
             </button>
