@@ -46,6 +46,7 @@ const SinglePageBooking = () => {
     customerInfo: null,
     isAutoAssign: false
   });
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const { user } = useAuth();
   const location = useLocation();
@@ -69,7 +70,7 @@ const SinglePageBooking = () => {
     }
   }, [location.state]);
 
-  // Step configuration
+  // Step configuration - Remove barber step completely since it's integrated into time step
   const steps = [
     {
       title: 'Choose Service',
@@ -79,12 +80,7 @@ const SinglePageBooking = () => {
     {
       title: 'Select Time',
       icon: <ClockCircleOutlined />,
-      description: 'Pick date and time slot'
-    },
-    {
-      title: 'Choose Barber',
-      icon: <UserOutlined />,
-      description: 'Select barber or auto-assign'
+      description: 'Pick date, time slot, and barber'
     },
     {
       title: 'Your Information',
@@ -120,7 +116,8 @@ const SinglePageBooking = () => {
 
     // Auto-advance to next step after data selection
     if (step !== undefined && step < steps.length - 1) {
-      setCurrentStep(step + 1);
+      const nextStep = step + 1;
+      setCurrentStep(nextStep);
     }
   };
 
@@ -133,23 +130,62 @@ const SinglePageBooking = () => {
     });
   };
 
+  // Get the actual step index accounting for skipped steps
+  const getActualStepIndex = (logicalStep) => {
+    const allSteps = getAllSteps();
+    let actualIndex = 0;
+    let logicalIndex = 0;
+
+    for (let i = 0; i < allSteps.length; i++) {
+      if (i === 2 && shouldSkipBarberStep()) {
+        // Skip barber step
+        continue;
+      }
+      if (logicalIndex === logicalStep) {
+        return actualIndex;
+      }
+      actualIndex++;
+      logicalIndex++;
+    }
+    return actualIndex;
+  };
+
   // Handle time slot selection
   const handleTimeSlotSelect = (timeSlot) => {
-    updateBookingData({ timeSlot }, 1);
+    // Update booking data with time slot and barber info if available
+    const updateData = { timeSlot };
+
+    // If barber was selected in time step, update barber info
+    if (timeSlot.chooseBarberManually && timeSlot.selectedBarberInStep) {
+      updateData.barber = timeSlot.selectedBarberInStep;
+      updateData.isAutoAssign = false;
+    } else if (!timeSlot.chooseBarberManually) {
+      // Auto-assignment mode
+      updateData.barber = null;
+      updateData.isAutoAssign = true;
+    } else {
+      // Manual mode but no barber selected yet
+      updateData.barber = null;
+      updateData.isAutoAssign = false;
+    }
+
+    // Always go to customer info step (step 2) since barber step is removed
+    updateBookingData(updateData, 1); // This will advance to step 2 (Customer Info)
+
     toast.success(`Selected time: ${timeSlot.label}`, {
       position: "top-right",
       autoClose: 2000,
     });
   };
 
-  // Handle barber selection
+  // Handle barber selection (legacy - mostly handled in time step now)
   const handleBarberSelect = (barberData) => {
     if (barberData.isAutoAssign) {
       updateBookingData({
         barber: barberData.assignedBarber,
         isAutoAssign: true,
         assignmentDetails: barberData.assignmentDetails
-      }, 2);
+      }, 1); // Step 1 is Time selection, will advance to step 2 (Customer Info)
       toast.success(`Auto-assigned: ${barberData.assignedBarber.name}`, {
         position: "top-right",
         autoClose: 2000,
@@ -158,7 +194,7 @@ const SinglePageBooking = () => {
       updateBookingData({
         barber: barberData.selectedBarber,
         isAutoAssign: false
-      }, 2);
+      }, 1); // Step 1 is Time selection, will advance to step 2 (Customer Info)
       toast.success(`Selected barber: ${barberData.selectedBarber.name}`, {
         position: "top-right",
         autoClose: 2000,
@@ -168,7 +204,7 @@ const SinglePageBooking = () => {
 
   // Handle customer info submission
   const handleCustomerInfoSubmit = (customerInfo) => {
-    updateBookingData({ customerInfo }, 3);
+    updateBookingData({ customerInfo }, 2); // Step 2 is Customer Info, will advance to step 3 (Confirmation)
     // Don't show toast for auto-save, only for final submission
     if (customerInfo.customerName && customerInfo.customerEmail && customerInfo.customerPhone) {
       toast.success('Contact information saved', {
@@ -180,8 +216,24 @@ const SinglePageBooking = () => {
 
   // Handle booking completion
   const handleBookingComplete = (bookingResult) => {
-    console.log('Booking completed:', bookingResult);
-    // Could redirect to booking confirmation page or reset form
+    // Immediately refresh slot availability
+    setRefreshTrigger(prev => prev + 1);
+
+    // Reset form and go back to first step to refresh all data
+    setTimeout(() => {
+      setBookingData({
+        service: null,
+        timeSlot: null,
+        barber: null,
+        customerInfo: null,
+        isAutoAssign: false
+      });
+      setCurrentStep(0);
+      toast.success('🎉 You can now make another booking!', {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    }, 3000); // Wait 3 seconds to let user see the success message
   };
 
   // Handle edit step (go back to specific step)
@@ -232,9 +284,8 @@ const SinglePageBooking = () => {
     switch (step) {
       case 0: return bookingData.service !== null;
       case 1: return bookingData.timeSlot !== null;
-      case 2: return bookingData.barber !== null || bookingData.isAutoAssign;
-      case 3: return bookingData.customerInfo !== null;
-      case 4: return true; // Confirmation step
+      case 2: return bookingData.customerInfo !== null; // Customer info step
+      case 3: return true; // Confirmation step
       default: return false;
     }
   };
@@ -270,32 +321,20 @@ const SinglePageBooking = () => {
       case 1:
         return (
           <div>
-            <Title level={3}>Choose Date & Time</Title>
-            <Text type="secondary">Select your preferred appointment time</Text>
+            <Title level={3}>Choose Date, Time & Barber</Title>
+            <Text type="secondary">Select your preferred appointment time and barber</Text>
             <TimeSlotSelectionStep
               service={bookingData.service}
               barber={bookingData.barber}
               onTimeSlotSelect={handleTimeSlotSelect}
               selectedTimeSlot={bookingData.timeSlot}
               isAutoAssign={bookingData.isAutoAssign}
+              onBarberSelect={handleBarberSelect}
+              refreshTrigger={refreshTrigger}
             />
           </div>
         );
       case 2:
-        return (
-          <div>
-            <Title level={3}>Choose Your Barber</Title>
-            <Text type="secondary">Select a specific barber or let us assign the best available one</Text>
-            <BarberSelectionStep
-              service={bookingData.service}
-              timeSlot={bookingData.timeSlot}
-              onBarberSelect={handleBarberSelect}
-              selectedBarber={bookingData.barber}
-              isAutoAssign={bookingData.isAutoAssign}
-            />
-          </div>
-        );
-      case 3:
         return (
           <div>
             <Title level={3}>Your Information</Title>
@@ -310,7 +349,7 @@ const SinglePageBooking = () => {
             />
           </div>
         );
-      case 4:
+      case 3:
         return (
           <div>
             <Title level={3}>Booking Confirmation</Title>
@@ -399,6 +438,10 @@ const SinglePageBooking = () => {
               <Text type="secondary">
                 Use the "Confirm Booking" button above to complete your booking
               </Text>
+            ) : currentStep === 2 ? (
+              <Text type="secondary">
+                Use the "Review Booking" button above to proceed to confirmation
+              </Text>
             ) : (
               <Button
                 type="primary"
@@ -407,7 +450,7 @@ const SinglePageBooking = () => {
                 disabled={!canProceedToNext()}
                 size="large"
               >
-                {currentStep === steps.length - 2 ? 'Review Booking' : 'Next'}
+                Next
               </Button>
             )}
           </Col>

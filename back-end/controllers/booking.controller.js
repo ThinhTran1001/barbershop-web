@@ -583,7 +583,7 @@ exports.createBookingSinglePage = async (req, res) => {
         booking._id,
         null
       );
-      console.log(`Successfully marked ${scheduleResult.totalSlotsBooked} slots as booked:`, scheduleResult.bookedSlots);
+
     } catch (scheduleError) {
       console.error('Error marking schedule slots as booked:', scheduleError);
       await Booking.findByIdAndDelete(booking._id);

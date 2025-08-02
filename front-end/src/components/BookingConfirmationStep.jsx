@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   Row,
@@ -27,22 +27,101 @@ import {
 } from '@ant-design/icons';
 import axios from 'axios';
 import { toast } from 'react-toastify';
-import Cookies from 'js-cookie';
+import api from '../services/axiosInstance';
+import { getAvailableBarbersForCustomers } from '../services/barberApi';
 
 const { Title, Text } = Typography;
 
-const BookingConfirmationStep = ({ 
-  service, 
-  timeSlot, 
-  barber, 
+const BookingConfirmationStep = ({
+  service,
+  timeSlot,
+  barber,
   isAutoAssign,
   customerInfo,
   onBookingComplete,
-  onEditStep 
+  onEditStep
 }) => {
   const [loading, setLoading] = useState(false);
   const [bookingResult, setBookingResult] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [autoAssignedBarber, setAutoAssignedBarber] = useState(null);
+  const [autoAssignLoading, setAutoAssignLoading] = useState(false);
+
+  // Get the actual barber info (from time step selection or regular barber selection)
+  const getActualBarber = () => {
+    if (timeSlot?.selectedBarberInStep) {
+      return timeSlot.selectedBarberInStep;
+    }
+    return barber;
+  };
+
+  // Get the actual auto-assign status
+  const getActualAutoAssign = () => {
+    if (timeSlot?.chooseBarberManually === false) {
+      return true;
+    }
+    if (timeSlot?.selectedBarberInStep) {
+      return false;
+    }
+    return isAutoAssign;
+  };
+
+  const actualBarber = getActualBarber();
+  const actualIsAutoAssign = getActualAutoAssign();
+
+  // Auto-assign barber when needed (for preview only, actual assignment happens in backend)
+  useEffect(() => {
+    const autoAssignBarber = async () => {
+      if (actualIsAutoAssign && !autoAssignedBarber && timeSlot && service && !loading) {
+        setAutoAssignLoading(true);
+        try {
+
+          const response = await getAvailableBarbersForCustomers(
+            timeSlot.date,
+            timeSlot.time,
+            service._id
+          );
+
+          if (response.success && response.availableBarbers && response.availableBarbers.length > 0) {
+            // Select the best barber (highest rating, most experience, etc.)
+            const bestBarber = response.availableBarbers.reduce((best, current) => {
+              const bestScore = (best.averageRating || 0) * 0.7 + (best.experienceYears || 0) * 0.3;
+              const currentScore = (current.averageRating || 0) * 0.7 + (current.experienceYears || 0) * 0.3;
+              return currentScore > bestScore ? current : best;
+            });
+
+            setAutoAssignedBarber(bestBarber);
+            toast.success(`Auto-assigned barber: ${bestBarber.name}`, {
+              position: "top-right",
+              autoClose: 3000,
+            });
+          } else {
+            // Don't show error toast - backend will handle auto-assignment during booking
+            console.log('No barbers found in preview, but backend will handle auto-assignment');
+          }
+        } catch (error) {
+          // Don't show error toast - backend will handle auto-assignment during booking
+          console.log('Auto-assign preview failed, but backend will handle auto-assignment');
+        } finally {
+          setAutoAssignLoading(false);
+        }
+      }
+    };
+
+    autoAssignBarber();
+  }, [actualIsAutoAssign, timeSlot, service, autoAssignedBarber, loading]);
+
+  // Get the final barber (manual selection, auto-assigned, or null)
+  const getFinalBarber = () => {
+    if (actualBarber) return actualBarber;
+    if (autoAssignedBarber) return autoAssignedBarber;
+    return null;
+  };
+
+  const finalBarber = getFinalBarber();
+  const finalIsAutoAssign = actualIsAutoAssign && !actualBarber;
+
+
 
   // Calculate total price (could include additional fees in the future)
   const totalPrice = service?.price || 0;
@@ -50,20 +129,27 @@ const BookingConfirmationStep = ({
   // Handle booking submission
   const handleConfirmBooking = async () => {
     setLoading(true);
-    
+
     try {
-      const token = Cookies.get('accessToken');
-      
-      if (!token) {
-        toast.error('Please log in to complete your booking');
-        setLoading(false);
-        return;
+
+      // Determine barber ID based on selection mode
+      let selectedBarberId = null;
+      let autoAssignMode = finalIsAutoAssign;
+
+      // Use final barber (manual selection or auto-assigned)
+      if (finalBarber) {
+        selectedBarberId = finalBarber._id;
+        autoAssignMode = false;
+      } else {
+        autoAssignMode = true;
       }
+
+
 
       // Prepare booking data for single-page flow
       const bookingData = {
         serviceId: service._id,
-        barberId: isAutoAssign ? null : barber._id,
+        barberId: autoAssignMode ? null : selectedBarberId,
         bookingDate: new Date(`${timeSlot.date}T${timeSlot.time}:00`).toISOString(),
         timeSlot: timeSlot.time,
         date: timeSlot.date,
@@ -73,23 +159,38 @@ const BookingConfirmationStep = ({
         customerName: customerInfo.customerName,
         customerEmail: customerInfo.customerEmail,
         customerPhone: customerInfo.customerPhone,
-        autoAssignBarber: isAutoAssign
+        autoAssignBarber: autoAssignMode
       };
 
-      const response = await axios.post('/api/bookings/single-page', bookingData, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      // Test authentication first using the configured api instance
+      try {
+        await api.get('/auth/me');
+      } catch (authError) {
+        if (authError.response?.status === 401) {
+          toast.error('Your session has expired. Please log in again.');
+          setLoading(false);
+          return;
         }
-      });
+      }
+
+      // Use the configured api instance for booking
+      const response = await api.post('/bookings/single-page', bookingData);
 
       if (response.data.success) {
         setBookingResult(response.data);
-        toast.success('Booking created successfully!', {
+        toast.success('🎉 Booking created successfully!', {
           position: "top-right",
           autoClose: 3000,
         });
-        
+
+        // Show additional success message with booking details
+        setTimeout(() => {
+          toast.info(`📅 Your appointment is confirmed for ${timeSlot.date} at ${timeSlot.time}`, {
+            position: "top-right",
+            autoClose: 5000,
+          });
+        }, 1000);
+
         if (onBookingComplete) {
           onBookingComplete(response.data);
         }
@@ -97,17 +198,22 @@ const BookingConfirmationStep = ({
         throw new Error(response.data.message || 'Booking failed');
       }
     } catch (error) {
-      console.error('Error creating booking:', error);
-      
+
       let errorMessage = 'Failed to create booking. Please try again.';
-      
-      if (error.response?.data?.message) {
+
+      if (error.response?.status === 401) {
+        errorMessage = 'Authentication failed. Please log in again.';
+      } else if (error.response?.status === 400) {
+        errorMessage = error.response.data?.message || 'Invalid booking data. Please check your information.';
+      } else if (error.response?.status === 409) {
+        errorMessage = 'Time slot is no longer available. Please select a different time.';
+      } else if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
-      toast.error(errorMessage, {
+
+      toast.error(`❌ ${errorMessage}`, {
         position: "top-right",
         autoClose: 5000,
       });
@@ -274,29 +380,51 @@ const BookingConfirmationStep = ({
             <Space direction="vertical" size="middle" style={{ width: '100%' }}>
               <div>
                 <Title level={5} style={{ margin: 0 }}>
-                  {isAutoAssign ? 'Auto-assigned' : barber?.name}
+                  {autoAssignLoading ? (
+                    <Space>
+                      <Spin size="small" />
+                      Assigning barber...
+                    </Space>
+                  ) : finalBarber ? (
+                    finalBarber.name
+                  ) : finalIsAutoAssign ? (
+                    'Auto-assigned'
+                  ) : (
+                    'Barber'
+                  )}
                 </Title>
-                {isAutoAssign ? (
+                {autoAssignLoading ? (
+                  <Text type="secondary">Finding the best available barber for you...</Text>
+                ) : finalBarber ? (
+                  <Text type="secondary">
+                    {finalBarber.experienceYears ? `${finalBarber.experienceYears} years experience` : 'Professional barber'}
+                  </Text>
+                ) : finalIsAutoAssign ? (
                   <Text type="secondary">Best available barber will be assigned</Text>
                 ) : (
-                  <Text type="secondary">
-                    {barber?.experienceYears} years experience
-                  </Text>
+                  <Text type="secondary">Professional barber</Text>
                 )}
               </div>
-              
+
               <Space size="small" wrap>
-                {isAutoAssign ? (
-                  <Tag color="gold">Auto-assignment</Tag>
-                ) : (
+                {autoAssignLoading ? (
+                  <Tag color="processing">Assigning...</Tag>
+                ) : finalBarber ? (
                   <>
-                    {barber?.averageRating && (
-                      <Tag color="gold">★ {barber.averageRating.toFixed(1)}</Tag>
+                    {finalBarber.averageRating && (
+                      <Tag color="gold">★ {finalBarber.averageRating.toFixed(1)}</Tag>
                     )}
-                    {barber?.specialties?.slice(0, 2).map(specialty => (
+                    {finalIsAutoAssign && (
+                      <Tag color="green">Auto-assigned</Tag>
+                    )}
+                    {finalBarber.specialties?.slice(0, 2).map(specialty => (
                       <Tag key={specialty} color="purple">{specialty}</Tag>
                     ))}
                   </>
+                ) : finalIsAutoAssign ? (
+                  <Tag color="gold">Auto-assignment</Tag>
+                ) : (
+                  <Tag color="default">Manual selection</Tag>
                 )}
               </Space>
             </Space>
@@ -321,22 +449,35 @@ const BookingConfirmationStep = ({
             <Space direction="vertical" size="small" style={{ width: '100%' }}>
               <Space>
                 <UserOutlined />
-                <Text>{customerInfo?.customerName}</Text>
+                <Text>{customerInfo?.customerName || 'Not provided'}</Text>
               </Space>
               <Space>
                 <MailOutlined />
-                <Text>{customerInfo?.customerEmail}</Text>
+                <Text>{customerInfo?.customerEmail || 'Not provided'}</Text>
               </Space>
               <Space>
                 <PhoneOutlined />
-                <Text>{customerInfo?.customerPhone}</Text>
+                <Text>{customerInfo?.customerPhone || 'Not provided'}</Text>
               </Space>
-              
+
               {customerInfo?.note && (
                 <div style={{ marginTop: '8px' }}>
                   <Text strong>Note:</Text>
                   <div style={{ marginTop: '4px', padding: '8px', backgroundColor: '#f5f5f5', borderRadius: '4px' }}>
                     <Text>{customerInfo.note}</Text>
+                  </div>
+                </div>
+              )}
+
+              {customerInfo?.notificationMethods && customerInfo.notificationMethods.length > 0 && (
+                <div style={{ marginTop: '8px' }}>
+                  <Text strong>Notification Methods:</Text>
+                  <div style={{ marginTop: '4px' }}>
+                    {customerInfo.notificationMethods.map(method => (
+                      <Tag key={method} color="blue" style={{ marginRight: '4px' }}>
+                        {method}
+                      </Tag>
+                    ))}
                   </div>
                 </div>
               )}
@@ -411,7 +552,7 @@ const BookingConfirmationStep = ({
           <div style={{ padding: '12px', backgroundColor: '#f5f5f5', borderRadius: '6px' }}>
             <Text strong>{service?.name}</Text><br />
             <Text>{timeSlot?.label}</Text><br />
-            <Text>{isAutoAssign ? 'Auto-assigned barber' : barber?.name}</Text><br />
+            <Text>{finalBarber ? finalBarber.name : (finalIsAutoAssign ? 'Auto-assigned barber' : 'Barber')}</Text><br />
             <Text strong style={{ color: '#1890ff' }}>{totalPrice.toLocaleString()} VND</Text>
           </div>
           <Text type="secondary">

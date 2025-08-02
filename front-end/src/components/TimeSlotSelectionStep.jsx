@@ -22,7 +22,10 @@ import {
   CheckCircleOutlined
 } from '@ant-design/icons';
 import { toast } from 'react-toastify';
-import { fetchAllAvailableSlots } from '../services/barberScheduleApi';
+import { fetchAllAvailableSlots, fetchAvailableSlots, fetchAllSlots, fetchAllSlotsForBarber } from '../services/barberScheduleApi';
+import BarberChoiceToggle from './BarberChoiceToggle';
+import BarberSelectionInTimeStep from './BarberSelectionInTimeStep';
+import './BarberChoiceToggle.css';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
@@ -32,19 +35,32 @@ const TimeSlotSelectionStep = ({
   barber,
   onTimeSlotSelect,
   selectedTimeSlot,
-  isAutoAssign = false
+  isAutoAssign = false,
+  onBarberSelect, // New prop to handle barber selection from parent
+  refreshTrigger // New prop to trigger refresh when booking is completed
 }) => {
   const [loading, setLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
   const [availableSlots, setAvailableSlots] = useState([]);
   const [error, setError] = useState('');
 
-  // Load available slots when date changes
+  // New state for barber choice mode
+  const [chooseBarberManually, setChooseBarberManually] = useState(false);
+  const [selectedBarberInStep, setSelectedBarberInStep] = useState(null);
+
+  // Load available slots when date or barber selection changes
   useEffect(() => {
     if (selectedDate) {
       loadAvailableSlots();
     }
-  }, [selectedDate]);
+  }, [selectedDate, chooseBarberManually, selectedBarberInStep]);
+
+  // Refresh slots when refreshTrigger changes (after booking completion)
+  useEffect(() => {
+    if (refreshTrigger && selectedDate && service) {
+      loadAvailableSlots();
+    }
+  }, [refreshTrigger]);
 
   // Load available time slots for the selected date
   const loadAvailableSlots = async () => {
@@ -55,16 +71,34 @@ const TimeSlotSelectionStep = ({
 
     try {
       const dateString = selectedDate.format('YYYY-MM-DD');
-      const response = await fetchAllAvailableSlots(dateString, {
-        serviceId: service?._id,
-        durationMinutes: service?.durationMinutes || 30
-      });
+      let response;
 
-      if (response.success) {
-        setAvailableSlots(response.availableSlots || []);
+      if (chooseBarberManually && selectedBarberInStep) {
+        // Load all slots (both available and not available) for specific barber
+        response = await fetchAllSlotsForBarber(selectedBarberInStep._id, dateString, {
+          serviceId: service?._id,
+          durationMinutes: service?.durationMinutes || 30
+        });
+
+        if (response.success) {
+          setAvailableSlots(response.allSlots || []);
+        } else {
+          setError(response.message || 'Failed to load slots for selected barber');
+          setAvailableSlots([]);
+        }
       } else {
-        setError(response.message || 'Failed to load available slots');
-        setAvailableSlots([]);
+        // Load all slots (both available and not available) across all barbers
+        response = await fetchAllSlots(dateString, {
+          serviceId: service?._id,
+          durationMinutes: service?.durationMinutes || 30
+        });
+
+        if (response.success) {
+          setAvailableSlots(response.allSlots || []);
+        } else {
+          setError(response.message || 'Failed to load slots');
+          setAvailableSlots([]);
+        }
       }
     } catch (error) {
       console.error('Error loading available slots:', error);
@@ -81,6 +115,10 @@ const TimeSlotSelectionStep = ({
     setSelectedDate(date);
     setAvailableSlots([]);
     setError('');
+    // Reset barber selection when date changes
+    if (chooseBarberManually) {
+      setSelectedBarberInStep(null);
+    }
   };
 
   // Handle time slot selection
@@ -88,6 +126,18 @@ const TimeSlotSelectionStep = ({
     if (!selectedDate) return;
 
     const dateString = selectedDate.format('YYYY-MM-DD');
+
+    // Determine the barber info based on selection mode
+    let barberInfo = null;
+    let isAutoAssignMode = !chooseBarberManually;
+
+    if (chooseBarberManually && selectedBarberInStep) {
+      barberInfo = {
+        id: selectedBarberInStep._id,
+        name: selectedBarberInStep.name
+      };
+      isAutoAssignMode = false;
+    }
 
     // Create enhanced time slot object with additional info
     const enhancedTimeSlot = {
@@ -101,19 +151,47 @@ const TimeSlotSelectionStep = ({
         name: service.name,
         duration: service.durationMinutes || 30
       },
-      barber: barber ? {
-        id: barber._id,
-        name: barber.name
-      } : null,
-      isAutoAssign
+      barber: barberInfo,
+      isAutoAssign: isAutoAssignMode,
+      chooseBarberManually: chooseBarberManually,
+      selectedBarberInStep: selectedBarberInStep
     };
 
     onTimeSlotSelect(enhancedTimeSlot);
+
+    // Also notify parent about barber selection if manual mode
+    if (chooseBarberManually && selectedBarberInStep && onBarberSelect) {
+      onBarberSelect(selectedBarberInStep, false); // false = not auto-assign
+    }
 
     toast.success(`Time slot selected: ${enhancedTimeSlot.label}`, {
       position: "top-right",
       autoClose: 2000,
     });
+  };
+
+  // Handle barber choice toggle
+  const handleBarberChoiceChange = (chooseManually) => {
+    setChooseBarberManually(chooseManually);
+    setSelectedBarberInStep(null);
+    setAvailableSlots([]);
+    setError('');
+
+    // Notify parent about the choice change
+    if (onBarberSelect) {
+      if (chooseManually) {
+        onBarberSelect(null, false); // Clear barber selection, not auto-assign
+      } else {
+        onBarberSelect(null, true); // Clear barber selection, enable auto-assign
+      }
+    }
+  };
+
+  // Handle barber selection in time step
+  const handleBarberSelectInStep = (barber) => {
+    setSelectedBarberInStep(barber);
+    setAvailableSlots([]); // Clear slots to reload for selected barber
+    setError('');
   };
 
   // Refresh time slots
@@ -308,6 +386,26 @@ const TimeSlotSelectionStep = ({
         </Row>
       </Card>
 
+      {/* Barber Choice Toggle - Only show if date is selected */}
+      {selectedDate && (
+        <BarberChoiceToggle
+          chooseBarberManually={chooseBarberManually}
+          onChoiceChange={handleBarberChoiceChange}
+          disabled={loading}
+        />
+      )}
+
+      {/* Barber Selection - Only show if manual choice is enabled and date is selected */}
+      {selectedDate && chooseBarberManually && (
+        <BarberSelectionInTimeStep
+          selectedDate={selectedDate}
+          service={service}
+          selectedBarber={selectedBarberInStep}
+          onBarberSelect={handleBarberSelectInStep}
+          disabled={loading}
+        />
+      )}
+
       {/* Time Slot Selection */}
       <Card>
         <Spin spinning={loading}>
@@ -339,32 +437,63 @@ const TimeSlotSelectionStep = ({
                 Available Time Slots for {selectedDate?.format('DD/MM/YYYY')}:
               </Text>
               <Row gutter={[12, 12]}>
-                {availableSlots.map((slot) => (
-                  <Col xs={12} sm={8} md={6} lg={4} key={slot.time}>
-                    <Tooltip title={slot.label}>
-                      <Button
-                        type={selectedTimeSlot?.time === slot.time ? 'primary' : 'default'}
-                        onClick={() => handleTimeSlotSelect(slot)}
-                        style={{
-                          width: '100%',
-                          height: '60px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'center',
-                          alignItems: 'center'
-                        }}
-                        icon={selectedTimeSlot?.time === slot.time ? <CheckCircleOutlined /> : <ClockCircleOutlined />}
+                {availableSlots.map((slot) => {
+                  const isSelected = selectedTimeSlot?.time === slot.time;
+                  const isSlotNotAvailable = !slot.available || slot.availableBarberCount === 0;
+                  const needsBarberSelection = chooseBarberManually && !selectedBarberInStep;
+                  const shouldDisable = isSlotNotAvailable || needsBarberSelection;
+
+                  return (
+                    <Col xs={12} sm={8} md={6} lg={4} key={slot.time}>
+                      <Tooltip
+                        title={
+                          needsBarberSelection
+                            ? "Please select a barber first"
+                            : isSlotNotAvailable
+                              ? "This time slot is not available"
+                              : slot.label
+                        }
                       >
-                        <div style={{ fontSize: '14px', fontWeight: 'bold' }}>
-                          {slot.time}
-                        </div>
-                        <div style={{ fontSize: '10px', opacity: 0.8 }}>
-                          {slot.availableBarberCount} available
-                        </div>
-                      </Button>
-                    </Tooltip>
-                  </Col>
-                ))}
+                        <Button
+                          type={isSelected ? 'primary' : 'default'}
+                          onClick={() => !shouldDisable && handleTimeSlotSelect(slot)}
+                          disabled={shouldDisable}
+                          className={`slot-button ${isSelected ? 'selected' : ''} ${shouldDisable ? 'disabled-overlay' : ''}`}
+                          style={{
+                            width: '100%',
+                            height: '60px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            backgroundColor: shouldDisable ? '#f5f5f5' : undefined,
+                            borderColor: shouldDisable ? '#d9d9d9' : undefined,
+                            cursor: shouldDisable ? 'not-allowed' : 'pointer'
+                          }}
+                          icon={isSelected ? <CheckCircleOutlined /> : <ClockCircleOutlined />}
+                        >
+                          <div style={{ fontSize: '14px', fontWeight: 'bold' }}>
+                            {slot.time}
+                          </div>
+                          <div style={{
+                            fontSize: '10px',
+                            opacity: shouldDisable ? 0.5 : 0.8,
+                            color: shouldDisable ? '#999' : 'inherit'
+                          }}>
+                            {needsBarberSelection
+                              ? 'Select barber first'
+                              : chooseBarberManually && selectedBarberInStep
+                                ? selectedBarberInStep.name
+                                : slot.available
+                                  ? `${slot.availableBarberCount} available`
+                                  : 'Not available'
+                            }
+                          </div>
+                        </Button>
+                      </Tooltip>
+                    </Col>
+                  );
+                })}
               </Row>
             </div>
           )}
@@ -387,19 +516,33 @@ const TimeSlotSelectionStep = ({
             • Select a date from the calendar (past dates are disabled)
           </Text>
           <Text>
-            • Available time slots will appear for your selected date
+            • Choose whether to select a specific barber or use auto-assignment
           </Text>
+          {chooseBarberManually ? (
+            <>
+              <Text>
+                • Select a barber from the available list for your chosen date
+              </Text>
+              <Text>
+                • Time slots will show only for your selected barber
+              </Text>
+            </>
+          ) : (
+            <>
+              <Text>
+                • All available time slots across all barbers will be shown
+              </Text>
+              <Text>
+                • We'll automatically assign the best available barber for your selected time
+              </Text>
+            </>
+          )}
           <Text>
-            • Green slots are available, gray slots are already booked
+            • Available slots are shown in blue, disabled slots are grayed out
           </Text>
           <Text>
             • Bookings must be made at least 30 minutes in advance
           </Text>
-          {isAutoAssign && (
-            <Text type="warning">
-              • Since you chose auto-assignment, any available slot can be selected
-            </Text>
-          )}
         </Space>
       </Card>
     </div>

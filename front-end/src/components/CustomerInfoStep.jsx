@@ -34,17 +34,19 @@ const notificationOptions = [
   { label: 'Push Notification', value: 'push' },
 ];
 
-const CustomerInfoStep = ({ 
-  service, 
-  timeSlot, 
-  barber, 
+const CustomerInfoStep = ({
+  service,
+  timeSlot,
+  barber,
   isAutoAssign,
   onCustomerInfoSubmit,
-  customerInfo 
+  customerInfo
 }) => {
   const [form] = Form.useForm();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState(null);
+  const [isFormValid, setIsFormValid] = useState(false);
 
   // Auto-fill form with user data and existing customer info
   useEffect(() => {
@@ -59,15 +61,16 @@ const CustomerInfoStep = ({
     form.setFieldsValue(initialValues);
   }, [user, customerInfo, form]);
 
-  // Handle form submission
+  // Handle form submission (when user clicks Review Booking)
   const handleFinish = async (values) => {
     setLoading(true);
-    
+
     try {
       // Add default notification method if none selected
       if (!values.notificationMethods || values.notificationMethods.length === 0) {
         values.notificationMethods = ['email'];
       }
+
 
       onCustomerInfoSubmit(values);
     } catch (error) {
@@ -77,15 +80,34 @@ const CustomerInfoStep = ({
     }
   };
 
-  // Validate form and enable next step
+  // Handle form changes (auto-save without navigation)
   const handleFormChange = () => {
-    form.validateFields()
+    form.validateFields(['customerName', 'customerEmail', 'customerPhone', 'notificationMethods'])
       .then((values) => {
-        // Auto-save form data as user types
-        onCustomerInfoSubmit(values);
+        // Only save required fields, don't trigger navigation
+        setFormData(values);
+        setIsFormValid(true);
+
+        // DO NOT call onCustomerInfoSubmit here - only save locally
       })
       .catch(() => {
-        // Form has errors, don't save
+        // Form has errors in required fields
+        setIsFormValid(false);
+      });
+  };
+
+  // Handle manual submit (Review Booking button)
+  const handleReviewBooking = () => {
+    form.validateFields(['customerName', 'customerEmail', 'customerPhone', 'notificationMethods'])
+      .then((values) => {
+        // Get all form values including optional fields (including notes)
+        const allValues = form.getFieldsValue();
+        handleFinish(allValues);
+      })
+      .catch((errorInfo) => {
+        // Show specific error message
+        const missingFields = errorInfo.errorFields.map(field => field.name[0]).join(', ');
+        toast.error(`Please fill in required fields: ${missingFields}`);
       });
   };
 
@@ -183,7 +205,6 @@ const CustomerInfoStep = ({
         <Form
           form={form}
           layout="vertical"
-          onFinish={handleFinish}
           onValuesChange={handleFormChange}
           autoComplete="off"
         >
@@ -258,22 +279,47 @@ const CustomerInfoStep = ({
           </Row>
 
           <Form.Item
-            label="Special Requests / Notes"
+            label={
+              <span>
+                Special Requests / Notes
+                <Tag color="default" style={{ marginLeft: '8px', fontSize: '10px' }}>
+                  Optional
+                </Tag>
+              </span>
+            }
             name="note"
           >
             <TextArea
               rows={4}
-              placeholder="Any special requests or notes for your barber? (e.g., preferred hair length, styling preferences, etc.)"
+              placeholder="Any special requests or notes for your barber? (e.g., preferred hair length, styling preferences, etc.) - This field is optional."
               maxLength={500}
               showCount
             />
           </Form.Item>
 
-          {/* Hidden submit button - form submission handled by parent */}
-          <Form.Item style={{ display: 'none' }}>
-            <Button type="primary" htmlType="submit" loading={loading}>
-              Submit
+          {/* Review Booking Button */}
+          <Form.Item style={{ marginTop: '24px', textAlign: 'center' }}>
+            <Button
+              type="primary"
+              size="large"
+              onClick={handleReviewBooking}
+              loading={loading}
+              disabled={!isFormValid}
+              style={{
+                minWidth: '200px',
+                height: '50px',
+                fontSize: '16px',
+                fontWeight: 'bold'
+              }}
+            >
+              Review Booking
             </Button>
+            <div style={{ marginTop: '8px', fontSize: '12px', color: '#666' }}>
+              {isFormValid
+                ? 'Click to review your booking details'
+                : 'Please fill in all required fields'
+              }
+            </div>
           </Form.Item>
         </Form>
       </Card>

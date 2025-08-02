@@ -588,10 +588,10 @@ exports.getAvailableBarbersForCustomers = async (req, res) => {
     console.log('getAvailableBarbersForCustomers called with:', req.query);
     const { date, timeSlot, serviceId } = req.query;
 
-    if (!date || !timeSlot) {
-      console.log('Missing required parameters:', { date, timeSlot });
+    if (!date) {
+      console.log('Missing required parameter: date');
       return res.status(400).json({
-        message: 'Date and timeSlot are required'
+        message: 'Date is required'
       });
     }
 
@@ -603,12 +603,14 @@ exports.getAvailableBarbersForCustomers = async (req, res) => {
       });
     }
 
-    // Validate timeSlot format (HH:MM)
-    const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
-    if (!timeRegex.test(timeSlot)) {
-      return res.status(400).json({
-        message: 'Invalid timeSlot format. Use HH:MM'
-      });
+    // Validate timeSlot format (HH:MM) if provided
+    if (timeSlot) {
+      const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+      if (!timeRegex.test(timeSlot)) {
+        return res.status(400).json({
+          message: 'Invalid timeSlot format. Use HH:MM'
+        });
+      }
     }
 
     // Get all available barbers with customer-friendly information
@@ -626,7 +628,9 @@ exports.getAvailableBarbersForCustomers = async (req, res) => {
 
     for (const barber of barbers) {
       // Check if barber is absent on this date
-      const bookingDateObj = new Date(`${date}T${timeSlot}:00.000Z`);
+      const bookingDateObj = timeSlot
+        ? new Date(`${date}T${timeSlot}:00.000Z`)
+        : new Date(`${date}T00:00:00.000Z`);
       const isAbsent = await BarberAbsence.isBarberAbsent(barber._id, bookingDateObj);
       if (isAbsent) {
         continue;
@@ -657,6 +661,23 @@ exports.getAvailableBarbersForCustomers = async (req, res) => {
 
       // Check if barber is not off that day
       if (schedule.isOffDay) {
+        continue;
+      }
+
+      // If no specific timeSlot is provided, just check if barber is generally available for the date
+      if (!timeSlot) {
+        availableBarbers.push({
+          _id: barber._id,
+          name: barber.userId?.name || 'Unknown',
+          email: barber.userId?.email,
+          profileImageUrl: barber.profileImageUrl || barber.userId?.profileImageUrl,
+          specialties: barber.specialties || [],
+          experienceYears: barber.experienceYears || 0,
+          averageRating: barber.averageRating || 0,
+          totalBookings: barber.totalBookings || 0,
+          autoAssignmentEligible: barber.autoAssignmentEligible || false,
+          availabilityStatus: 'available'
+        });
         continue;
       }
 
