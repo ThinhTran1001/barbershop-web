@@ -58,7 +58,7 @@ exports.createBarberAbsence = async (req, res) => {
       reason,
       description,
       createdBy,
-      isApproved: false // Always start as pending approval
+      isApproved: null // Always start as pending approval (null = pending)
     });
 
     // Find affected bookings
@@ -116,7 +116,11 @@ exports.getAllAbsences = async (req, res) => {
     
     if (barberId) filter.barberId = barberId;
     if (reason) filter.reason = reason;
-    if (isApproved !== undefined) filter.isApproved = isApproved === 'true';
+    if (isApproved !== undefined) {
+      if (isApproved === 'true') filter.isApproved = true;
+      else if (isApproved === 'false') filter.isApproved = false;
+      else if (isApproved === 'null' || isApproved === 'pending') filter.isApproved = null;
+    }
     
     if (startDate || endDate) {
       filter.$or = [];
@@ -275,8 +279,9 @@ exports.getMyAbsenceRequests = async (req, res) => {
     const filter = { barberId: barber._id };
 
     // Filter by approval status if provided
-    if (status === 'pending') filter.isApproved = false;
+    if (status === 'pending') filter.isApproved = null;
     if (status === 'approved') filter.isApproved = true;
+    if (status === 'rejected') filter.isApproved = false;
 
     // Filter by date range if provided
     if (startDate || endDate) {

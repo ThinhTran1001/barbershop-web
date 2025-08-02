@@ -484,9 +484,13 @@ const BarberCalendarPage = () => {
     const loadingToastId = toast.loading(`⏳ Đang tải dữ liệu tháng ${monthName}...`);
 
     // Reload data for new month if needed
-    if (barberId) {
+    if (barberId && userId) {
       try {
-        await loadBookings(barberId);
+        // Load both bookings and calendar data (including absences) for the new month
+        await Promise.all([
+          loadBookings(barberId),
+          loadCalendarData(userId)
+        ]);
         toast.update(loadingToastId, {
           render: `✅ Đã chuyển đến tháng ${monthName}`,
           type: "success",

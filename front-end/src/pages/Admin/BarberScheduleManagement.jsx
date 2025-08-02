@@ -109,8 +109,9 @@ const BarberScheduleManagement = () => {
     try {
       const filterParams = {};
       if (filters.barberId) filterParams.barberId = filters.barberId;
-      if (filters.status === 'pending') filterParams.isApproved = false;
-      if (filters.status === 'approved') filterParams.isApproved = true;
+      if (filters.status === 'pending') filterParams.isApproved = 'null';
+      if (filters.status === 'approved') filterParams.isApproved = 'true';
+      if (filters.status === 'rejected') filterParams.isApproved = 'false';
       if (filters.reason) filterParams.reason = filters.reason;
 
       const response = await getAllAbsences(filterParams);
@@ -524,7 +525,18 @@ const BarberScheduleManagement = () => {
       key: 'status',
       render: (isApproved) => (
         <AbsenceStatusBadge isApproved={isApproved} />
-      )
+      ),
+      filters: [
+        { text: 'Pending', value: 'pending' },
+        { text: 'Approved', value: 'approved' },
+        { text: 'Rejected', value: 'rejected' }
+      ],
+      onFilter: (value, record) => {
+        if (value === 'pending') return record.isApproved === null || record.isApproved === undefined;
+        if (value === 'approved') return record.isApproved === true;
+        if (value === 'rejected') return record.isApproved === false;
+        return true;
+      }
     },
     {
       title: 'Submitted',
@@ -552,7 +564,7 @@ const BarberScheduleManagement = () => {
           >
             Details
           </Button>
-          {!record.isApproved && (
+          {record.isApproved === null || record.isApproved === undefined ? (
             <>
               <Button
                 size="small"
@@ -571,7 +583,7 @@ const BarberScheduleManagement = () => {
                 Reject
               </Button>
             </>
-          )}
+          ) : null}
           {record.isApproved && (
             <>
               <Button
@@ -714,7 +726,7 @@ const BarberScheduleManagement = () => {
           <Button key="close" onClick={() => setDetailModalVisible(false)}>
             Close
           </Button>,
-          selectedAbsence && !selectedAbsence.isApproved && (
+          selectedAbsence && (selectedAbsence.isApproved === null || selectedAbsence.isApproved === undefined) && (
             <Space key="actions">
               <Button
                 type="primary"

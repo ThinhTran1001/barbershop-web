@@ -157,11 +157,19 @@ export const canCancelBooking = (booking) => {
     return { canCancel: false, reason };
   }
 
-  // Only pending and confirmed bookings can be cancelled
-  if (![BOOKING_STATUS.PENDING, BOOKING_STATUS.CONFIRMED].includes(booking.status)) {
+  // Only pending bookings can be cancelled
+  if (booking.status !== BOOKING_STATUS.PENDING) {
+    let reason;
+    switch (booking.status) {
+      case BOOKING_STATUS.CONFIRMED:
+        reason = 'Cannot cancel confirmed booking. Please contact the barber shop directly.';
+        break;
+      default:
+        reason = `Cannot cancel booking with status: ${booking.status}`;
+    }
     return {
       canCancel: false,
-      reason: `Cannot cancel booking with status: ${booking.status}`
+      reason
     };
   }
 
