@@ -375,7 +375,7 @@ exports.createBookingSinglePage = async (req, res) => {
           if (schedule && schedule.isOffDay) continue;
 
           if (schedule) {
-            const slot = schedule.timeSlots?.find(slot => slot.time === timeSlot);
+            const slot = schedule.availableSlots?.find(slot => slot.time === timeSlot);
             if (slot && slot.isBooked) continue;
           }
 

@@ -585,11 +585,11 @@ exports.getAvailableBarbers = async (req, res) => {
 // Get available barbers for specific time slot (Customer accessible)
 exports.getAvailableBarbersForCustomers = async (req, res) => {
   try {
-    console.log('getAvailableBarbersForCustomers called with:', req.query);
+
     const { date, timeSlot, serviceId } = req.query;
 
     if (!date) {
-      console.log('Missing required parameter: date');
+
       return res.status(400).json({
         message: 'Date is required'
       });
@@ -682,7 +682,7 @@ exports.getAvailableBarbersForCustomers = async (req, res) => {
       }
 
       // Check if the specific time slot is available
-      const slot = schedule.timeSlots?.find(slot => slot.time === timeSlot);
+      const slot = schedule.availableSlots?.find(slot => slot.time === timeSlot);
       if (!slot || slot.isBooked) {
         continue;
       }
