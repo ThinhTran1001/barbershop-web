@@ -298,11 +298,28 @@ const loadBookings = async (newFilters = filters) => {
 
   // Check if booking can be edited
   const canEditBooking = (booking) => {
-    // Only allow editing of pending or confirmed bookings
-    if (!['pending', 'confirmed'].includes(booking.status)) {
+    // Only allow editing of pending bookings
+    if (booking.status !== 'pending') {
+      let reason;
+      switch (booking.status) {
+        case 'confirmed':
+          reason = 'Cannot edit confirmed bookings. Please contact the barber shop directly.';
+          break;
+        case 'completed':
+          reason = 'Cannot edit completed bookings.';
+          break;
+        case 'cancelled':
+          reason = 'Cannot edit cancelled bookings.';
+          break;
+        case 'no_show':
+          reason = 'Cannot edit no-show bookings.';
+          break;
+        default:
+          reason = `Cannot edit ${booking.status} bookings`;
+      }
       return {
         canEdit: false,
-        reason: `Cannot edit ${booking.status} bookings`
+        reason
       };
     }
 

@@ -750,16 +750,25 @@ exports.getAllSlotsForBarber = async (req, res) => {
           date: date
         });
 
-        // If no schedule, barber is potentially available
+        // If no schedule, check for existing bookings first
         if (!schedule) {
-          isAvailable = true;
+          // Check for existing bookings even without schedule
+          const existingBooking = await Booking.findOne({
+            barberId: barberId,
+            bookingDate: {
+              $gte: new Date(`${date}T${timeSlot}:00.000Z`),
+              $lt: new Date(`${date}T${timeSlot}:30.000Z`)
+            },
+            status: { $in: ['pending', 'confirmed'] }
+          });
+          isAvailable = !existingBooking;
         } else if (!schedule.isOffDay) {
           // Check if slot exists in schedule and is not booked
           const slot = schedule.availableSlots?.find(s => s.time === timeSlot);
           if (slot && slot.isBooked) {
             isAvailable = false;
           } else {
-            // Check for existing bookings
+            // Always check for existing bookings as final verification
             const existingBooking = await Booking.findOne({
               barberId: barberId,
               bookingDate: {

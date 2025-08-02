@@ -177,6 +177,8 @@ const BarberScheduleManagement = () => {
     }
   };
 
+
+
   const showAbsenceDetail = (absence) => {
     setSelectedAbsence(absence);
     setDetailModalVisible(true);
@@ -588,21 +590,11 @@ const BarberScheduleManagement = () => {
             <>
               <Button
                 size="small"
-                icon={<CloseOutlined />}
-                onClick={() => handleApprovalChange(record._id, false)}
+                icon={<UserSwitchOutlined />}
+                onClick={() => showAssignmentModal(record)}
               >
-                Revoke
+                Manage Bookings
               </Button>
-              {record.affectedBookings && record.affectedBookings.length > 0 && (
-                <Button
-                  size="small"
-                  type="default"
-                  icon={<UserSwitchOutlined />}
-                  onClick={() => showAssignmentModal(record)}
-                >
-                  Assign Barber
-                </Button>
-              )}
             </>
           )}
           <Button
@@ -838,7 +830,7 @@ const BarberScheduleManagement = () => {
         title={
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <UserSwitchOutlined />
-            <span>Assign Barbers to Affected Bookings</span>
+            <span>Manage Absence & Affected Bookings</span>
           </div>
         }
         open={assignmentModalVisible}
