@@ -30,9 +30,12 @@ const sendOrderCodeToGuestEmail = async (to, {
   orderDate,
   items = [],
   totalAmount,
-  customerName
+  customerName,
+  deliveryStatus
 }) => {
-  const subject = 'Xác nhận đơn hàng từ Barber App';
+  const subject = deliveryStatus === 'delivered' 
+    ? 'Đơn hàng đã được giao thành công - Barber App'
+    : 'Xác nhận đơn hàng từ Barber App';
   const itemsHtml = items.map(item => `
     <tr>
       <td style="padding: 8px; border: 1px solid #eee; text-align: center;">
@@ -45,10 +48,11 @@ const sendOrderCodeToGuestEmail = async (to, {
 
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto;">
-      <h2 style="color: #6C47FF;">Xác nhận đơn hàng từ Barber App</h2>
-      <p>Xin chào${customerName ? ' ' + customerName : ''}, cảm ơn bạn đã đặt hàng tại <strong>Barber App</strong>.</p>
+      <h2 style="color: #6C47FF;">${deliveryStatus === 'delivered' ? 'Đơn hàng đã được giao thành công!' : 'Xác nhận đơn hàng từ Barber App'}</h2>
+      <p>Xin chào${customerName ? ' ' + customerName : ''}, ${deliveryStatus === 'delivered' ? 'đơn hàng của bạn đã được giao thành công!' : 'cảm ơn bạn đã đặt hàng tại <strong>Barber App</strong>.'}</p>
       <p><b>Mã đơn hàng:</b> <span style="color: #007bff;">${orderCode}</span></p>
-      <p><b>Ngày đặt hàng:</b> ${orderDate ? new Date(orderDate).toLocaleString('vi-VN') : ''}</p>
+      <p><b>Ngày đặt hàng:</b> ${orderDate ? new Date(orderDate).toLocaleDateString('vi-VN') : ''}</p>
+      ${deliveryStatus === 'delivered' ? '<p><b>Ngày giao hàng:</b> <span style="color: #28a745;">' + new Date().toLocaleDateString('vi-VN') + '</span></p>' : ''}
       <h3>Đơn hàng của bạn gồm:</h3>
       <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px;">
         <thead>
@@ -63,7 +67,7 @@ const sendOrderCodeToGuestEmail = async (to, {
         </tbody>
       </table>
       <div><b>Tổng cộng:</b> <span style="color: #e74c3c;">${totalAmount?.toLocaleString('vi-VN')} đ</span></div>
-      <p style="margin-top:8px;">Giữ lại mã đơn hàng để tra cứu hoặc hỗ trợ nếu cần.</p>
+      <p style="margin-top:8px;">${deliveryStatus === 'delivered' ? 'Cảm ơn bạn đã tin tưởng Barber App. Chúc bạn sử dụng sản phẩm vui vẻ!' : 'Giữ lại mã đơn hàng để tra cứu hoặc hỗ trợ nếu cần.'}</p>
       <p style="margin-top:8px;">Trân trọng, Barber App Team</p>
     </div>
   `;

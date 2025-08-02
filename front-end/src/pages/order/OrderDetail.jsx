@@ -1,15 +1,16 @@
 // OrderDetail.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { getOrderById, updateOrder, createFeedbackOrder, getFeedbackOrderByOrderId } from '../../services/api';
+import { getOrderById, updateOrder, createFeedbackOrder, getFeedbackOrderByOrderId, getUserAddresses, createAddress } from '../../services/api';
 import {
-  Spin, Alert, Button, Typography, Tag, List, Avatar, Popconfirm, message, Descriptions, Form, Input, Card, Steps, Divider, notification
+  Spin, Alert, Button, Typography, Tag, List, Avatar, Popconfirm, message, Descriptions, Form, Input, Card, Steps, Divider, notification, Modal, Radio
 } from 'antd';
 import {
   ArrowLeftOutlined, CopyOutlined, CheckCircleFilled, ShoppingOutlined, CarOutlined, HomeOutlined
 } from '@ant-design/icons';
 import './OrderDetail.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import NewAddressForm from '../../components/checkout/NewAddressForm';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -86,6 +87,11 @@ const OrderDetail = () => {
     setTimeout(() => setToast(t => ({ ...t, show: false })), 3000);
   };
   const [feedbackStatus, setFeedbackStatus] = useState(null);
+  const [userAddresses, setUserAddresses] = useState([]);
+  const [showAddressModal, setShowAddressModal] = useState(false);
+  const [selectedAddressId, setSelectedAddressId] = useState(null);
+  const [showNewAddressForm, setShowNewAddressForm] = useState(false);
+  const [provinces, setProvinces] = useState([]);
 
   const fetchOrderDetail = async () => {
     try {
@@ -114,7 +120,28 @@ const OrderDetail = () => {
 
   useEffect(() => {
     fetchOrderDetail();
+    fetchUserAddresses();
+    fetchProvinces();
   }, [id]);
+
+  const fetchProvinces = async () => {
+    try {
+      const response = await fetch('https://provinces.open-api.vn/api/p');
+      const data = await response.json();
+      setProvinces(data);
+    } catch (error) {
+      console.error('Error fetching provinces:', error);
+    }
+  };
+
+  const fetchUserAddresses = async () => {
+    try {
+      const response = await getUserAddresses();
+      setUserAddresses(response.data?.data || []);
+    } catch (error) {
+      console.error('Error fetching user addresses:', error);
+    }
+  };
 
   const handleCancelOrder = async () => {
     try {
@@ -126,13 +153,61 @@ const OrderDetail = () => {
     }
   };
 
-  const handleChangeAddress = async (values) => {
+  const handleChangeAddress = async () => {
+    if (!selectedAddressId) {
+      message.error('Vui lòng chọn địa chỉ giao hàng!');
+      return;
+    }
+
     try {
-      await updateOrder(id, { shippingAddress: values.shippingAddress });
+      const selectedAddress = userAddresses.find(addr => addr._id === selectedAddressId);
+      if (!selectedAddress) {
+        message.error('Không tìm thấy địa chỉ đã chọn!');
+        return;
+      }
+
+      const fullAddress = `${selectedAddress.street}, ${selectedAddress.ward}, ${selectedAddress.district}, ${selectedAddress.province}`;
+      
+      // Kiểm tra xem địa chỉ có thay đổi không
+      if (fullAddress === order.shippingAddress) {
+        message.info('Địa chỉ này đã được sử dụng cho đơn hàng này!');
+        setShowAddressModal(false);
+        setSelectedAddressId(null);
+        return;
+      }
+
+      await updateOrder(id, { shippingAddress: fullAddress });
       message.success('Đã cập nhật địa chỉ giao hàng!');
+      setShowAddressModal(false);
+      setSelectedAddressId(null);
       fetchOrderDetail();
     } catch (err) {
       message.error(err.response?.data?.message || 'Không thể cập nhật địa chỉ.');
+    }
+  };
+
+  const handleCreateNewAddress = async (values) => {
+    try {
+      const addressesResponse = await getUserAddresses();
+      const existingAddresses = addressesResponse.data?.data || [];
+      const isFirstAddress = existingAddresses.length === 0;
+
+      const addressData = { ...values, isDefault: isFirstAddress };
+      const response = await createAddress(addressData);
+      const newAddress = response.data?.data;
+      
+      message.success('Đã thêm địa chỉ mới thành công!');
+      setShowNewAddressForm(false);
+      
+      // Refresh danh sách địa chỉ
+      await fetchUserAddresses();
+      
+      // Nếu là địa chỉ đầu tiên, tự động chọn
+      if (isFirstAddress && newAddress) {
+        setSelectedAddressId(newAddress._id);
+      }
+    } catch (error) {
+      message.error(error.response?.data?.message || 'Không thể thêm địa chỉ mới');
     }
   };
 
@@ -261,41 +336,48 @@ const OrderDetail = () => {
               </div>
               <div className="summary-item">
                 <Text>Địa chỉ giao hàng:</Text>
-                {order.shippingAddress && (
-                  <div>
-                    {order.shippingAddress.split(',').map((part, idx) => (
-                      <div key={idx}>{part.trim()}</div>
-                    ))}
-                  </div>
-                )}
+                <Text>{order.shippingAddress}</Text>
               </div>
               <div className="summary-item">
-                <Text>Ngày đặt:</Text>
-                <Text>{new Date(order.createdAt).toLocaleString('vi-VN')}</Text>
+                <Text>Ngày đặt hàng:</Text>
+                <Text>{new Date(order.createdAt).toLocaleDateString('vi-VN')}</Text>
               </div>
-              <div className="summary-item">
-                <Text>Cập nhật lúc:</Text>
-                <Text>{new Date(order.updatedAt).toLocaleString('vi-VN')}</Text>
-              </div>
+              {/* <div className="summary-item">
+                <Text>Ngày nhận hàng:</Text>
+                <Text>{new Date(order.updatedAt).toLocaleDateString('vi-VN')}</Text>
+              </div> */}
             </div>
 
             {order.status === 'pending' && !order.addressChanged && (
-              <Form
-                form={form}
-                layout="vertical"
-                onFinish={handleChangeAddress}
-                initialValues={{ shippingAddress: order.shippingAddress }}
-                style={{ margin: '16px 0' }}
-              >
-                <Form.Item
-                  name="shippingAddress"
-                  label="Đổi địa chỉ giao hàng"
-                  rules={[{ required: true, message: 'Vui lòng nhập địa chỉ mới' }]}
+              <div style={{ margin: '16px 0', padding: '16px', border: '1px solid #e8e8e8', borderRadius: '8px', background: '#fafafa' }}>
+                <Text strong style={{ display: 'block', marginBottom: '12px' }}>Đổi địa chỉ giao hàng</Text>
+                <Button 
+                  type="primary" 
+                  onClick={() => {
+                    // Tự động chọn địa chỉ hiện tại của đơn hàng
+                    if (order.shippingAddress && userAddresses.length > 0) {
+                      // Tìm địa chỉ trong userAddresses khớp với shippingAddress của đơn hàng
+                      const matchingAddress = userAddresses.find(address => {
+                        const addressString = `${address.street}, ${address.ward}, ${address.district}, ${address.province}`;
+                        return addressString === order.shippingAddress;
+                      });
+                      
+                      if (matchingAddress) {
+                        setSelectedAddressId(matchingAddress._id);
+                      }
+                    }
+                    setShowAddressModal(true);
+                  }}
+                  style={{ marginRight: '8px' }}
                 >
-                  <Input />
-                </Form.Item>
-                <Button type="primary" htmlType="submit">Cập nhật địa chỉ</Button>
-              </Form>
+                  Chọn địa chỉ có sẵn
+                {/* </Button>
+                                 <Button 
+                   onClick={() => setShowNewAddressForm(true)}
+                 > */}
+                   {/* Thêm địa chỉ mới */}
+                 </Button>
+              </div>
             )}
           </div>
         </Card>
@@ -402,8 +484,113 @@ const OrderDetail = () => {
           )}
         </div>
       </div>
-    </div>
-  );
-};
+
+             {/* Modal chọn địa chỉ */}
+       <Modal
+         title={showNewAddressForm ? "Thêm địa chỉ mới" : "Chọn địa chỉ giao hàng"}
+         open={showAddressModal}
+         onCancel={() => {
+           setShowAddressModal(false);
+           setSelectedAddressId(null);
+           setShowNewAddressForm(false);
+         }}
+         footer={showNewAddressForm ? null : [
+           <Button key="cancel" onClick={() => {
+             setShowAddressModal(false);
+             setSelectedAddressId(null);
+           }}>
+             Huỷ
+           </Button>,
+           <Button 
+             key="submit" 
+             type="primary" 
+             onClick={handleChangeAddress}
+             disabled={!selectedAddressId}
+           >
+             Xác nhận
+           </Button>
+         ]}
+         width={700}
+         maskClosable={false}
+         closable={false}
+       >
+         {showNewAddressForm ? (
+           <NewAddressForm
+             provinces={provinces}
+             onSubmit={handleCreateNewAddress}
+             onBack={() => setShowNewAddressForm(false)}
+             loading={false}
+           />
+         ) : (
+           <>
+             {userAddresses.length > 0 ? (
+               <Radio.Group 
+                 value={selectedAddressId} 
+                 onChange={(e) => setSelectedAddressId(e.target.value)}
+                 style={{ width: '100%' }}
+               >
+                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                   {userAddresses.map((address) => (
+                     <div 
+                       key={address._id}
+                       style={{
+                         border: selectedAddressId === address._id ? '2px solid #52c41a' : '1px solid #e8e8e8',
+                         borderRadius: '8px',
+                         padding: '16px',
+                         cursor: 'pointer',
+                         background: selectedAddressId === address._id ? '#f6ffed' : '#fff',
+                         transition: 'all 0.2s ease'
+                       }}
+                       onClick={() => setSelectedAddressId(address._id)}
+                     >
+                       <Radio value={address._id} style={{ marginRight: '12px' }}>
+                         <div>
+                           <div style={{ fontWeight: '600', marginBottom: '4px' }}>
+                             {address.recipientName} - {address.phone}
+                           </div>
+                           <div style={{ color: '#666', fontSize: '14px' }}>
+                             {address.street}, {address.ward}, {address.district}, {address.province}
+                           </div>
+                           {address.isDefault && (
+                             <Tag color="green" style={{ marginTop: '4px' }}>Mặc định</Tag>
+                           )}
+                         </div>
+                       </Radio>
+                     </div>
+                   ))}
+                 </div>
+               </Radio.Group>
+             ) : (
+               <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                 <Text type="secondary">Bạn chưa có địa chỉ nào được lưu.</Text>
+                 <br />
+                 <Button 
+                   type="primary" 
+                   onClick={() => setShowNewAddressForm(true)}
+                   style={{ marginTop: '16px' }}
+                 >
+                   Thêm địa chỉ mới
+                 </Button>
+               </div>
+             )}
+             
+             {userAddresses.length > 0 && (
+               <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #e8e8e8' }}>
+                 <Button 
+                   type="dashed" 
+                   block
+                   onClick={() => setShowNewAddressForm(true)}
+                   style={{ height: '40px' }}
+                 >
+                   + Thêm địa chỉ mới
+                 </Button>
+               </div>
+             )}
+           </>
+         )}
+       </Modal>
+     </div>
+   );
+ };
 
 export default OrderDetail;

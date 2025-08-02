@@ -364,11 +364,38 @@ exports.createOrder = async (req, res) => {
     const savedOrder = await order.save();
     await Order_Item.insertMany(orderItems);
 
+    // Đánh dấu voucher đã sử dụng ngay khi tạo đơn hàng thành công
+    if (voucherId && req.user.id) {
+      try {
+        // Cập nhật User_Voucher
+        await User_Voucher.findOneAndUpdate(
+          { userId: req.user.id, voucherId },
+          { isUsed: true }
+        );
+
+        // Cập nhật Voucher (tăng usedCount)
+        const updatedVoucher = await Voucher.findByIdAndUpdate(
+          voucherId,
+          { $inc: { usedCount: 1 } },
+          { new: true }
+        );
+
+        // Nếu voucher đã hết lượt sử dụng thì deactivate
+        if (updatedVoucher.usageLimit && updatedVoucher.usedCount >= updatedVoucher.usageLimit) {
+          updatedVoucher.isActive = false;
+          await updatedVoucher.save();
+        }
+      } catch (voucherError) {
+        console.error('Lỗi cập nhật voucher:', voucherError);
+        // Không return lỗi, chỉ log để không cản luồng xử lý đơn hàng
+      }
+    }
+
     const orderObj = savedOrder.toObject ? savedOrder.toObject() : savedOrder;
     console.log('orderObj:', orderObj);
 
-    // Gửi email xác nhận đơn hàng cho guest
-    if (customerEmail) {
+    // Gửi email xác nhận đơn hàng chỉ cho guest (không có userId)
+    if (!req.user.id && customerEmail) {
       try {
         await sendOrderCodeToGuestEmail(
           customerEmail,
@@ -596,26 +623,30 @@ exports.updateOrder = async (req, res) => {
         }
 
         order.status = status;
-        // Nếu chuyển trạng thái sang 'processing' và có voucher, thì mới đánh dấu đã sử dụng
-        if (status === 'processing' && order.voucherId) {
-          // Đánh dấu voucher đã sử dụng
-          const updatedVoucher = await Voucher.findByIdAndUpdate(
-            order.voucherId,
-            { $inc: { usedCount: 1 } },
-            { new: true }
-          );
-          if (updatedVoucher.usageLimit && updatedVoucher.usedCount >= updatedVoucher.usageLimit) {
-            updatedVoucher.isActive = false;
-            await updatedVoucher.save();
-          }
-          // Nếu là khách (không có userId), tìm user_voucher theo email nếu có logic này, hoặc bỏ qua nếu không dùng user_voucher cho guest
-          if (order.userId) {
-            await User_Voucher.findOneAndUpdate(
-              { userId: order.userId, voucherId: order.voucherId },
-              { isUsed: true }
-            );
+        
+        // Gửi email thông báo khi đơn hàng được giao thành công
+        if (status === 'delivered' && order.customerEmail) {
+          try {
+            const orderItems = await Order_Item.find({ orderId: order._id });
+            await sendOrderCodeToGuestEmail(order.customerEmail, {
+              orderCode: order.orderCode,
+              orderDate: order.createdAt,
+              items: orderItems.map(item => ({
+                productName: item.productName,
+                quantity: item.quantity,
+                productImage: item.productImage
+              })),
+              totalAmount: order.totalAmount,
+              customerName: order.customerName,
+              deliveryStatus: 'delivered'
+            });
+          } catch (emailError) {
+            console.error('Gửi email thông báo giao hàng thành công thất bại:', emailError);
           }
         }
+        
+        // Voucher đã được đánh dấu sử dụng khi tạo đơn hàng thành công
+        // Không cần đánh dấu lại khi chuyển trạng thái processing
       }
     }
 
@@ -744,6 +775,34 @@ exports.finalizeOrderAuth = async (req, res) => {
     }
 
     await Order_Item.insertMany(orderItems);
+
+    // Đánh dấu voucher đã sử dụng ngay khi tạo đơn hàng thành công
+    if (voucherId && userId) {
+      try {
+        // Cập nhật User_Voucher
+        await User_Voucher.findOneAndUpdate(
+          { userId: userId, voucherId },
+          { isUsed: true }
+        );
+
+        // Cập nhật Voucher (tăng usedCount)
+        const updatedVoucher = await Voucher.findByIdAndUpdate(
+          voucherId,
+          { $inc: { usedCount: 1 } },
+          { new: true }
+        );
+
+        // Nếu voucher đã hết lượt sử dụng thì deactivate
+        if (updatedVoucher.usageLimit && updatedVoucher.usedCount >= updatedVoucher.usageLimit) {
+          updatedVoucher.isActive = false;
+          await updatedVoucher.save();
+        }
+      } catch (voucherError) {
+        console.error('Lỗi cập nhật voucher:', voucherError);
+        // Không return lỗi, chỉ log để không cản luồng xử lý đơn hàng
+      }
+    }
+
     await PaymentController.createUnpaidPayment(savedOrder._id, 'payOS');
 
     // ✅ Gửi email xác nhận đơn hàng

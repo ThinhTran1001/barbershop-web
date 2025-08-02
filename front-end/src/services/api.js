@@ -105,6 +105,13 @@ export const updateProfile = (formData) => api.patch(`/users/profile/me`, formDa
 export const forgotPassword = (data) => api.post('/auth/forgot-password', data);
 export const resetPassword = (data) => api.post('/auth/reset-password', data);
 
+// Address
+export const getUserAddresses = () => api.get('/addresses');
+export const createAddress = (data) => api.post('/addresses', data);
+export const updateAddress = (id, data) => api.put(`/addresses/${id}`, data);
+export const deleteAddress = (id) => api.delete(`/addresses/${id}`);
+export const setDefaultAddress = (id) => api.patch(`/addresses/${id}/set-default`);
+
 // OAuth
 export const initiateGoogleLogin = () => {
   const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=703568250378-bookqj2l9dv38j3m24kf5737dja1arbj.apps.googleusercontent.com&redirect_uri=${encodeURIComponent('http://localhost:3000/api/auth/google')}&response_type=code&scope=email%20profile`;
