@@ -570,3 +570,134 @@ exports.getScheduleDetails = async (req, res) => {
   }
 };
 
+// Get all available time slots for a date (across all barbers)
+exports.getAllAvailableSlots = async (req, res) => {
+  try {
+    const { date, serviceId, durationMinutes = 30 } = req.query;
+
+    if (!date) {
+      return res.status(400).json({
+        success: false,
+        message: 'Date is required'
+      });
+    }
+
+    // Validate date format
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(date)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid date format. Use YYYY-MM-DD'
+      });
+    }
+
+    // Get all available barbers
+    const Barber = require('../models/barber.model');
+    const barbers = await Barber.find({ isAvailable: true })
+      .select('_id userId');
+
+    if (barbers.length === 0) {
+      return res.json({
+        success: true,
+        availableSlots: [],
+        date,
+        message: 'No barbers available on this date'
+      });
+    }
+
+    // Import required models
+    const BarberAbsence = require('../models/barber-absence.model');
+
+    // Standard time slots (can be made configurable)
+    const standardTimeSlots = [
+      '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
+      '12:00', '12:30', '13:00', '13:30', '14:00', '14:30',
+      '15:00', '15:30', '16:00', '16:30', '17:00', '17:30',
+      '18:00', '18:30', '19:00', '19:30', '20:00'
+    ];
+
+    const availableSlots = [];
+
+    // Check each time slot to see if any barber is available
+    for (const timeSlot of standardTimeSlots) {
+      let hasAvailableBarber = false;
+      let availableBarberCount = 0;
+
+      for (const barber of barbers) {
+        // Check if barber is absent
+        const bookingDateObj = new Date(`${date}T${timeSlot}:00.000Z`);
+        const isAbsent = await BarberAbsence.isBarberAbsent(barber._id, bookingDateObj);
+        if (isAbsent) {
+          continue;
+        }
+
+        // Check barber schedule
+        const schedule = await BarberSchedule.findOne({
+          barberId: barber._id,
+          date: date
+        });
+
+        // If no schedule, barber is potentially available
+        if (!schedule) {
+          hasAvailableBarber = true;
+          availableBarberCount++;
+          continue;
+        }
+
+        // Check if barber is off that day
+        if (schedule.isOffDay) {
+          continue;
+        }
+
+        // Check if the specific time slot is available
+        const slot = schedule.timeSlots?.find(slot => slot.time === timeSlot);
+        if (slot && slot.isBooked) {
+          continue;
+        }
+
+        // Check for existing bookings
+        const existingBooking = await Booking.findOne({
+          barberId: barber._id,
+          bookingDate: {
+            $gte: new Date(`${date}T${timeSlot}:00.000Z`),
+            $lt: new Date(`${date}T${timeSlot}:30.000Z`)
+          },
+          status: { $in: ['pending', 'confirmed'] }
+        });
+
+        if (!existingBooking) {
+          hasAvailableBarber = true;
+          availableBarberCount++;
+        }
+      }
+
+      // If at least one barber is available for this time slot, include it
+      if (hasAvailableBarber) {
+        availableSlots.push({
+          time: timeSlot,
+          available: true,
+          availableBarberCount,
+          label: `${timeSlot} (${availableBarberCount} barber${availableBarberCount > 1 ? 's' : ''} available)`
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      availableSlots,
+      date,
+      totalSlots: availableSlots.length,
+      message: availableSlots.length > 0
+        ? `Found ${availableSlots.length} available time slots for ${date}`
+        : `No available time slots for ${date}`
+    });
+
+  } catch (error) {
+    console.error('Error getting all available slots:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get available time slots'
+    });
+  }
+};
+

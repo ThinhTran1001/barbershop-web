@@ -19,7 +19,7 @@ export default function HeroSection() {
     if (!user) {
       showToast("danger", "Vui lòng đăng nhập để đặt lịch hẹn");
     } else {
-      navigate("/browse-services");
+      navigate("/book-service");
     }
   };
 

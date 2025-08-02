@@ -4,6 +4,7 @@ const barberScheduleController = require('../controllers/barberSchedule.controll
 const { authenticate, authorizeRoles } = require('../middlewares/auth.middleware');
 
 router.get('/available-slots', barberScheduleController.getAvailableSlots);
+router.get('/all-available-slots', barberScheduleController.getAllAvailableSlots);
 router.get('/is-off', barberScheduleController.isBarberOff);
 router.post('/validate-availability', barberScheduleController.validateTimeSlotAvailability);
 

@@ -178,3 +178,85 @@ exports.getServiceById = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// Get service categories
+exports.getServiceCategories = async (req, res) => {
+  try {
+    const categories = await Service.distinct('category');
+    res.json(categories.filter(category => category)); // Filter out null/undefined values
+  } catch (error) {
+    console.error('Error fetching service categories:', error);
+    res.status(500).json({ message: 'Failed to fetch service categories' });
+  }
+};
+
+// Get hair types
+exports.getHairTypes = async (req, res) => {
+  try {
+    const hairTypes = await Service.distinct('hairTypes');
+    // Flatten the array since hairTypes is an array field
+    const flattenedHairTypes = [...new Set(hairTypes.flat())].filter(type => type);
+    res.json(flattenedHairTypes);
+  } catch (error) {
+    console.error('Error fetching hair types:', error);
+    res.status(500).json({ message: 'Failed to fetch hair types' });
+  }
+};
+
+// Get style compatibility options
+exports.getStyleCompatibility = async (req, res) => {
+  try {
+    const styleOptions = await Service.distinct('styleCompatibility');
+    // Flatten the array since styleCompatibility is an array field
+    const flattenedStyleOptions = [...new Set(styleOptions.flat())].filter(option => option);
+    res.json(flattenedStyleOptions);
+  } catch (error) {
+    console.error('Error fetching style compatibility options:', error);
+    res.status(500).json({ message: 'Failed to fetch style compatibility options' });
+  }
+};
+
+// Get service suggestions (simplified implementation)
+exports.getServiceSuggestions = async (req, res) => {
+  try {
+    const { hairType, stylePreference, userId, limit = 6 } = req.query;
+
+    // Build filter based on parameters
+    const filter = { isActive: true };
+
+    if (hairType) {
+      filter.hairTypes = { $in: [hairType] };
+    }
+
+    if (stylePreference) {
+      filter.styleCompatibility = { $in: [stylePreference] };
+    }
+
+    // Get suggestions based on popularity and rating
+    const suggestions = await Service.find(filter)
+      .sort({
+        popularity: -1,  // Most popular first
+        averageRating: -1,  // Highest rated first
+        createdAt: -1  // Newest first
+      })
+      .limit(Number(limit));
+
+    const sanitizedSuggestions = suggestions.map((service) => ({
+      ...service._doc,
+      images: (service.images || []).filter(isValidUrl),
+    }));
+
+    res.json({
+      suggestions: sanitizedSuggestions,
+      total: sanitizedSuggestions.length,
+      criteria: {
+        hairType,
+        stylePreference,
+        userId
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching service suggestions:', error);
+    res.status(500).json({ message: 'Failed to fetch service suggestions' });
+  }
+};

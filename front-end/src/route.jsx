@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 import RequireAuth from "./middleware/RequireAuth";
 import CommonLayout from "./pages/layout/CommonLayout.jsx";
 import AdminLayout from "./pages/layout/AdminLayout.jsx";
@@ -56,6 +56,7 @@ import TimeSlotPickerPage from "./pages/ServiceBooking/TimeSlotPickerPage.jsx";
 import BookingPage from "./pages/barber/BookingPage.jsx";
 import BookingInfoPage from "./pages/ServiceBooking/BookingInfoPage.jsx";
 import MyBookingsPage from "./pages/ServiceBooking/MyBookingsPage.jsx";
+import SinglePageBooking from "./pages/ServiceBooking/SinglePageBooking.jsx";
 import UserVouchers from "./pages/user/UserVouchers.jsx";
 import ManageBlog from "./pages/ManageBlog/ManageBlog.jsx";
 import BarberProfile from "./components/profile/baberProfile.jsx";
@@ -85,9 +86,16 @@ const router = createBrowserRouter([
       { path: "/cart", element: <UserCart /> },
       { path: "/profile", element: <CustomerProfile /> },
       { path: "/browse-services", element: <ServiceListPage /> },
+      { path: "/book-service", element: <SinglePageBooking /> },
+
+      // Legacy booking routes - maintained for backward compatibility
       { path: "/choose-barber", element: <BarberSelectionPage /> },
       { path: "/choose-time-slot", element: <TimeSlotPickerPage /> },
       { path: "/booking-info", element: <BookingInfoPage /> },
+
+      // Redirect legacy booking entry points to new single-page flow
+      { path: "/start-booking", element: <Navigate to="/book-service" replace /> },
+      { path: "/new-booking", element: <Navigate to="/book-service" replace /> },
       { path: "/my-booking", element: <MyBookingsPage /> },
       { path: "/feedback/:bookingId", element: <BookingFeedbackPage /> },
       { path: "/my-feedback", element: <MyFeedbackPage /> },

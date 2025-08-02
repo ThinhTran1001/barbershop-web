@@ -14,6 +14,13 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 router.get("/", serviceController.getAllServices);
+
+// Specific routes must come before the generic /:id route
+router.get("/categories", serviceController.getServiceCategories);
+router.get("/hair-types", serviceController.getHairTypes);
+router.get("/style-compatibility", serviceController.getStyleCompatibility);
+router.get("/suggestions", serviceController.getServiceSuggestions);
+
 router.get("/:id", serviceController.getServiceById);
 router.post("/", serviceController.createService);
 router.put("/:id", serviceController.updateService);
