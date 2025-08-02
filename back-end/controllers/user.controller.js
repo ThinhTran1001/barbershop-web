@@ -82,7 +82,10 @@ exports.deleteUser = async (req, res) => {
 
 exports.getProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('-passwordHash');
+    const user = await User.findById(req.user.id)
+      .select('-passwordHash')
+      .populate('defaultAddressId');
+      
     if (!user) {
       return res.status(404).json({
         success: false,

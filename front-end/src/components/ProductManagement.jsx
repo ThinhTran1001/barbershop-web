@@ -447,7 +447,17 @@ const ProductManagement = () => {
             label="Price"
             rules={[{ required: true, message: 'Enter price' }]}
           >
-            <InputNumber min={0} style={{ width: '100%' }} />
+            <InputNumber 
+              min={0} 
+              style={{ width: '100%' }}
+              onKeyPress={(e) => {
+                // Chỉ cho phép nhập số từ 0-9
+                const charCode = e.which ? e.which : e.keyCode;
+                if (charCode > 31 && (charCode < 48 || charCode > 57)) {
+                  e.preventDefault();
+                }
+              }}
+            />
           </Form.Item>
           <Form.Item label="Ảnh sản phẩm">
             <Upload
@@ -504,7 +514,17 @@ const ProductManagement = () => {
             label="Stock"
             rules={[{ required: true, message: 'Enter stock' }]}
           >
-            <InputNumber min={0} style={{ width: '100%' }} />
+            <InputNumber 
+              min={0} 
+              style={{ width: '100%' }}
+              onKeyPress={(e) => {
+                // Chỉ cho phép nhập số từ 0-9
+                const charCode = e.which ? e.which : e.keyCode;
+                if (charCode > 31 && (charCode < 48 || charCode > 57)) {
+                  e.preventDefault();
+                }
+              }}
+            />
           </Form.Item>
           <Form.Item
             name="categoryId"
