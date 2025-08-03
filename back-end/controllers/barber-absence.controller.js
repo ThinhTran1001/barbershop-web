@@ -32,9 +32,36 @@ exports.createBarberAbsence = async (req, res) => {
       });
     }
 
-    // Validate dates
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+    // Validate dates - expect YYYY-MM-DD format from frontend
+    console.log('📅 Creating absence with dates:', { startDate, endDate });
+
+    // Validate YYYY-MM-DD format
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+      return res.status(400).json({
+        message: 'Invalid date format. Please provide dates in YYYY-MM-DD format.'
+      });
+    }
+
+    // Parse dates for validation only (don't store as Date objects)
+    const start = new Date(startDate + 'T00:00:00');
+    const end = new Date(endDate + 'T00:00:00');
+
+    console.log('📅 Date validation:', {
+        startDate,
+        endDate,
+        startParsed: start.toISOString(),
+        endParsed: end.toISOString(),
+        isValidStart: !isNaN(start.getTime()),
+        isValidEnd: !isNaN(end.getTime())
+    });
+
+    // Check if dates are valid
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return res.status(400).json({
+        message: 'Invalid date values.'
+      });
+    }
 
     if (start >= end) {
       return res.status(400).json({
@@ -51,15 +78,22 @@ exports.createBarberAbsence = async (req, res) => {
       });
     }
 
-    // Create absence record (pending approval)
+    // Create absence record (pending approval) - store dates as strings
     const absence = new BarberAbsence({
       barberId: barber._id,
-      startDate: start,
-      endDate: end,
+      startDate: startDate, // Store as string (YYYY-MM-DD)
+      endDate: endDate,     // Store as string (YYYY-MM-DD)
       reason,
       description,
       createdBy,
       isApproved: null // Always start as pending approval (null = pending)
+    });
+
+    console.log('📅 Storing absence with string dates:', {
+        startDate: absence.startDate,
+        endDate: absence.endDate,
+        startDateType: typeof absence.startDate,
+        endDateType: typeof absence.endDate
     });
 
     // Find affected bookings
@@ -385,6 +419,364 @@ exports.updateAbsenceApproval = async (req, res) => {
   }
 };
 
+// Get affected bookings for absence approval
+exports.getAffectedBookings = async (req, res) => {
+  try {
+    const { absenceId } = req.params;
+
+    // Validate user is admin
+    const user = await User.findById(req.userId);
+    if (!user || user.role !== 'admin') {
+      return res.status(403).json({
+        message: 'Only admins can view affected bookings'
+      });
+    }
+
+    const absence = await BarberAbsence.findById(absenceId)
+      .populate('barberId', 'userId')
+      .populate({
+        path: 'barberId',
+        populate: {
+          path: 'userId',
+          select: 'name email'
+        }
+      });
+
+    if (!absence) {
+      return res.status(404).json({
+        message: 'Absence record not found'
+      });
+    }
+
+    // Get all bookings for this barber during the absence period
+    const Booking = require('../models/booking.model');
+
+    // Convert string dates to Date objects for MongoDB query
+    const startDate = new Date(absence.startDate + 'T00:00:00');
+    const endDate = new Date(absence.endDate + 'T23:59:59');
+
+    console.log('📅 Querying affected bookings:', {
+      startDateStr: absence.startDate,
+      endDateStr: absence.endDate,
+      startDateObj: startDate.toISOString(),
+      endDateObj: endDate.toISOString()
+    });
+
+    const affectedBookings = await Booking.find({
+      barberId: absence.barberId._id,
+      bookingDate: {
+        $gte: startDate,
+        $lte: endDate
+      },
+      status: { $nin: ['rejected', 'cancelled'] }
+    })
+    .populate('customerId', 'name email phone')
+    .populate('serviceId', 'name durationMinutes price')
+    .sort({ bookingDate: 1 });
+
+    res.json({
+      success: true,
+      absence: {
+        _id: absence._id,
+        barberId: absence.barberId._id,
+        barberName: absence.barberId.userId.name,
+        startDate: absence.startDate,
+        endDate: absence.endDate,
+        reason: absence.reason,
+        description: absence.description
+      },
+      affectedBookings: affectedBookings.map(booking => ({
+        _id: booking._id,
+        customerId: booking.customerId._id,
+        customerName: booking.customerId.name,
+        customerEmail: booking.customerId.email,
+        customerPhone: booking.customerId.phone,
+        serviceId: booking.serviceId._id,
+        serviceName: booking.serviceId.name,
+        serviceDuration: booking.serviceId.durationMinutes,
+        servicePrice: booking.serviceId.price,
+        bookingDate: booking.bookingDate,
+        status: booking.status,
+        note: booking.note,
+        reassignedFrom: booking.reassignedFrom,
+        reassignedAt: booking.reassignedAt
+      }))
+    });
+
+  } catch (err) {
+    console.error('Error getting affected bookings:', err);
+    res.status(500).json({
+      message: err.message || 'Failed to get affected bookings'
+    });
+  }
+};
+
+// Process absence approval with booking reassignments/rejections
+exports.processAbsenceApproval = async (req, res) => {
+  try {
+    const { absenceId } = req.params;
+    const { bookingActions } = req.body; // Array of { bookingId, action: 'reassign'|'reject', newBarberId? }
+    const approvedBy = req.userId;
+
+    // Validate user is admin
+    const user = await User.findById(req.userId);
+    if (!user || user.role !== 'admin') {
+      return res.status(403).json({
+        message: 'Only admins can process absence approval'
+      });
+    }
+
+    if (!bookingActions || !Array.isArray(bookingActions)) {
+      return res.status(400).json({
+        message: 'Booking actions array is required'
+      });
+    }
+
+    const absence = await BarberAbsence.findById(absenceId);
+    if (!absence) {
+      return res.status(404).json({
+        message: 'Absence record not found'
+      });
+    }
+
+    const Booking = require('../models/booking.model');
+    const BarberSchedule = require('../models/barber-schedule.model');
+    const results = [];
+
+    // Process each booking action
+    for (const action of bookingActions) {
+      try {
+        const booking = await Booking.findById(action.bookingId);
+        if (!booking) {
+          results.push({
+            bookingId: action.bookingId,
+            success: false,
+            message: 'Booking not found'
+          });
+          continue;
+        }
+
+        if (action.action === 'reassign') {
+          if (!action.newBarberId) {
+            results.push({
+              bookingId: action.bookingId,
+              success: false,
+              message: 'New barber ID is required for reassignment'
+            });
+            continue;
+          }
+
+          // Reassign booking
+          const oldBarberId = booking.barberId;
+          booking.barberId = action.newBarberId;
+          booking.reassignedFrom = oldBarberId;
+          booking.reassignedAt = new Date();
+          booking.reassignedBy = approvedBy;
+          await booking.save();
+
+          // Update schedules
+          const bookingDate = new Date(booking.bookingDate);
+          const dateStr = bookingDate.toISOString().split('T')[0];
+          const startTimeStr = bookingDate.toTimeString().substring(0, 5);
+
+          // Get service duration
+          const Service = require('../models/service.model');
+          const service = await Service.findById(booking.serviceId);
+          const durationMinutes = service ? service.durationMinutes : 30;
+
+          // Free up slots for old barber
+          try {
+            await BarberSchedule.unmarkSlotsAsBooked(
+              oldBarberId,
+              dateStr,
+              booking._id,
+              null
+            );
+          } catch (unmaskError) {
+            console.error('Error freeing slots for old barber:', unmaskError);
+          }
+
+          // Mark slots for new barber
+          try {
+            await BarberSchedule.markSlotsAsBooked(
+              action.newBarberId,
+              dateStr,
+              startTimeStr,
+              durationMinutes,
+              booking._id,
+              null
+            );
+          } catch (markError) {
+            console.error('Error marking slots for new barber:', markError);
+          }
+
+          results.push({
+            bookingId: action.bookingId,
+            success: true,
+            action: 'reassigned',
+            newBarberId: action.newBarberId
+          });
+
+        } else if (action.action === 'reject') {
+          // Reject booking with proper rejection data
+          booking.status = 'rejected';
+          booking.rejectedAt = new Date();
+          booking.rejectedBy = approvedBy;
+          booking.rejectionReason = action.rejectionReason || 'barber_unavailable';
+          booking.rejectionNote = action.rejectionNote || 'Booking rejected due to approved barber absence';
+          await booking.save();
+
+          console.log(`📋 Rejected booking ${booking._id}:`, {
+            customerId: booking.customerId,
+            serviceId: booking.serviceId,
+            bookingDate: booking.bookingDate,
+            rejectionReason: booking.rejectionReason,
+            rejectionNote: booking.rejectionNote
+          });
+
+          // Free up schedule slots
+          const bookingDate = new Date(booking.bookingDate);
+          const dateStr = bookingDate.toISOString().split('T')[0];
+
+          try {
+            await BarberSchedule.unmarkSlotsAsBooked(
+              booking.barberId,
+              dateStr,
+              booking._id,
+              null
+            );
+          } catch (unmaskError) {
+            console.error('Error freeing slots for rejected booking:', unmaskError);
+          }
+
+          results.push({
+            bookingId: action.bookingId,
+            success: true,
+            action: 'rejected'
+          });
+        }
+
+      } catch (actionError) {
+        console.error(`Error processing action for booking ${action.bookingId}:`, actionError);
+        results.push({
+          bookingId: action.bookingId,
+          success: false,
+          message: actionError.message
+        });
+      }
+    }
+
+    // Now approve the absence
+    absence.isApproved = true;
+    absence.approvedBy = approvedBy;
+    absence.approvedAt = new Date();
+
+    // Update barber schedules for absence period
+    try {
+      await absence.updateBarberSchedules();
+      console.log(`Absence approved: Updated schedules for barber ${absence.barberId} from ${absence.startDate} to ${absence.endDate}`);
+    } catch (scheduleError) {
+      console.error('Error updating barber schedules:', scheduleError);
+    }
+
+    await absence.save();
+
+    res.json({
+      success: true,
+      message: 'Absence approved and bookings processed successfully',
+      absence,
+      bookingResults: results,
+      processedCount: results.filter(r => r.success).length,
+      failedCount: results.filter(r => !r.success).length
+    });
+
+  } catch (err) {
+    console.error('Error processing absence approval:', err);
+    res.status(500).json({
+      message: err.message || 'Failed to process absence approval'
+    });
+  }
+};
+
+// Debug endpoint to test date handling
+exports.debugDateHandling = async (req, res) => {
+  try {
+    const { absenceId } = req.params;
+
+    const absence = await BarberAbsence.findById(absenceId);
+    if (!absence) {
+      return res.status(404).json({
+        success: false,
+        message: 'Absence not found'
+      });
+    }
+
+    // Test date conversion
+    let startDateStr, endDateStr;
+
+    if (absence.startDate instanceof Date) {
+        startDateStr = absence.startDate.toISOString().split('T')[0];
+    } else {
+        startDateStr = absence.startDate;
+    }
+
+    if (absence.endDate instanceof Date) {
+        endDateStr = absence.endDate.toISOString().split('T')[0];
+    } else {
+        endDateStr = absence.endDate;
+    }
+
+    // Generate date range
+    const dates = [];
+    const currentDate = new Date(startDateStr + 'T00:00:00');
+    const endDate = new Date(endDateStr + 'T00:00:00');
+
+    while (currentDate <= endDate) {
+        dates.push(currentDate.toISOString().split('T')[0]);
+        currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    // Test isBarberAbsent for each date
+    const testResults = [];
+    for (const dateStr of dates) {
+        const testDate = new Date(dateStr + 'T10:00:00'); // Test at 10 AM
+        const isAbsent = await BarberAbsence.isBarberAbsent(absence.barberId, testDate);
+        testResults.push({
+            date: dateStr,
+            testDate: testDate.toISOString(),
+            isAbsent
+        });
+    }
+
+    res.json({
+      success: true,
+      absence: {
+        _id: absence._id,
+        startDate: absence.startDate,
+        endDate: absence.endDate,
+        isApproved: absence.isApproved
+      },
+      dateConversion: {
+        originalStartDate: absence.startDate,
+        originalEndDate: absence.endDate,
+        startDateStr,
+        endDateStr,
+        startDateType: typeof absence.startDate,
+        endDateType: typeof absence.endDate
+      },
+      generatedDates: dates,
+      testResults
+    });
+
+  } catch (err) {
+    console.error('Error debugging date handling:', err);
+    res.status(500).json({
+      success: false,
+      message: err.message || 'Failed to debug date handling'
+    });
+  }
+};
+
 // Reschedule affected bookings
 exports.rescheduleAffectedBookings = async (req, res) => {
   try {
@@ -526,18 +918,22 @@ exports.getBarberCalendar = async (req, res) => {
     while (currentDate <= endDate) {
       const dateStr = currentDate.toISOString().split('T')[0];
 
-      // Check if barber is absent (compare dates only, ignore time)
+      // Check if barber is absent using string comparison (no timezone issues)
       const isAbsent = absences.some(absence => {
-        const absenceStart = new Date(absence.startDate);
-        const absenceEnd = new Date(absence.endDate);
-        const checkDate = new Date(currentDate);
+        // Since absence dates are now stored as strings (YYYY-MM-DD), compare directly
+        const absenceStart = absence.startDate;
+        const absenceEnd = absence.endDate;
 
-        // Set all times to midnight for accurate date comparison
-        absenceStart.setHours(0, 0, 0, 0);
-        absenceEnd.setHours(23, 59, 59, 999);
-        checkDate.setHours(12, 0, 0, 0); // Use noon to avoid timezone issues
+        const isInRange = dateStr >= absenceStart && dateStr <= absenceEnd;
 
-        return checkDate >= absenceStart && checkDate <= absenceEnd;
+        console.log(`📅 Checking absence for ${dateStr}:`, {
+          absenceStart,
+          absenceEnd,
+          dateStr,
+          isInRange
+        });
+
+        return isInRange;
       });
 
       // Count bookings for this date
@@ -545,14 +941,32 @@ exports.getBarberCalendar = async (req, res) => {
         booking.bookingDate.toISOString().split('T')[0] === dateStr
       );
 
+      // Find absence reason using string comparison
+      let absenceReason = null;
+      if (isAbsent) {
+        const matchingAbsence = absences.find(absence => {
+          // Since absence dates are now strings, compare directly
+          return dateStr >= absence.startDate && dateStr <= absence.endDate;
+        });
+        absenceReason = matchingAbsence?.reason || null;
+
+        console.log(`📅 ${dateStr} absence check:`, {
+          isAbsent,
+          matchingAbsence: matchingAbsence ? {
+            startDate: matchingAbsence.startDate,
+            endDate: matchingAbsence.endDate,
+            reason: matchingAbsence.reason
+          } : null,
+          absenceReason
+        });
+      }
+
       calendar.push({
         date: dateStr,
         isAbsent,
-        absenceReason: isAbsent ? absences.find(absence => 
-          currentDate >= absence.startDate && currentDate <= absence.endDate
-        )?.reason : null,
+        absenceReason,
         bookingsCount: dayBookings.length,
-        totalBookedMinutes: dayBookings.reduce((sum, booking) => 
+        totalBookedMinutes: dayBookings.reduce((sum, booking) =>
           sum + booking.durationMinutes, 0
         )
       });
@@ -613,18 +1027,22 @@ exports.getBarberSchedule = async (req, res) => {
     while (currentDate <= endDate) {
       const dateStr = currentDate.toISOString().split('T')[0];
 
-      // Check if barber is absent (compare dates only, ignore time)
+      // Check if barber is absent using string comparison (no timezone issues)
       const isAbsent = absences.some(absence => {
-        const absenceStart = new Date(absence.startDate);
-        const absenceEnd = new Date(absence.endDate);
-        const checkDate = new Date(currentDate);
+        // Since absence dates are now stored as strings (YYYY-MM-DD), compare directly
+        const absenceStart = absence.startDate;
+        const absenceEnd = absence.endDate;
 
-        // Set all times to midnight for accurate date comparison
-        absenceStart.setHours(0, 0, 0, 0);
-        absenceEnd.setHours(23, 59, 59, 999);
-        checkDate.setHours(12, 0, 0, 0); // Use noon to avoid timezone issues
+        const isInRange = dateStr >= absenceStart && dateStr <= absenceEnd;
 
-        return checkDate >= absenceStart && checkDate <= absenceEnd;
+        console.log(`📅 getBarberSchedule - Checking absence for ${dateStr}:`, {
+          absenceStart,
+          absenceEnd,
+          dateStr,
+          isInRange
+        });
+
+        return isInRange;
       });
 
       // Count bookings for this date
@@ -632,22 +1050,22 @@ exports.getBarberSchedule = async (req, res) => {
         booking.bookingDate.toISOString().split('T')[0] === dateStr
       );
 
+      // Find absence reason using string comparison
+      let absenceReason = null;
+      if (isAbsent) {
+        const matchingAbsence = absences.find(absence => {
+          // Since absence dates are now strings, compare directly
+          return dateStr >= absence.startDate && dateStr <= absence.endDate;
+        });
+        absenceReason = matchingAbsence?.reason || null;
+      }
+
       calendar.push({
         date: dateStr,
         isAbsent,
-        absenceReason: isAbsent ? absences.find(absence => {
-          const absenceStart = new Date(absence.startDate);
-          const absenceEnd = new Date(absence.endDate);
-          const checkDate = new Date(currentDate);
-
-          absenceStart.setHours(0, 0, 0, 0);
-          absenceEnd.setHours(23, 59, 59, 999);
-          checkDate.setHours(12, 0, 0, 0);
-
-          return checkDate >= absenceStart && checkDate <= absenceEnd;
-        })?.reason : null,
+        absenceReason,
         bookingsCount: dayBookings.length,
-        totalBookedMinutes: dayBookings.reduce((sum, booking) => 
+        totalBookedMinutes: dayBookings.reduce((sum, booking) =>
           sum + booking.durationMinutes, 0
         )
       });

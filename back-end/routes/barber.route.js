@@ -15,6 +15,13 @@ router.get('/test', (req, res) => {
 router.get('/available-for-customers', barberController.getAvailableBarbersForCustomers);
 router.get('/available', authenticate, barberController.getAvailableBarbers);
 router.post('/auto-assign-for-slot', barberController.autoAssignBarberForSlot);
+router.get('/debug-monthly-bookings', barberController.debugMonthlyBookings);
+router.post('/test-auto-assign', barberController.testAutoAssign);
+router.get('/test-absence-logic', barberController.testAbsenceLogic);
+router.get('/debug-absence-issues', barberController.debugAbsenceIssues);
+router.get('/debug-barber-availability', barberController.debugBarberAvailability);
+router.get('/cleanup-invalid-schedules', barberController.cleanupInvalidSchedules);
+router.put('/fix-schedule/:scheduleId', barberController.fixScheduleRecord);
 
 // Barber bookings (with role-based access control)
 router.get('/:userId/bookings', authenticate, barberController.getBarberBookings);

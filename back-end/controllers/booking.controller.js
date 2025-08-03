@@ -358,8 +358,13 @@ exports.createBookingSinglePage = async (req, res) => {
           });
         }
 
-        // Filter and score barbers (simplified version of the auto-assignment logic)
+        // Filter and score barbers with new monthly booking logic
         const eligibleBarbers = [];
+
+        // Calculate current month start and end dates
+        const currentDate = new Date();
+        const currentMonthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+        const currentMonthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59, 999);
 
         for (const barber of barbers) {
           // Check if barber is absent
@@ -403,6 +408,18 @@ exports.createBookingSinglePage = async (req, res) => {
 
           if (dailyBookings >= (barber.maxDailyBookings || 10)) continue;
 
+          // Calculate monthly bookings (excluding cancelled/rejected/no_show)
+          const monthlyBookings = await Booking.countDocuments({
+            barberId: barber._id,
+            bookingDate: {
+              $gte: currentMonthStart,
+              $lte: currentMonthEnd
+            },
+            status: { $nin: ['cancelled', 'rejected', 'no_show'] }
+          });
+
+          console.log(`📊 [Booking] Barber ${barber.userId?.name}: Monthly bookings = ${monthlyBookings}`);
+
           // Calculate score
           const maxDailyBookings = barber.maxDailyBookings || 10;
           const workloadScore = (maxDailyBookings - dailyBookings) / maxDailyBookings;
@@ -413,7 +430,8 @@ exports.createBookingSinglePage = async (req, res) => {
 
           eligibleBarbers.push({
             barber,
-            score: finalScore
+            score: finalScore,
+            monthlyBookings: monthlyBookings
           });
         }
 
@@ -425,9 +443,48 @@ exports.createBookingSinglePage = async (req, res) => {
           });
         }
 
-        // Sort by score and select the best
-        eligibleBarbers.sort((a, b) => b.score - a.score);
-        finalBarberId = eligibleBarbers[0].barber._id;
+        // NEW LOGIC: Check if monthly bookings are equal or different
+        const monthlyBookingCounts = eligibleBarbers.map(b => b.monthlyBookings);
+        const minMonthlyBookings = Math.min(...monthlyBookingCounts);
+        const maxMonthlyBookings = Math.max(...monthlyBookingCounts);
+        const hasEqualMonthlyBookings = minMonthlyBookings === maxMonthlyBookings;
+
+        let selectedBarberData;
+
+        if (hasEqualMonthlyBookings) {
+          if (minMonthlyBookings === 0) {
+            // All barbers have 0 bookings -> use round-robin
+            console.log('📊 [Booking] All barbers have 0 monthly bookings, using round-robin selection');
+            eligibleBarbers.sort((a, b) => a.barber._id.toString().localeCompare(b.barber._id.toString()));
+
+            const currentHour = new Date().getHours();
+            const selectedIndex = currentHour % eligibleBarbers.length;
+            selectedBarberData = eligibleBarbers[selectedIndex];
+            console.log(`✅ [Booking] Selected by round-robin: ${selectedBarberData.barber.userId?.name}`);
+          } else {
+            // All barbers have equal monthly bookings (> 0) -> use original scoring algorithm
+            console.log(`📊 [Booking] All barbers have equal monthly bookings (${minMonthlyBookings} each), using original scoring algorithm`);
+            eligibleBarbers.sort((a, b) => b.score - a.score);
+            selectedBarberData = eligibleBarbers[0];
+          }
+        } else {
+          // Different monthly bookings -> prioritize barbers with fewer monthly bookings
+          console.log('📊 [Booking] Different monthly bookings detected, prioritizing barbers with fewer bookings');
+
+          // Filter barbers with minimum monthly bookings
+          const barbersWithMinBookings = eligibleBarbers.filter(b => b.monthlyBookings === minMonthlyBookings);
+
+          if (barbersWithMinBookings.length === 1) {
+            // Only one barber with minimum bookings
+            selectedBarberData = barbersWithMinBookings[0];
+          } else {
+            // Multiple barbers with same minimum bookings -> use original scoring among them
+            barbersWithMinBookings.sort((a, b) => b.score - a.score);
+            selectedBarberData = barbersWithMinBookings[0];
+          }
+        }
+
+        finalBarberId = selectedBarberData.barber._id;
         isAutoAssigned = true;
 
       } catch (autoAssignError) {

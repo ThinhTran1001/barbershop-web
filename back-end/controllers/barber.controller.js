@@ -628,13 +628,52 @@ exports.getAvailableBarbersForCustomers = async (req, res) => {
     const availableBarbers = [];
 
     for (const barber of barbers) {
+      const barberName = barber.userId?.name;
+      console.log(`\n🔍 Checking barber: ${barberName} for date: ${date}`);
+
       // Check if barber is absent on this date
       const bookingDateObj = timeSlot
         ? new Date(`${date}T${timeSlot}:00.000Z`)
         : new Date(`${date}T00:00:00.000Z`);
+
+      console.log(`📅 Booking date object: ${bookingDateObj.toISOString()}`);
+
+      // Debug: Check for any absence records (all, not just approved)
+      const allAbsences = await BarberAbsence.find({
+        barberId: barber._id
+      });
+
+      console.log(`📋 ${barberName} - All absence records:`,
+        allAbsences.map(a => ({
+          _id: a._id,
+          startDate: a.startDate,
+          endDate: a.endDate,
+          isApproved: a.isApproved,
+          reason: a.reason,
+          startDateType: typeof a.startDate,
+          endDateType: typeof a.endDate
+        }))
+      );
+
+      // Check approved absences only
       const isAbsent = await BarberAbsence.isBarberAbsent(barber._id, bookingDateObj);
+      console.log(`❓ ${barberName} - isAbsent (approved only): ${isAbsent}`);
+
       if (isAbsent) {
+        console.log(`❌ ${barberName} - Filtered out due to approved absence`);
         continue;
+      } else {
+        console.log(`✅ ${barberName} - Passed absence check`);
+      }
+
+      // Special debug for Lê Quang Vinh
+      if (barberName && barberName.includes('Vinh')) {
+        console.log(`🔍 SPECIAL DEBUG for ${barberName}:`);
+        console.log(`  - Barber ID: ${barber._id}`);
+        console.log(`  - Date checking: ${date}`);
+        console.log(`  - All absences count: ${allAbsences.length}`);
+        console.log(`  - Approved absences:`, allAbsences.filter(a => a.isApproved));
+        console.log(`  - isAbsent result: ${isAbsent}`);
       }
 
       // Check if barber has a schedule for this date
@@ -643,8 +682,16 @@ exports.getAvailableBarbersForCustomers = async (req, res) => {
         date: date
       });
 
+      console.log(`📅 ${barberName} - Schedule check:`, {
+        hasSchedule: !!schedule,
+        scheduleId: schedule?._id,
+        isOffDay: schedule?.isOffDay,
+        offReason: schedule?.offReason
+      });
+
       // If no schedule exists, barber is potentially available
       if (!schedule) {
+        console.log(`✅ ${barberName} - Added to available list (no schedule)`);
         availableBarbers.push({
           _id: barber._id,
           name: barber.userId?.name || 'Unknown',
@@ -662,11 +709,29 @@ exports.getAvailableBarbersForCustomers = async (req, res) => {
 
       // Check if barber is not off that day
       if (schedule.isOffDay) {
+        console.log(`❌ ${barberName} - Filtered out (off day)`, {
+          isOffDay: schedule.isOffDay,
+          offReason: schedule.offReason,
+          absenceId: schedule.absenceId
+        });
+
+        // Special debug for Lê Quang Vinh
+        if (barberName && barberName.includes('Vinh')) {
+          console.log(`🔍 VINH OFF DAY DEBUG:`, {
+            scheduleId: schedule._id,
+            date: schedule.date,
+            isOffDay: schedule.isOffDay,
+            offReason: schedule.offReason,
+            absenceId: schedule.absenceId,
+            workingHours: schedule.workingHours
+          });
+        }
         continue;
       }
 
       // If no specific timeSlot is provided, just check if barber is generally available for the date
       if (!timeSlot) {
+        console.log(`✅ ${barber.userId?.name} - Added to available list (no specific time slot)`);
         availableBarbers.push({
           _id: barber._id,
           name: barber.userId?.name || 'Unknown',
@@ -724,7 +789,10 @@ exports.getAvailableBarbersForCustomers = async (req, res) => {
       return b.experienceYears - a.experienceYears;
     });
 
-    console.log('Returning response with', availableBarbers.length, 'barbers');
+    console.log(`\n📋 FINAL RESULT for ${date} ${timeSlot ? `at ${timeSlot}` : ''}:`);
+    console.log(`✅ Available barbers: ${availableBarbers.map(b => b.name).join(', ')}`);
+    console.log(`📊 Total: ${availableBarbers.length} barbers`);
+
     res.json({
       success: true,
       availableBarbers,
@@ -732,8 +800,8 @@ exports.getAvailableBarbersForCustomers = async (req, res) => {
       timeSlot,
       total: availableBarbers.length,
       message: availableBarbers.length > 0
-        ? `Found ${availableBarbers.length} available barber(s) for ${date} at ${timeSlot}`
-        : `No barbers available for ${date} at ${timeSlot}`
+        ? `Found ${availableBarbers.length} available barber(s) for ${date} at ${timeSlot || 'any time'}`
+        : `No barbers available for ${date} at ${timeSlot || 'any time'}`
     });
 
   } catch (error) {
@@ -783,6 +851,9 @@ exports.autoAssignBarberForSlot = async (req, res) => {
       .populate('userId', 'name email profileImageUrl')
       .select('userId specialties experienceYears averageRating totalBookings profileImageUrl autoAssignmentEligible maxDailyBookings');
 
+    console.log(`🔍 Found ${barbers.length} barbers eligible for auto-assignment:`,
+      barbers.map(b => b.userId?.name));
+
     if (barbers.length === 0) {
       return res.status(404).json({
         success: false,
@@ -798,11 +869,19 @@ exports.autoAssignBarberForSlot = async (req, res) => {
     // Filter and score barbers based on availability and performance
     const eligibleBarbers = [];
 
+    // Calculate current month start and end dates
+    const currentDate = new Date();
+    const currentMonthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    const currentMonthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59, 999);
+
     for (const barber of barbers) {
+      console.log(`\n🔍 Checking barber: ${barber.userId?.name}`);
+
       // Check if barber is absent on this date
       const bookingDateObj = new Date(`${date}T${timeSlot}:00.000Z`);
       const isAbsent = await BarberAbsence.isBarberAbsent(barber._id, bookingDateObj);
       if (isAbsent) {
+        console.log(`❌ ${barber.userId?.name}: Absent on this date`);
         continue;
       }
 
@@ -817,12 +896,14 @@ exports.autoAssignBarberForSlot = async (req, res) => {
       if (schedule) {
         // Check if barber is off that day
         if (schedule.isOffDay) {
+          console.log(`❌ ${barber.userId?.name}: Off day`);
           continue;
         }
 
         // Check if the specific time slot is available
         const slot = schedule.timeSlots?.find(slot => slot.time === timeSlot);
         if (slot && slot.isBooked) {
+          console.log(`❌ ${barber.userId?.name}: Time slot ${timeSlot} already booked`);
           continue;
         }
       }
@@ -838,6 +919,7 @@ exports.autoAssignBarberForSlot = async (req, res) => {
       });
 
       if (existingBooking) {
+        console.log(`❌ ${barber.userId?.name}: Has existing booking at ${timeSlot}`);
         continue;
       }
 
@@ -853,8 +935,39 @@ exports.autoAssignBarberForSlot = async (req, res) => {
       });
 
       if (dailyBookings >= (barber.maxDailyBookings || 10)) {
+        console.log(`❌ ${barber.userId?.name}: Daily booking limit reached (${dailyBookings}/${barber.maxDailyBookings || 10})`);
         continue;
       }
+
+      // Calculate monthly bookings (excluding cancelled/rejected/no_show)
+      const monthlyBookings = await Booking.countDocuments({
+        barberId: barber._id,
+        bookingDate: {
+          $gte: currentMonthStart,
+          $lte: currentMonthEnd
+        },
+        status: { $nin: ['cancelled', 'rejected', 'no_show'] }
+      });
+
+      // Also get all bookings for debugging
+      const allMonthlyBookings = await Booking.find({
+        barberId: barber._id,
+        bookingDate: {
+          $gte: currentMonthStart,
+          $lte: currentMonthEnd
+        }
+      }).select('status bookingDate');
+
+      console.log(`📊 Barber ${barber.userId?.name}: Monthly bookings = ${monthlyBookings}`, {
+        barberId: barber._id,
+        currentMonthStart: currentMonthStart.toISOString(),
+        currentMonthEnd: currentMonthEnd.toISOString(),
+        monthlyBookings,
+        allBookings: allMonthlyBookings.map(b => ({
+          status: b.status,
+          date: b.bookingDate.toISOString()
+        }))
+      });
 
       // Calculate availability score for auto-assignment
       const maxDailyBookings = barber.maxDailyBookings || 10;
@@ -866,6 +979,8 @@ exports.autoAssignBarberForSlot = async (req, res) => {
       const totalBookingsScore = Math.max(0, 1 - ((barber.totalBookings || 0) / 1000)); // Inverse score for total bookings
       const finalScore = (ratingScore * 0.4) + (workloadScore * 0.3) + (experienceScore * 0.2) + (totalBookingsScore * 0.1);
 
+      console.log(`✅ ${barber.userId?.name}: Eligible for auto-assignment`);
+
       eligibleBarbers.push({
         _id: barber._id,
         name: barber.userId?.name || 'Unknown',
@@ -876,6 +991,7 @@ exports.autoAssignBarberForSlot = async (req, res) => {
         averageRating: barber.averageRating || 0,
         totalBookings: barber.totalBookings || 0,
         currentDailyBookings: dailyBookings,
+        monthlyBookings: monthlyBookings,
         maxDailyBookings: maxDailyBookings,
         availabilityScore: finalScore,
         workloadScore,
@@ -891,11 +1007,69 @@ exports.autoAssignBarberForSlot = async (req, res) => {
       });
     }
 
-    // Sort by availability score (highest first)
-    eligibleBarbers.sort((a, b) => b.availabilityScore - a.availabilityScore);
+    // NEW LOGIC: Check if monthly bookings are equal or different
+    const monthlyBookingCounts = eligibleBarbers.map(b => b.monthlyBookings);
+    const minMonthlyBookings = Math.min(...monthlyBookingCounts);
+    const maxMonthlyBookings = Math.max(...monthlyBookingCounts);
+    const hasEqualMonthlyBookings = minMonthlyBookings === maxMonthlyBookings;
 
-    // Select the best available barber
-    const selectedBarber = eligibleBarbers[0];
+    console.log('📊 Monthly Booking Analysis:', {
+      eligibleBarbers: eligibleBarbers.map(b => ({
+        name: b.name,
+        monthlyBookings: b.monthlyBookings,
+        availabilityScore: b.availabilityScore
+      })),
+      monthlyBookingCounts,
+      minMonthlyBookings,
+      maxMonthlyBookings,
+      hasEqualMonthlyBookings
+    });
+
+    let selectedBarber;
+
+    if (hasEqualMonthlyBookings) {
+      if (minMonthlyBookings === 0) {
+        // All barbers have 0 bookings -> use round-robin based on barber ID to ensure fairness
+        console.log('📊 All barbers have 0 monthly bookings, using round-robin selection');
+        eligibleBarbers.sort((a, b) => a._id.toString().localeCompare(b._id.toString()));
+
+        // Simple round-robin: use current hour to determine selection
+        const currentHour = new Date().getHours();
+        const selectedIndex = currentHour % eligibleBarbers.length;
+        selectedBarber = eligibleBarbers[selectedIndex];
+        console.log(`✅ Selected by round-robin (hour ${currentHour} % ${eligibleBarbers.length}): ${selectedBarber.name}`);
+      } else {
+        // All barbers have equal monthly bookings (> 0) -> use original scoring algorithm
+        console.log(`📊 All barbers have equal monthly bookings (${minMonthlyBookings} each), using original scoring algorithm`);
+        eligibleBarbers.sort((a, b) => b.availabilityScore - a.availabilityScore);
+        selectedBarber = eligibleBarbers[0];
+        console.log(`✅ Selected by scoring: ${selectedBarber.name} (score: ${selectedBarber.availabilityScore})`);
+      }
+    } else {
+      // Different monthly bookings -> prioritize barbers with fewer monthly bookings
+      console.log('📊 Different monthly bookings detected, prioritizing barbers with fewer bookings');
+      console.log(`🎯 Minimum monthly bookings: ${minMonthlyBookings}`);
+
+      // Filter barbers with minimum monthly bookings
+      const barbersWithMinBookings = eligibleBarbers.filter(b => b.monthlyBookings === minMonthlyBookings);
+
+      console.log('🔍 Barbers with minimum bookings:', barbersWithMinBookings.map(b => ({
+        name: b.name,
+        monthlyBookings: b.monthlyBookings,
+        availabilityScore: b.availabilityScore
+      })));
+
+      if (barbersWithMinBookings.length === 1) {
+        // Only one barber with minimum bookings
+        selectedBarber = barbersWithMinBookings[0];
+        console.log(`✅ Selected (only one with min bookings): ${selectedBarber.name}`);
+      } else {
+        // Multiple barbers with same minimum bookings -> use original scoring among them
+        barbersWithMinBookings.sort((a, b) => b.availabilityScore - a.availabilityScore);
+        selectedBarber = barbersWithMinBookings[0];
+        console.log(`✅ Selected by scoring among min booking barbers: ${selectedBarber.name} (score: ${selectedBarber.availabilityScore})`);
+      }
+    }
 
     res.json({
       success: true,
@@ -913,14 +1087,22 @@ exports.autoAssignBarberForSlot = async (req, res) => {
         date,
         timeSlot,
         availabilityScore: selectedBarber.availabilityScore,
-        reason: 'Auto-assigned based on rating, availability, and workload distribution'
+        monthlyBookings: selectedBarber.monthlyBookings,
+        hasEqualMonthlyBookings: hasEqualMonthlyBookings,
+        reason: hasEqualMonthlyBookings
+          ? 'Auto-assigned based on rating, availability, and workload distribution (equal monthly bookings)'
+          : `Auto-assigned based on monthly booking distribution (${selectedBarber.monthlyBookings} bookings this month)`
       },
-      alternativeBarbers: eligibleBarbers.slice(1, 4).map(barber => ({
-        _id: barber._id,
-        name: barber.name,
-        averageRating: barber.averageRating,
-        availabilityScore: barber.availabilityScore
-      })),
+      alternativeBarbers: eligibleBarbers
+        .filter(b => b._id !== selectedBarber._id)
+        .slice(0, 3)
+        .map(barber => ({
+          _id: barber._id,
+          name: barber.name,
+          averageRating: barber.averageRating,
+          availabilityScore: barber.availabilityScore,
+          monthlyBookings: barber.monthlyBookings
+        })),
       message: `Successfully assigned ${selectedBarber.name} for ${date} at ${timeSlot}`
     });
 
@@ -929,6 +1111,539 @@ exports.autoAssignBarberForSlot = async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to auto-assign barber'
+    });
+  }
+};
+
+// Debug endpoint to check monthly bookings for all barbers
+exports.debugMonthlyBookings = async (req, res) => {
+  try {
+    const Booking = require('../models/booking.model');
+
+    // Calculate current month start and end dates
+    const currentDate = new Date();
+    const currentMonthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    const currentMonthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    console.log('📅 Debug Monthly Bookings:', {
+      currentDate: currentDate.toISOString(),
+      currentMonthStart: currentMonthStart.toISOString(),
+      currentMonthEnd: currentMonthEnd.toISOString()
+    });
+
+    // Get all barbers
+    const barbers = await Barber.find({
+      isAvailable: true,
+      autoAssignmentEligible: true
+    }).populate('userId', 'name email');
+
+    const results = [];
+
+    for (const barber of barbers) {
+      // Get all bookings for this barber in current month
+      const allBookings = await Booking.find({
+        barberId: barber._id,
+        bookingDate: {
+          $gte: currentMonthStart,
+          $lte: currentMonthEnd
+        }
+      }).select('status bookingDate');
+
+      const monthlyBookings = await Booking.countDocuments({
+        barberId: barber._id,
+        bookingDate: {
+          $gte: currentMonthStart,
+          $lte: currentMonthEnd
+        },
+        status: { $nin: ['cancelled', 'rejected', 'no_show'] }
+      });
+
+      results.push({
+        barberId: barber._id,
+        name: barber.userId?.name,
+        monthlyBookings,
+        allBookingsThisMonth: allBookings.length,
+        bookingDetails: allBookings.map(b => ({
+          status: b.status,
+          date: b.bookingDate
+        }))
+      });
+    }
+
+    res.json({
+      success: true,
+      currentMonth: {
+        start: currentMonthStart,
+        end: currentMonthEnd
+      },
+      barbers: results
+    });
+
+  } catch (error) {
+    console.error('Error debugging monthly bookings:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to debug monthly bookings',
+      error: error.message
+    });
+  }
+};
+
+// Test endpoint to force auto-assign with detailed logging
+exports.testAutoAssign = async (req, res) => {
+  try {
+    const { date, timeSlot } = req.body;
+
+    if (!date || !timeSlot) {
+      return res.status(400).json({
+        success: false,
+        message: 'Date and timeSlot are required'
+      });
+    }
+
+    console.log(`\n🧪 TESTING AUTO-ASSIGN for ${date} at ${timeSlot}`);
+    console.log('='.repeat(60));
+
+    // Call the auto-assign function
+    const result = await exports.autoAssignBarberForSlot({
+      body: { date, timeSlot, serviceId: null }
+    }, {
+      json: (data) => data,
+      status: (code) => ({ json: (data) => ({ ...data, statusCode: code }) })
+    });
+
+    res.json({
+      success: true,
+      message: 'Test completed, check console logs',
+      result
+    });
+
+  } catch (error) {
+    console.error('Error in test auto-assign:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Test failed',
+      error: error.message
+    });
+  }
+};
+
+// Test endpoint to verify absence logic
+exports.testAbsenceLogic = async (req, res) => {
+  try {
+    const { barberId, date } = req.query;
+
+    if (!barberId || !date) {
+      return res.status(400).json({
+        success: false,
+        message: 'barberId and date are required'
+      });
+    }
+
+    const BarberAbsence = require('../models/barber-absence.model');
+    const bookingDateObj = new Date(`${date}T00:00:00.000Z`);
+
+    // Get all absence records for this barber and date
+    const allAbsences = await BarberAbsence.find({
+      barberId: barberId,
+      startDate: { $lte: bookingDateObj },
+      endDate: { $gte: bookingDateObj }
+    });
+
+    // Check approved absences only
+    const isAbsent = await BarberAbsence.isBarberAbsent(barberId, bookingDateObj);
+
+    // Get barber info
+    const barber = await Barber.findById(barberId).populate('userId', 'name');
+
+    res.json({
+      success: true,
+      barber: {
+        _id: barberId,
+        name: barber?.userId?.name || 'Unknown'
+      },
+      date,
+      allAbsences: allAbsences.map(a => ({
+        _id: a._id,
+        startDate: a.startDate,
+        endDate: a.endDate,
+        isApproved: a.isApproved,
+        reason: a.reason,
+        description: a.description
+      })),
+      isAbsentApprovedOnly: isAbsent,
+      message: `Found ${allAbsences.length} absence record(s), ${allAbsences.filter(a => a.isApproved).length} approved`
+    });
+
+  } catch (error) {
+    console.error('Error testing absence logic:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to test absence logic'
+    });
+  }
+};
+
+// Debug endpoint for absence issues
+exports.debugAbsenceIssues = async (req, res) => {
+  try {
+    const { barberId, date } = req.query;
+
+    if (!barberId || !date) {
+      return res.status(400).json({
+        success: false,
+        message: 'barberId and date are required'
+      });
+    }
+
+    const BarberAbsence = require('../models/barber-absence.model');
+    const Barber = require('../models/barber.model');
+
+    // Get barber info
+    const barber = await Barber.findById(barberId).populate('userId', 'name');
+    if (!barber) {
+      return res.status(404).json({
+        success: false,
+        message: 'Barber not found'
+      });
+    }
+
+    // Get all absences for this barber
+    const allAbsences = await BarberAbsence.find({ barberId });
+
+    // Test date parsing
+    const bookingDateObj = new Date(`${date}T10:00:00.000Z`);
+    const dateStr = bookingDateObj.toISOString().split('T')[0];
+
+    // Test isBarberAbsent
+    const isAbsent = await BarberAbsence.isBarberAbsent(barberId, bookingDateObj);
+
+    // Manual check
+    const manualCheck = allAbsences.filter(absence => {
+      if (!absence.isApproved) return false;
+
+      const startDateStr = absence.startDate;
+      const endDateStr = absence.endDate;
+
+      return dateStr >= startDateStr && dateStr <= endDateStr;
+    });
+
+    res.json({
+      success: true,
+      barber: {
+        _id: barberId,
+        name: barber.userId?.name
+      },
+      date,
+      dateStr,
+      bookingDateObj: bookingDateObj.toISOString(),
+      allAbsences: allAbsences.map(a => ({
+        _id: a._id,
+        startDate: a.startDate,
+        endDate: a.endDate,
+        isApproved: a.isApproved,
+        reason: a.reason,
+        startDateType: typeof a.startDate,
+        endDateType: typeof a.endDate
+      })),
+      isAbsentResult: isAbsent,
+      manualCheckResult: manualCheck.length > 0,
+      manualCheckAbsences: manualCheck.map(a => ({
+        _id: a._id,
+        startDate: a.startDate,
+        endDate: a.endDate,
+        reason: a.reason
+      }))
+    });
+
+  } catch (error) {
+    console.error('Error debugging absence issues:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to debug absence issues'
+    });
+  }
+};
+
+// Debug specific barber availability
+exports.debugBarberAvailability = async (req, res) => {
+  try {
+    const { barberId, date } = req.query;
+
+    if (!barberId || !date) {
+      return res.status(400).json({
+        success: false,
+        message: 'barberId and date are required'
+      });
+    }
+
+    const BarberAbsence = require('../models/barber-absence.model');
+    const BarberSchedule = require('../models/barber-schedule.model');
+
+    // Get barber info
+    const barber = await Barber.findById(barberId).populate('userId', 'name');
+    if (!barber) {
+      return res.status(404).json({
+        success: false,
+        message: 'Barber not found'
+      });
+    }
+
+    // Check absence
+    const bookingDateObj = new Date(`${date}T10:00:00.000Z`);
+    const allAbsences = await BarberAbsence.find({ barberId });
+    const isAbsent = await BarberAbsence.isBarberAbsent(barberId, bookingDateObj);
+
+    // Check schedule
+    const schedule = await BarberSchedule.findOne({
+      barberId: barberId,
+      date: date
+    });
+
+    // Check if would be available
+    let wouldBeAvailable = true;
+    let filterReason = null;
+
+    if (isAbsent) {
+      wouldBeAvailable = false;
+      filterReason = 'approved_absence';
+    } else if (schedule?.isOffDay) {
+      wouldBeAvailable = false;
+      filterReason = 'off_day';
+    }
+
+    res.json({
+      success: true,
+      barber: {
+        _id: barberId,
+        name: barber.userId?.name
+      },
+      date,
+      allAbsences: allAbsences.map(a => ({
+        _id: a._id,
+        startDate: a.startDate,
+        endDate: a.endDate,
+        isApproved: a.isApproved,
+        reason: a.reason
+      })),
+      isAbsent,
+      schedule: schedule ? {
+        _id: schedule._id,
+        date: schedule.date,
+        isOffDay: schedule.isOffDay,
+        offReason: schedule.offReason,
+        absenceId: schedule.absenceId,
+        workingHours: schedule.workingHours
+      } : null,
+      wouldBeAvailable,
+      filterReason
+    });
+
+  } catch (error) {
+    console.error('Error debugging barber availability:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to debug barber availability'
+    });
+  }
+};
+
+// Cleanup invalid schedule records
+exports.cleanupInvalidSchedules = async (req, res) => {
+  try {
+    const { barberId, date } = req.query;
+
+    if (!barberId) {
+      return res.status(400).json({
+        success: false,
+        message: 'barberId is required'
+      });
+    }
+
+    const BarberAbsence = require('../models/barber-absence.model');
+    const BarberSchedule = require('../models/barber-schedule.model');
+
+    // Get barber info
+    const barber = await Barber.findById(barberId).populate('userId', 'name');
+    if (!barber) {
+      return res.status(404).json({
+        success: false,
+        message: 'Barber not found'
+      });
+    }
+
+    let query = { barberId: barberId, isOffDay: true, offReason: 'absence' };
+    if (date) {
+      query.date = date;
+    }
+
+    // Find all schedule records marked as off due to absence
+    const scheduleRecords = await BarberSchedule.find(query);
+
+    const cleanupResults = [];
+
+    for (const schedule of scheduleRecords) {
+      const scheduleDate = schedule.date;
+      const absenceId = schedule.absenceId;
+
+      console.log(`🔍 Checking schedule record for ${scheduleDate}:`, {
+        scheduleId: schedule._id,
+        absenceId,
+        isOffDay: schedule.isOffDay,
+        offReason: schedule.offReason
+      });
+
+      if (absenceId) {
+        // Check if the absence actually covers this date
+        const absence = await BarberAbsence.findById(absenceId);
+
+        if (!absence) {
+          // Absence doesn't exist, remove schedule
+          await BarberSchedule.findByIdAndDelete(schedule._id);
+          cleanupResults.push({
+            date: scheduleDate,
+            action: 'deleted',
+            reason: 'absence_not_found',
+            scheduleId: schedule._id,
+            absenceId
+          });
+        } else if (!absence.isApproved) {
+          // Absence not approved, remove schedule
+          await BarberSchedule.findByIdAndDelete(schedule._id);
+          cleanupResults.push({
+            date: scheduleDate,
+            action: 'deleted',
+            reason: 'absence_not_approved',
+            scheduleId: schedule._id,
+            absenceId
+          });
+        } else {
+          // Check if schedule date is within absence range
+          const isInRange = scheduleDate >= absence.startDate && scheduleDate <= absence.endDate;
+
+          if (!isInRange) {
+            // Schedule date is outside absence range, remove it
+            await BarberSchedule.findByIdAndDelete(schedule._id);
+            cleanupResults.push({
+              date: scheduleDate,
+              action: 'deleted',
+              reason: 'outside_absence_range',
+              scheduleId: schedule._id,
+              absenceId,
+              absenceRange: `${absence.startDate} to ${absence.endDate}`
+            });
+          } else {
+            cleanupResults.push({
+              date: scheduleDate,
+              action: 'kept',
+              reason: 'valid_absence',
+              scheduleId: schedule._id,
+              absenceId,
+              absenceRange: `${absence.startDate} to ${absence.endDate}`
+            });
+          }
+        }
+      } else {
+        // No absenceId, but marked as absence - suspicious
+        cleanupResults.push({
+          date: scheduleDate,
+          action: 'flagged',
+          reason: 'no_absence_id',
+          scheduleId: schedule._id
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      barber: {
+        _id: barberId,
+        name: barber.userId?.name
+      },
+      totalSchedulesChecked: scheduleRecords.length,
+      cleanupResults,
+      summary: {
+        deleted: cleanupResults.filter(r => r.action === 'deleted').length,
+        kept: cleanupResults.filter(r => r.action === 'kept').length,
+        flagged: cleanupResults.filter(r => r.action === 'flagged').length
+      }
+    });
+
+  } catch (error) {
+    console.error('Error cleaning up invalid schedules:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to cleanup invalid schedules'
+    });
+  }
+};
+
+// Fix specific schedule record
+exports.fixScheduleRecord = async (req, res) => {
+  try {
+    const { scheduleId } = req.params;
+    const { action } = req.body; // 'delete' or 'update'
+
+    if (!scheduleId) {
+      return res.status(400).json({
+        success: false,
+        message: 'scheduleId is required'
+      });
+    }
+
+    const BarberSchedule = require('../models/barber-schedule.model');
+
+    const schedule = await BarberSchedule.findById(scheduleId);
+    if (!schedule) {
+      return res.status(404).json({
+        success: false,
+        message: 'Schedule record not found'
+      });
+    }
+
+    let result;
+
+    if (action === 'delete') {
+      await BarberSchedule.findByIdAndDelete(scheduleId);
+      result = {
+        action: 'deleted',
+        scheduleId,
+        date: schedule.date
+      };
+    } else if (action === 'update') {
+      // Reset to normal working day
+      schedule.isOffDay = false;
+      schedule.offReason = null;
+      schedule.absenceId = null;
+      await schedule.save();
+
+      result = {
+        action: 'updated',
+        scheduleId,
+        date: schedule.date,
+        newState: {
+          isOffDay: schedule.isOffDay,
+          offReason: schedule.offReason,
+          absenceId: schedule.absenceId
+        }
+      };
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid action. Use "delete" or "update"'
+      });
+    }
+
+    res.json({
+      success: true,
+      result
+    });
+
+  } catch (error) {
+    console.error('Error fixing schedule record:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to fix schedule record'
     });
   }
 };

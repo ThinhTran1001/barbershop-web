@@ -10,6 +10,9 @@ router.get('/my-requests', authenticate, authorizeRoles('barber'), barberAbsence
 // Admin routes (admins can view all, approve/reject, manage)
 router.get('/', authenticate, authorizeRoles('admin'), barberAbsenceController.getAllAbsences);
 router.put('/:absenceId/approval', authenticate, authorizeRoles('admin'), barberAbsenceController.updateAbsenceApproval);
+router.get('/:absenceId/affected-bookings', authenticate, authorizeRoles('admin'), barberAbsenceController.getAffectedBookings);
+router.put('/:absenceId/process-approval', authenticate, authorizeRoles('admin'), barberAbsenceController.processAbsenceApproval);
+router.get('/:absenceId/debug-dates', authenticate, authorizeRoles('admin'), barberAbsenceController.debugDateHandling);
 router.put('/:absenceId/reschedule', authenticate, authorizeRoles('admin'), barberAbsenceController.rescheduleAffectedBookings);
 router.put('/:absenceId/reassign-bookings', authenticate, authorizeRoles('admin'), barberAbsenceController.reassignAffectedBookings);
 router.delete('/:absenceId', authenticate, authorizeRoles('admin'), barberAbsenceController.deleteAbsence);
