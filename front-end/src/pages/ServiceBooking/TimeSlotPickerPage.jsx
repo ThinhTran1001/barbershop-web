@@ -23,7 +23,6 @@ const TimeSlotPickerPage = () => {
   const handleSelect = (selectedDateTime) => {
     setSelectedSlot(selectedDateTime);
     localStorage.setItem('selectedTimeSlot', JSON.stringify(selectedDateTime));
-    console.log('Selected DateTime:', selectedDateTime); // Debug log
     // Chuyển sang trang xác nhận booking hoặc booking info
     window.location.href = '/booking-info';
   };

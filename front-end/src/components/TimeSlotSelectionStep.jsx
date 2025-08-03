@@ -48,6 +48,25 @@ const TimeSlotSelectionStep = ({
   const [chooseBarberManually, setChooseBarberManually] = useState(false);
   const [selectedBarberInStep, setSelectedBarberInStep] = useState(null);
 
+  // Restore previous selections when component mounts or selectedTimeSlot changes
+  useEffect(() => {
+    if (selectedTimeSlot) {
+      // Restore date selection
+      if (selectedTimeSlot.date) {
+        setSelectedDate(dayjs(selectedTimeSlot.date));
+      }
+
+      // Restore barber selection mode and barber
+      if (selectedTimeSlot.chooseBarberManually !== undefined) {
+        setChooseBarberManually(selectedTimeSlot.chooseBarberManually);
+      }
+
+      if (selectedTimeSlot.selectedBarberInStep) {
+        setSelectedBarberInStep(selectedTimeSlot.selectedBarberInStep);
+      }
+    }
+  }, [selectedTimeSlot]);
+
   // Load available slots when date or barber selection changes
   useEffect(() => {
     if (selectedDate) {
@@ -170,6 +189,34 @@ const TimeSlotSelectionStep = ({
     });
   };
 
+  // Update existing time slot with new barber information
+  const updateTimeSlotWithNewBarber = (barber, isAutoAssign) => {
+    if (!selectedTimeSlot || !selectedDate) return;
+
+    const dateString = selectedDate.format('YYYY-MM-DD');
+
+    // Determine the barber info
+    let barberInfo = null;
+    if (!isAutoAssign && barber) {
+      barberInfo = {
+        id: barber._id,
+        name: barber.name
+      };
+    }
+
+    // Create updated time slot object
+    const updatedTimeSlot = {
+      ...selectedTimeSlot,
+      barber: barberInfo,
+      isAutoAssign: isAutoAssign,
+      chooseBarberManually: !isAutoAssign,
+      selectedBarberInStep: barber
+    };
+
+    // Update parent with new time slot data
+    onTimeSlotSelect(updatedTimeSlot);
+  };
+
   // Handle barber choice toggle
   const handleBarberChoiceChange = (chooseManually) => {
     setChooseBarberManually(chooseManually);
@@ -185,6 +232,11 @@ const TimeSlotSelectionStep = ({
         onBarberSelect(null, true); // Clear barber selection, enable auto-assign
       }
     }
+
+    // If we have a previously selected time slot, update it with new barber choice
+    if (selectedTimeSlot && selectedDate) {
+      updateTimeSlotWithNewBarber(null, !chooseManually);
+    }
   };
 
   // Handle barber selection in time step
@@ -192,6 +244,16 @@ const TimeSlotSelectionStep = ({
     setSelectedBarberInStep(barber);
     setAvailableSlots([]); // Clear slots to reload for selected barber
     setError('');
+
+    // Notify parent about barber selection change
+    if (onBarberSelect) {
+      onBarberSelect(barber, false); // false = not auto-assign
+    }
+
+    // If we have a previously selected time slot, update it with new barber info
+    if (selectedTimeSlot && selectedDate) {
+      updateTimeSlotWithNewBarber(barber, false);
+    }
   };
 
   // Refresh time slots
@@ -438,7 +500,8 @@ const TimeSlotSelectionStep = ({
               </Text>
               <Row gutter={[12, 12]}>
                 {availableSlots.map((slot) => {
-                  const isSelected = selectedTimeSlot?.time === slot.time;
+                  const isSelected = selectedTimeSlot?.time === slot.time &&
+                                     selectedTimeSlot?.date === selectedDate?.format('YYYY-MM-DD');
                   const isSlotNotAvailable = !slot.available || slot.availableBarberCount === 0;
                   const needsBarberSelection = chooseBarberManually && !selectedBarberInStep;
                   const shouldDisable = isSlotNotAvailable || needsBarberSelection;

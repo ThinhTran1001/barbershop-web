@@ -46,6 +46,55 @@ const SinglePageBooking = () => {
     customerInfo: null,
     isAutoAssign: false
   });
+
+  // Booking state persistence key
+  const BOOKING_STATE_KEY = 'booking_state_temp';
+
+  // Save booking state to localStorage
+  const saveBookingState = (data, step) => {
+    try {
+      const stateToSave = {
+        bookingData: data,
+        currentStep: step,
+        timestamp: Date.now()
+      };
+      localStorage.setItem(BOOKING_STATE_KEY, JSON.stringify(stateToSave));
+    } catch (error) {
+      console.error('Failed to save booking state:', error);
+    }
+  };
+
+  // Restore booking state from localStorage
+  const restoreBookingState = () => {
+    try {
+      const savedState = localStorage.getItem(BOOKING_STATE_KEY);
+      if (savedState) {
+        const parsedState = JSON.parse(savedState);
+        // Check if state is not too old (24 hours)
+        const isStateValid = Date.now() - parsedState.timestamp < 24 * 60 * 60 * 1000;
+
+        if (isStateValid) {
+          return parsedState;
+        } else {
+          // Remove expired state
+          localStorage.removeItem(BOOKING_STATE_KEY);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to restore booking state:', error);
+      localStorage.removeItem(BOOKING_STATE_KEY);
+    }
+    return null;
+  };
+
+  // Clear booking state from localStorage
+  const clearBookingState = () => {
+    try {
+      localStorage.removeItem(BOOKING_STATE_KEY);
+    } catch (error) {
+      console.error('Failed to clear booking state:', error);
+    }
+  };
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const { user } = useAuth();
@@ -69,6 +118,42 @@ const SinglePageBooking = () => {
       }
     }
   }, [location.state]);
+
+  // Restore booking state on component mount
+  useEffect(() => {
+    // Only restore if no pre-selected service from navigation
+    if (!location.state?.preSelectedService) {
+      const savedState = restoreBookingState();
+      if (savedState) {
+        setBookingData(savedState.bookingData);
+        setCurrentStep(savedState.currentStep);
+        toast.info('Previous booking progress restored', {
+          position: "top-right",
+          autoClose: 2000,
+        });
+      }
+    }
+  }, []);
+
+  // Save booking state whenever it changes
+  useEffect(() => {
+    // Only save if we have some booking data
+    if (bookingData.service || bookingData.timeSlot || bookingData.customerInfo) {
+      saveBookingState(bookingData, currentStep);
+    }
+  }, [bookingData, currentStep]);
+
+  // Cleanup booking state when component unmounts (user leaves booking page)
+  useEffect(() => {
+    return () => {
+      // Only clear if user is navigating away from booking page
+      // Check if the new location is not a booking-related page
+      const currentPath = window.location.pathname;
+      if (!currentPath.includes('/book-service')) {
+        clearBookingState();
+      }
+    };
+  }, []);
 
   // Step configuration - Remove barber step completely since it's integrated into time step
   const steps = [
@@ -108,22 +193,17 @@ const SinglePageBooking = () => {
   };
 
   // Data update functions
-  const updateBookingData = (stepData, step) => {
+  const updateBookingData = (stepData) => {
     setBookingData(prev => ({
       ...prev,
       ...stepData
     }));
-
-    // Auto-advance to next step after data selection
-    if (step !== undefined && step < steps.length - 1) {
-      const nextStep = step + 1;
-      setCurrentStep(nextStep);
-    }
+    // Removed auto-advance logic - user must click Next button
   };
 
   // Handle service selection
   const handleServiceSelect = (service) => {
-    updateBookingData({ service }, 0);
+    updateBookingData({ service });
     toast.success(`Selected service: ${service.name}`, {
       position: "top-right",
       autoClose: 2000,
@@ -169,8 +249,8 @@ const SinglePageBooking = () => {
       updateData.isAutoAssign = false;
     }
 
-    // Always go to customer info step (step 2) since barber step is removed
-    updateBookingData(updateData, 1); // This will advance to step 2 (Customer Info)
+    // Update booking data without auto-advancing
+    updateBookingData(updateData);
 
     toast.success(`Selected time: ${timeSlot.label}`, {
       position: "top-right",
@@ -178,23 +258,45 @@ const SinglePageBooking = () => {
     });
   };
 
-  // Handle barber selection (legacy - mostly handled in time step now)
-  const handleBarberSelect = (barberData) => {
-    if (barberData.isAutoAssign) {
+  // Handle barber selection (updated to handle both legacy and new formats)
+  const handleBarberSelect = (barberData, isAutoAssign) => {
+    // Handle new format from TimeSlotSelectionStep: (barber, isAutoAssign)
+    if (typeof isAutoAssign === 'boolean') {
+      updateBookingData({
+        barber: barberData,
+        isAutoAssign: isAutoAssign
+      });
+
+      if (barberData && barberData.name) {
+        toast.success(`Selected barber: ${barberData.name}`, {
+          position: "top-right",
+          autoClose: 2000,
+        });
+      } else if (isAutoAssign) {
+        toast.success('Switched to auto-assignment', {
+          position: "top-right",
+          autoClose: 2000,
+        });
+      }
+      return;
+    }
+
+    // Handle legacy format: barberData object with isAutoAssign property
+    if (barberData && barberData.isAutoAssign) {
       updateBookingData({
         barber: barberData.assignedBarber,
         isAutoAssign: true,
         assignmentDetails: barberData.assignmentDetails
-      }, 1); // Step 1 is Time selection, will advance to step 2 (Customer Info)
+      });
       toast.success(`Auto-assigned: ${barberData.assignedBarber.name}`, {
         position: "top-right",
         autoClose: 2000,
       });
-    } else {
+    } else if (barberData && barberData.selectedBarber) {
       updateBookingData({
         barber: barberData.selectedBarber,
         isAutoAssign: false
-      }, 1); // Step 1 is Time selection, will advance to step 2 (Customer Info)
+      });
       toast.success(`Selected barber: ${barberData.selectedBarber.name}`, {
         position: "top-right",
         autoClose: 2000,
@@ -204,18 +306,28 @@ const SinglePageBooking = () => {
 
   // Handle customer info submission
   const handleCustomerInfoSubmit = (customerInfo) => {
-    updateBookingData({ customerInfo }, 2); // Step 2 is Customer Info, will advance to step 3 (Confirmation)
-    // Don't show toast for auto-save, only for final submission
+    updateBookingData({ customerInfo });
+
+    // Check if this is a complete submission (Review Booking button)
     if (customerInfo.customerName && customerInfo.customerEmail && customerInfo.customerPhone) {
       toast.success('Contact information saved', {
         position: "top-right",
         autoClose: 1500,
       });
+
+      // Auto-advance to Confirmation step after successful submission
+      setTimeout(() => {
+        setCurrentStep(3); // Move to Confirmation step
+        // Removed toast notification for cleaner UX
+      }, 500); // Small delay to let the success toast show
     }
   };
 
   // Handle booking completion
   const handleBookingComplete = (bookingResult) => {
+    // Clear saved booking state since booking is complete
+    clearBookingState();
+
     // Immediately refresh slot availability
     setRefreshTrigger(prev => prev + 1);
 
@@ -271,11 +383,17 @@ const SinglePageBooking = () => {
     setBookingData(newData);
   };
 
-  // Handle step click (allow going back)
+  // Handle step click (restricted navigation)
   const handleStepClick = (step) => {
-    if (step < currentStep) {
+    if (isStepNavigationAllowed(step)) {
       setCurrentStep(step);
-      resetSubsequentSteps(step);
+      // Removed toast notification for cleaner UX
+    } else {
+      // Show message for restricted navigation
+      toast.warning(`Please complete the previous steps first`, {
+        position: "top-right",
+        autoClose: 2000,
+      });
     }
   };
 
@@ -288,6 +406,32 @@ const SinglePageBooking = () => {
       case 3: return true; // Confirmation step
       default: return false;
     }
+  };
+
+  // Get the furthest step that has data
+  const getFurthestStepWithData = () => {
+    return Math.max(
+      bookingData.service ? 0 : -1,
+      bookingData.timeSlot ? 1 : -1,
+      bookingData.customerInfo ? 2 : -1
+    );
+  };
+
+  // Check if step navigation is allowed
+  const isStepNavigationAllowed = (step) => {
+    const furthestStepWithData = getFurthestStepWithData();
+
+    // Special case for Confirmation step (step 3)
+    // Only allow if all previous steps have data (service + timeSlot + customerInfo)
+    // This prevents jumping to Confirmation without going through Your Information
+    if (step === 3) {
+      return bookingData.service && bookingData.timeSlot && bookingData.customerInfo;
+    }
+
+    // For other steps (0, 1, 2), allow if:
+    // 1. Step has data (step <= furthestStepWithData)
+    // 2. Step is the next step after furthest step with data (step = furthestStepWithData + 1)
+    return step <= furthestStepWithData || step === furthestStepWithData + 1;
   };
 
   // Check if next button should be enabled
@@ -380,14 +524,45 @@ const SinglePageBooking = () => {
 
       {/* Progress Bar */}
       <Card style={{ marginBottom: '24px' }}>
-        <Progress 
-          percent={getProgressPercentage()} 
+        <Progress
+          percent={getProgressPercentage()}
           strokeColor="#1890ff"
           showInfo={false}
           style={{ marginBottom: '16px' }}
         />
-        <Steps 
-          current={currentStep} 
+
+        {/* Current Selections Summary */}
+        {(bookingData.service || bookingData.timeSlot || bookingData.customerInfo) && (
+          <Alert
+            message="Current Selections"
+            description={
+              <Space direction="vertical" size="small">
+                {bookingData.service && (
+                  <Text>✅ Service: <strong>{bookingData.service.name}</strong></Text>
+                )}
+                {bookingData.timeSlot && (
+                  <Text>✅ Time: <strong>{bookingData.timeSlot.label}</strong></Text>
+                )}
+                {(bookingData.barber || bookingData.timeSlot?.barber) && (
+                  <Text>✅ Barber: <strong>
+                    {bookingData.barber?.name ||
+                     bookingData.timeSlot?.barber?.name ||
+                     (bookingData.isAutoAssign || bookingData.timeSlot?.isAutoAssign ? 'Auto-assigned' : 'Selected')}
+                  </strong></Text>
+                )}
+                {bookingData.customerInfo && (
+                  <Text>✅ Contact: <strong>{bookingData.customerInfo.customerName}</strong></Text>
+                )}
+              </Space>
+            }
+            type="info"
+            showIcon
+            style={{ marginBottom: '16px' }}
+          />
+        )}
+
+        <Steps
+          current={currentStep}
           size="small"
           onChange={handleStepClick}
           style={{ cursor: 'pointer' }}
@@ -398,7 +573,10 @@ const SinglePageBooking = () => {
               title={step.title}
               description={step.description}
               icon={step.icon}
-              disabled={index > currentStep && !isStepComplete(index - 1)}
+              disabled={!isStepNavigationAllowed(index)}
+              style={{
+                cursor: isStepNavigationAllowed(index) ? 'pointer' : 'not-allowed'
+              }}
             />
           ))}
         </Steps>
@@ -457,12 +635,7 @@ const SinglePageBooking = () => {
         </Row>
       </Card>
 
-      {/* Debug Info (remove in production) */}
-      {process.env.NODE_ENV === 'development' && (
-        <Card style={{ marginTop: '24px' }} title="Debug Info">
-          <pre>{JSON.stringify(bookingData, null, 2)}</pre>
-        </Card>
-      )}
+
     </div>
   );
 };

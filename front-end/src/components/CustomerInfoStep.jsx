@@ -24,6 +24,7 @@ import {
   ClockCircleOutlined
 } from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
+import { toast } from 'react-toastify';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -57,8 +58,13 @@ const CustomerInfoStep = ({
       note: customerInfo?.note || '',
       notificationMethods: customerInfo?.notificationMethods || ['email']
     };
-    
+
     form.setFieldsValue(initialValues);
+
+    // Trigger validation after auto-fill to enable button if data is sufficient
+    setTimeout(() => {
+      handleFormChange();
+    }, 100);
   }, [user, customerInfo, form]);
 
   // Handle form submission (when user clicks Review Booking)
@@ -82,11 +88,19 @@ const CustomerInfoStep = ({
 
   // Handle form changes (auto-save without navigation)
   const handleFormChange = () => {
-    form.validateFields(['customerName', 'customerEmail', 'customerPhone', 'notificationMethods'])
+    // Only validate required fields: Full Name and Phone Number
+    form.validateFields(['customerName', 'customerPhone'])
       .then((values) => {
-        // Only save required fields, don't trigger navigation
-        setFormData(values);
-        setIsFormValid(true);
+        // Check if both required fields have values
+        const hasName = values.customerName && values.customerName.trim();
+        const hasPhone = values.customerPhone && values.customerPhone.trim();
+
+        if (hasName && hasPhone) {
+          setFormData(values);
+          setIsFormValid(true);
+        } else {
+          setIsFormValid(false);
+        }
 
         // DO NOT call onCustomerInfoSubmit here - only save locally
       })
@@ -98,6 +112,7 @@ const CustomerInfoStep = ({
 
   // Handle manual submit (Review Booking button)
   const handleReviewBooking = () => {
+    // Validate all required fields when submitting
     form.validateFields(['customerName', 'customerEmail', 'customerPhone', 'notificationMethods'])
       .then((values) => {
         // Get all form values including optional fields (including notes)
@@ -317,7 +332,7 @@ const CustomerInfoStep = ({
             <div style={{ marginTop: '8px', fontSize: '12px', color: '#666' }}>
               {isFormValid
                 ? 'Click to review your booking details'
-                : 'Please fill in all required fields'
+                : 'Please fill in Full Name and Phone Number to continue'
               }
             </div>
           </Form.Item>

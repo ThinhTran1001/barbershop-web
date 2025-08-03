@@ -97,11 +97,9 @@ const BookingConfirmationStep = ({
             });
           } else {
             // Don't show error toast - backend will handle auto-assignment during booking
-            console.log('No barbers found in preview, but backend will handle auto-assignment');
           }
         } catch (error) {
           // Don't show error toast - backend will handle auto-assignment during booking
-          console.log('Auto-assign preview failed, but backend will handle auto-assignment');
         } finally {
           setAutoAssignLoading(false);
         }
@@ -332,11 +330,11 @@ const BookingConfirmationStep = ({
 
         {/* Appointment Details */}
         <Col xs={24} lg={12}>
-          <Card 
+          <Card
             title="Appointment Details"
             extra={
-              <Button 
-                type="link" 
+              <Button
+                type="link"
                 icon={<EditOutlined />}
                 onClick={() => onEditStep(1)}
                 size="small"
@@ -349,7 +347,7 @@ const BookingConfirmationStep = ({
               <div>
                 <Title level={5} style={{ margin: 0 }}>{timeSlot?.label}</Title>
               </div>
-              
+
               <Space size="small" wrap>
                 <Tag icon={<CalendarOutlined />} color="blue">
                   {timeSlot?.date}
@@ -358,78 +356,69 @@ const BookingConfirmationStep = ({
                   {timeSlot?.time}
                 </Tag>
               </Space>
-            </Space>
-          </Card>
-        </Col>
 
-        {/* Barber Details */}
-        <Col xs={24} lg={12}>
-          <Card 
-            title="Barber Details"
-            extra={
-              <Button 
-                type="link" 
-                icon={<EditOutlined />}
-                onClick={() => onEditStep(2)}
-                size="small"
-              >
-                Edit
-              </Button>
-            }
-          >
-            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+              {/* Barber Information */}
+              <Divider style={{ margin: '12px 0' }} />
               <div>
-                <Title level={5} style={{ margin: 0 }}>
+                <Text strong style={{ display: 'block', marginBottom: '8px' }}>
+                  <UserOutlined style={{ marginRight: '8px' }} />
+                  Barber
+                </Text>
+                <div style={{ marginLeft: '24px' }}>
+                  <Title level={5} style={{ margin: 0, marginBottom: '4px' }}>
+                    {autoAssignLoading ? (
+                      <Space>
+                        <Spin size="small" />
+                        Assigning barber...
+                      </Space>
+                    ) : finalBarber ? (
+                      finalBarber.name
+                    ) : finalIsAutoAssign ? (
+                      'Auto-assigned'
+                    ) : (
+                      'Barber'
+                    )}
+                  </Title>
                   {autoAssignLoading ? (
-                    <Space>
-                      <Spin size="small" />
-                      Assigning barber...
-                    </Space>
+                    <Text type="secondary">Finding the best available barber for you...</Text>
                   ) : finalBarber ? (
-                    finalBarber.name
+                    <Text type="secondary" style={{ display: 'block', marginBottom: '8px' }}>
+                      {finalBarber.experienceYears ? `${finalBarber.experienceYears} years experience` : 'Professional barber'}
+                    </Text>
                   ) : finalIsAutoAssign ? (
-                    'Auto-assigned'
+                    <Text type="secondary" style={{ display: 'block', marginBottom: '8px' }}>Best available barber will be assigned</Text>
                   ) : (
-                    'Barber'
+                    <Text type="secondary" style={{ display: 'block', marginBottom: '8px' }}>Professional barber</Text>
                   )}
-                </Title>
-                {autoAssignLoading ? (
-                  <Text type="secondary">Finding the best available barber for you...</Text>
-                ) : finalBarber ? (
-                  <Text type="secondary">
-                    {finalBarber.experienceYears ? `${finalBarber.experienceYears} years experience` : 'Professional barber'}
-                  </Text>
-                ) : finalIsAutoAssign ? (
-                  <Text type="secondary">Best available barber will be assigned</Text>
-                ) : (
-                  <Text type="secondary">Professional barber</Text>
-                )}
-              </div>
 
-              <Space size="small" wrap>
-                {autoAssignLoading ? (
-                  <Tag color="processing">Assigning...</Tag>
-                ) : finalBarber ? (
-                  <>
-                    {finalBarber.averageRating && (
-                      <Tag color="gold">★ {finalBarber.averageRating.toFixed(1)}</Tag>
+                  <Space size="small" wrap>
+                    {autoAssignLoading ? (
+                      <Tag color="processing">Assigning...</Tag>
+                    ) : finalBarber ? (
+                      <>
+                        {finalBarber.averageRating && (
+                          <Tag color="gold">★ {finalBarber.averageRating.toFixed(1)}</Tag>
+                        )}
+                        {finalIsAutoAssign && (
+                          <Tag color="green">Auto-assigned</Tag>
+                        )}
+                        {finalBarber.specialties?.slice(0, 2).map(specialty => (
+                          <Tag key={specialty} color="purple">{specialty}</Tag>
+                        ))}
+                      </>
+                    ) : finalIsAutoAssign ? (
+                      <Tag color="gold">Auto-assignment</Tag>
+                    ) : (
+                      <Tag color="default">Manual selection</Tag>
                     )}
-                    {finalIsAutoAssign && (
-                      <Tag color="green">Auto-assigned</Tag>
-                    )}
-                    {finalBarber.specialties?.slice(0, 2).map(specialty => (
-                      <Tag key={specialty} color="purple">{specialty}</Tag>
-                    ))}
-                  </>
-                ) : finalIsAutoAssign ? (
-                  <Tag color="gold">Auto-assignment</Tag>
-                ) : (
-                  <Tag color="default">Manual selection</Tag>
-                )}
-              </Space>
+                  </Space>
+                </div>
+              </div>
             </Space>
           </Card>
         </Col>
+
+
 
         {/* Customer Details */}
         <Col xs={24} lg={12}>
@@ -439,7 +428,7 @@ const BookingConfirmationStep = ({
               <Button 
                 type="link" 
                 icon={<EditOutlined />}
-                onClick={() => onEditStep(3)}
+                onClick={() => onEditStep(2)}
                 size="small"
               >
                 Edit
