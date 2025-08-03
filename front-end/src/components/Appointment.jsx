@@ -1,550 +1,932 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { Input, Button, Select, Table, message, Spin, Modal, DatePicker, Avatar } from 'antd';
-import { getAllBookings, getBookingDetail, getBookingStats, getAllBarber, getAllServices } from '../services/api';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  Card,
+  Typography,
+  Row,
+  Col,
+  Statistic,
+  Table,
+  Tag,
+  Space,
+  Select,
+  DatePicker,
+  Input,
+  Button,
+  Avatar,
+  Progress,
+  Divider,
+  Alert,
+  Spin,
+  Tooltip
+} from 'antd';
+import {
+  CalendarOutlined,
+  UserOutlined,
+  DollarOutlined,
+  TeamOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  CloseCircleOutlined,
+  ExclamationCircleOutlined,
+  SearchOutlined,
+  FilterOutlined,
+  TrophyOutlined,
+  StarOutlined,
+  EyeOutlined
+} from '@ant-design/icons';
+import { Line, Column, Pie } from '@ant-design/plots';
 import dayjs from 'dayjs';
-import weekOfYear from 'dayjs/plugin/weekOfYear';
-import isoWeek from 'dayjs/plugin/isoWeek';
-import debounce from 'lodash.debounce';
-import { SortAscendingOutlined, SortDescendingOutlined } from '@ant-design/icons';
-import axios from 'axios'; // Thêm axios để gọi API chart-stats
-import AppointmentStats from './appointment/AppointmentStats';
-import AppointmentChart from './appointment/AppointmentChart';
-import AppointmentTable from './appointment/AppointmentTable';
-dayjs.extend(weekOfYear);
-dayjs.extend(isoWeek);
+import { getAllBookings, getBookingStats, getAllBarber, getAllServices } from '../services/api';
 
+const { Title, Text } = Typography;
 const { Option } = Select;
 const { RangePicker } = DatePicker;
+const { Search } = Input;
 
-function groupBookings(data, startDate, endDate, mode) {
-  if (mode === 'day') {
-    // Group by hour in selected day
-    const hours = Array.from({ length: 10 }, (_, i) => 8 + i); // 8h đến 17h
-    const hourLabels = hours.map(h => `${h}:00`);
-    // Lấy ngày được chọn (nếu range là 1 ngày, lấy ngày đó, nếu nhiều ngày, lấy ngày đầu tiên)
-    const selectedDay = dayjs(startDate).format('YYYY-MM-DD');
-    return hourLabels.map((hourLabel, idx) => {
-      const bookingsInHour = data.filter(b => {
-        const d = dayjs(b.bookingDate);
-        return d.format('YYYY-MM-DD') === selectedDay && d.hour() === hours[idx];
-      });
-      return {
-        time: hourLabel,
-        pending: bookingsInHour.filter(b => b.status === 'pending').length,
-        confirmed: bookingsInHour.filter(b => b.status === 'confirmed').length,
-        completed: bookingsInHour.filter(b => b.status === 'completed').length,
-        cancelled: bookingsInHour.filter(b => b.status === 'cancelled' || b.status === 'no_show').length,
-      };
-    });
-  } else if (mode === 'week') {
-    // Group by 7 days in week
-    const days = [];
-    let d = dayjs(startDate).startOf('isoWeek');
-    for (let i = 0; i < 7; i++) {
-      days.push(d.add(i, 'day').format('YYYY-MM-DD'));
-    }
-    return days.map(date => {
-      const bookingsInDay = data.filter(b => dayjs(b.bookingDate).format('YYYY-MM-DD') === date);
-      return {
-        date,
-        pending: bookingsInDay.filter(b => b.status === 'pending').length,
-        confirmed: bookingsInDay.filter(b => b.status === 'confirmed').length,
-        completed: bookingsInDay.filter(b => b.status === 'completed').length,
-        cancelled: bookingsInDay.filter(b => b.status === 'cancelled' || b.status === 'no_show').length,
-      };
-    });
-  } else if (mode === 'month') {
-    // Group by 30-31 days in month
-    const daysInMonth = dayjs(startDate).daysInMonth();
-    const month = dayjs(startDate).format('YYYY-MM');
-    const days = Array.from({ length: daysInMonth }, (_, i) => dayjs(month + '-01').add(i, 'day').format('YYYY-MM-DD'));
-    return days.map(date => {
-      const bookingsInDay = data.filter(b => dayjs(b.bookingDate).format('YYYY-MM-DD') === date);
-      return {
-        date,
-        pending: bookingsInDay.filter(b => b.status === 'pending').length,
-        confirmed: bookingsInDay.filter(b => b.status === 'confirmed').length,
-        completed: bookingsInDay.filter(b => b.status === 'completed').length,
-        cancelled: bookingsInDay.filter(b => b.status === 'cancelled' || b.status === 'no_show').length,
-      };
-    });
-  } else if (mode === 'year') {
-    // Group by 12 months
-    const year = dayjs(startDate).year();
-    const months = Array.from({ length: 12 }, (_, i) => dayjs(`${year}-01-01`).add(i, 'month').format('YYYY-MM'));
-    return months.map(month => {
-      const bookingsInMonth = data.filter(b => dayjs(b.bookingDate).format('YYYY-MM') === month);
-      return {
-        date: month,
-        pending: bookingsInMonth.filter(b => b.status === 'pending').length,
-        confirmed: bookingsInMonth.filter(b => b.status === 'confirmed').length,
-        completed: bookingsInMonth.filter(b => b.status === 'completed').length,
-        cancelled: bookingsInMonth.filter(b => b.status === 'cancelled' || b.status === 'no_show').length,
-      };
-    });
-  }
-  return [];
-}
+const AdminBookingDashboard = () => {
+  const [loading, setLoading] = useState(false);
 
-// Calculate status distribution for pie chart
-const calculateStatusDistribution = (bookings) => {
-  const statusCount = {
-    pending: 0,
-    confirmed: 0,
-    completed: 0,
-    cancelled: 0,
-    no_show: 0
-  };
-
-  bookings.forEach(booking => {
-    if (statusCount.hasOwnProperty(booking.status)) {
-      statusCount[booking.status]++;
-    }
+  // Helper function to ensure array
+  const ensureArray = (data) => Array.isArray(data) ? data : [];
+  const [dashboardData, setDashboardData] = useState({
+    kpis: {
+      todayBookings: 0,
+      completedBookings: 0,
+      pendingBookings: 0,
+      cancelledBookings: 0,
+      todayRevenue: 0,
+      weekRevenue: 0,
+      monthRevenue: 0,
+      totalCustomers: 0,
+      activeBarbers: 0,
+      inactiveBarbers: 0
+    },
+    todayBookings: [],
+    revenueChart: [],
+    bookingChart: [],
+    statusChart: [],
+    barberPerformance: [],
+    topCustomers: [],
+    topBarbers: []
   });
 
-  const total = bookings.length;
-  const colors = {
-    pending: '#FFD600',
-    confirmed: '#6C47FF',
-    completed: '#00C896',
-    cancelled: '#FF4D4F',
-    no_show: '#FF7875'
-  };
+  // Filters
+  const [filters, setFilters] = useState({
+    dateRange: [dayjs().startOf('month'), dayjs().endOf('month')],
+    barber: null,
+    service: null,
+    status: null,
+    searchText: ''
+  });
 
-  return Object.entries(statusCount)
-    .filter(([_, count]) => count > 0)
-    .map(([status, count]) => ({
-      name: status.charAt(0).toUpperCase() + status.slice(1),
-      value: count,
-      percentage: total > 0 ? ((count / total) * 100).toFixed(1) : 0,
-      color: colors[status]
-    }));
-};
-
-const Appointment = () => {
-  const [data, setData] = useState([]); // toàn bộ booking
-  const [filteredData, setFilteredData] = useState([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [search, setSearch] = useState('');
-  const [status, setStatus] = useState();
-  const [barberId, setBarberId] = useState();
-  const [serviceId, setServiceId] = useState();
   const [barbers, setBarbers] = useState([]);
-  const [pagination, setPagination] = useState({ current: 1, pageSize: 5 });
-  const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
-  const [selectedBooking, setSelectedBooking] = useState(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [stats, setStats] = useState({ upcoming: 0, past: 0, cancelled: 0, totalCustomer: 0 });
-  const [range, setRange] = useState([dayjs().subtract(6, 'day'), dayjs()]); // 7 ngày gần nhất
-  const [chartMode, setChartMode] = useState('day'); // 'day', 'week', 'month', 'year'
-  const [type, setType] = useState('all');
-  const [sorter, setSorter] = useState({ field: 'bookingDate', order: 'descend' });
+  const [services, setServices] = useState([]);
+  const [allBookings, setAllBookings] = useState([]);
+  const [filteredBookings, setFilteredBookings] = useState([]);
+  const [filterLoading, setFilterLoading] = useState(false);
 
-  // State cho chart
-  const [chartData, setChartData] = useState([]);
-  const [chartLoading, setChartLoading] = useState(false);
-  const [chartRange, setChartRange] = useState([dayjs().subtract(6, 'day'), dayjs()]);
+  // Apply filters to all bookings
+  const applyFilters = useCallback(() => {
+    let filtered = [...allBookings];
 
-  const debouncedSetSearch = useCallback(
-    debounce((value) => setSearch(value), 400),
-    []
-  );
+    // Filter by date range
+    if (filters.dateRange && filters.dateRange.length === 2) {
+      const startDate = filters.dateRange[0].startOf('day');
+      const endDate = filters.dateRange[1].endOf('day');
+      filtered = filtered.filter(booking => {
+        const bookingDate = dayjs(booking.bookingDate);
+        return bookingDate.isAfter(startDate) && bookingDate.isBefore(endDate);
+      });
+    }
 
-  // Fetch all bookings 1 lần duy nhất
-  // useEffect(() => {
-  //   getAllBookings().then(res => setData(res.data.data || []));
-  // }, []);
-  
+    // Filter by barber
+    if (filters.barber) {
+      filtered = filtered.filter(booking =>
+        booking.barberId?._id === filters.barber ||
+        booking.barberId?.userId?._id === filters.barber
+      );
+    }
 
-  // Filter, search, sort client-side
+    // Filter by service
+    if (filters.service) {
+      filtered = filtered.filter(booking => booking.serviceId?._id === filters.service);
+    }
+
+    // Filter by status
+    if (filters.status) {
+      filtered = filtered.filter(booking => booking.status === filters.status);
+    }
+
+    // Filter by search text
+    if (filters.searchText) {
+      const searchLower = filters.searchText.toLowerCase();
+      filtered = filtered.filter(booking =>
+        (booking.customerId?.name || booking.customerInfo?.customerName || '').toLowerCase().includes(searchLower) ||
+        (booking.customerId?.phone || booking.customerInfo?.customerPhone || '').toLowerCase().includes(searchLower) ||
+        (booking.customerId?.email || booking.customerInfo?.customerEmail || '').toLowerCase().includes(searchLower) ||
+        (booking.serviceId?.name || '').toLowerCase().includes(searchLower) ||
+        (booking.barberId?.userId?.name || booking.barberId?.name || '').toLowerCase().includes(searchLower)
+      );
+    }
+
+    setFilteredBookings(filtered);
+  }, [allBookings, filters]);
+
   useEffect(() => {
-    let filtered = [...data];
-    if (search) filtered = filtered.filter(b =>
-      (b.customerName || b.customerId?.name || '').toLowerCase().includes(search.toLowerCase()) ||
-      (b.customerPhone || b.customerId?.phone || '').toLowerCase().includes(search.toLowerCase())
-    );
-    if (status) filtered = filtered.filter(b => b.status === status);
-    if (barberId) filtered = filtered.filter(b => b.barberId?._id === barberId);
-    if (serviceId) filtered = filtered.filter(b => b.serviceId?._id === serviceId);
-    // TODO: sort nếu cần
-    setFilteredData(filtered);
-    setCurrentPage(1); // reset về trang 1 khi filter
-  }, [data, search, status, barberId, serviceId]);
+    loadDashboardData();
+    loadBarbers();
+    loadServices();
+    loadAllBookings();
+  }, []);
 
-  // Fetch barbers for filter dropdown
-  const fetchBarbers = async () => {
+  // Auto-apply filters when allBookings or filters change
+  useEffect(() => {
+    if (allBookings.length > 0) {
+      applyFilters();
+    }
+  }, [allBookings, filters, applyFilters]);
+
+  // Load all bookings for filtering
+  const loadAllBookings = async () => {
+    setFilterLoading(true);
     try {
-      const res = await getAllBarber();
-      setBarbers(res.data || []);
-    } catch (err) {
-      console.error('Error fetching barbers:', err);
+      const response = await getAllBookings({});
+      const bookingsData = response.data?.bookings || response.data || [];
+      setAllBookings(ensureArray(bookingsData));
+      setFilteredBookings(ensureArray(bookingsData));
+    } catch (error) {
+      console.error('Error loading all bookings:', error);
+      setAllBookings([]);
+      setFilteredBookings([]);
+    } finally {
+      setFilterLoading(false);
     }
   };
 
-  // Generate unique services from booking data
-  const uniqueServices = useMemo(() => {
-    return Array.from(
-      new Map(
-        data
-          .filter(b => b.serviceId && b.serviceId.name)
-          .map(b => [b.serviceId._id, { _id: b.serviceId._id, name: b.serviceId.name }])
-      ).values()
-    );
-  }, [data]);
-
-  // Tạo uniqueBarbers từ data booking, dùng useMemo để tối ưu
-  const uniqueBarbers = useMemo(() => {
-    return Array.from(
-      new Map(
-        data
-          .filter(b => b.barberId && b.barberId.userId && b.barberId.userId.name)
-          .map(b => [b.barberId._id, { _id: b.barberId._id, name: b.barberId.userId.name }])
-      ).values()
-    );
-  }, [data]);
-
-  // Gọi API getAllBookings với search và status
-  const fetchBookings = async (params = {}) => {
-    setLoading(true);
-    setError(null);
+  const loadBarbers = async () => {
     try {
-      const query = {
-        search,
-        status,
-        barberId,
-        serviceId,
-        page: params.page || pagination.current,
-        limit: params.limit || pagination.pageSize,
-        ...params,
+      const response = await getAllBarber();
+      const barbersData = response.data || [];
+      setBarbers(Array.isArray(barbersData) ? barbersData : []);
+    } catch (error) {
+      console.error('Error loading barbers:', error);
+      setBarbers([]);
+    }
+  };
+
+  const loadServices = async () => {
+    try {
+      const response = await getAllServices();
+      const servicesData = response.data || [];
+      setServices(Array.isArray(servicesData) ? servicesData : []);
+    } catch (error) {
+      console.error('Error loading services:', error);
+      setServices([]);
+    }
+  };
+
+  // Helper functions for data processing
+  const generateRevenueChart = (bookings) => {
+    const currentMonth = dayjs();
+    const daysInMonth = currentMonth.daysInMonth();
+    const monthDays = Array.from({ length: daysInMonth }, (_, i) => {
+      const date = currentMonth.startOf('month').add(i, 'days');
+      const dayBookings = bookings.filter(b =>
+        dayjs(b.bookingDate).format('YYYY-MM-DD') === date.format('YYYY-MM-DD') &&
+        b.status === 'completed'
+      );
+      const revenue = dayBookings.reduce((sum, b) => sum + (b.serviceId?.price || 0), 0);
+      return {
+        date: date.format('DD/MM'),
+        revenue: revenue
       };
-      if (sorter.field && sorter.order) {
-        query.sortBy = sorter.field;
-        query.sortOrder = sorter.order === 'ascend' ? 'asc' : 'desc';
+    });
+    return monthDays;
+  };
+
+  const generateBookingChart = (bookings) => {
+    const currentWeek = dayjs();
+    const startOfWeek = currentWeek.startOf('week'); // Bắt đầu từ Chủ nhật
+    const weekDays = Array.from({ length: 7 }, (_, i) => {
+      const date = startOfWeek.add(i, 'days');
+      const dayBookings = bookings.filter(b =>
+        dayjs(b.bookingDate).format('YYYY-MM-DD') === date.format('YYYY-MM-DD')
+      );
+      return {
+        date: date.format('DD/MM'),
+        day: date.format('ddd'), // Thêm tên ngày (Mon, Tue, ...)
+        bookings: dayBookings.length,
+        completed: dayBookings.filter(b => b.status === 'completed').length,
+        pending: dayBookings.filter(b => b.status === 'pending').length,
+        cancelled: dayBookings.filter(b => ['cancelled', 'no_show'].includes(b.status)).length
+      };
+    });
+    return weekDays;
+  };
+
+  const generateStatusChart = (bookings) => {
+    const statusCount = {
+      pending: 0,
+      confirmed: 0,
+      completed: 0,
+      cancelled: 0,
+      no_show: 0
+    };
+
+    bookings.forEach(booking => {
+      if (Object.prototype.hasOwnProperty.call(statusCount, booking.status)) {
+        statusCount[booking.status]++;
       }
-      const res = await getAllBookings(query);
-      // The backend returns { bookings: [...], pagination: {...}, userRole: "..." }
-      const bookingsData = res.data?.bookings || [];
-      const totalCount = res.data?.pagination?.total || 0;
-      setData(bookingsData);
-      setPagination(p => ({
-        ...p,
-        total: totalCount,
-        current: params.page || p.current,
-        pageSize: params.limit || p.pageSize,
+    });
+
+    const statusLabels = {
+      pending: 'Chờ xác nhận',
+      confirmed: 'Đã xác nhận',
+      completed: 'Hoàn thành',
+      cancelled: 'Đã hủy',
+      no_show: 'Vắng mặt'
+    };
+
+    return Object.entries(statusCount)
+      .filter(([_, count]) => count > 0)
+      .map(([status, count]) => ({
+        type: statusLabels[status] || status,
+        value: count
       }));
-    } catch (err) {
-      message.error('Lỗi khi tải danh sách booking');
+  };
+
+  const processBarberPerformance = (bookings) => {
+    const barberStats = {};
+    bookings.forEach(booking => {
+      const barberId = booking.barberId?._id || booking.barberId?.userId?._id;
+      const barberName = booking.barberId?.userId?.name || booking.barberId?.name || 'Auto-assigned';
+
+      if (!barberStats[barberId]) {
+        barberStats[barberId] = {
+          name: barberName,
+          totalBookings: 0,
+          completedBookings: 0,
+          revenue: 0,
+          rating: 0
+        };
+      }
+
+      barberStats[barberId].totalBookings++;
+      if (booking.status === 'completed') {
+        barberStats[barberId].completedBookings++;
+        barberStats[barberId].revenue += booking.serviceId?.price || 0;
+      }
+    });
+
+    return Object.values(barberStats)
+      .sort((a, b) => b.totalBookings - a.totalBookings)
+      .slice(0, 5);
+  };
+
+  const processTopCustomers = (bookings) => {
+    const customerStats = {};
+    bookings.forEach(booking => {
+      const customerId = booking.customerId?._id;
+      const customerName = booking.customerId?.name || booking.customerInfo?.customerName || 'N/A';
+
+      if (!customerStats[customerId]) {
+        customerStats[customerId] = {
+          name: customerName,
+          totalBookings: 0,
+          totalSpent: 0,
+          lastBooking: booking.bookingDate
+        };
+      }
+
+      customerStats[customerId].totalBookings++;
+      if (booking.status === 'completed') {
+        customerStats[customerId].totalSpent += booking.serviceId?.price || 0;
+      }
+
+      if (dayjs(booking.bookingDate).isAfter(dayjs(customerStats[customerId].lastBooking))) {
+        customerStats[customerId].lastBooking = booking.bookingDate;
+      }
+    });
+
+    return Object.values(customerStats)
+      .sort((a, b) => b.totalSpent - a.totalSpent)
+      .slice(0, 5);
+  };
+
+  const processTopBarbers = (bookings) => {
+    const barberStats = {};
+    bookings.forEach(booking => {
+      const barberId = booking.barberId?._id || booking.barberId?.userId?._id;
+      const barberName = booking.barberId?.userId?.name || booking.barberId?.name || 'Auto-assigned';
+
+      if (!barberStats[barberId]) {
+        barberStats[barberId] = {
+          name: barberName,
+          totalBookings: 0,
+          rating: 4.5, // Mock rating
+          completionRate: 0
+        };
+      }
+
+      barberStats[barberId].totalBookings++;
+      if (booking.status === 'completed') {
+        barberStats[barberId].completionRate++;
+      }
+    });
+
+    return Object.values(barberStats)
+      .map(barber => ({
+        ...barber,
+        completionRate: barber.totalBookings > 0 ?
+          Math.round((barber.completionRate / barber.totalBookings) * 100) : 0
+      }))
+      .sort((a, b) => b.totalBookings - a.totalBookings)
+      .slice(0, 5);
+  };
+
+  const loadDashboardData = async () => {
+    setLoading(true);
+    try {
+      // Load bookings for today and stats
+      const today = dayjs().format('YYYY-MM-DD');
+      const [bookingsRes, statsRes] = await Promise.all([
+        getAllBookings({
+          startDate: dayjs().startOf('day').toISOString(),
+          endDate: dayjs().endOf('day').toISOString()
+        }),
+        getBookingStats()
+      ]);
+
+      const allBookings = bookingsRes.data?.bookings || bookingsRes.data || [];
+      const todayBookings = allBookings.filter(booking =>
+        dayjs(booking.bookingDate).format('YYYY-MM-DD') === today
+      );
+
+      // Calculate KPIs
+      const kpis = {
+        todayBookings: todayBookings.length,
+        completedBookings: todayBookings.filter(b => b.status === 'completed').length,
+        pendingBookings: todayBookings.filter(b => b.status === 'pending').length,
+        cancelledBookings: todayBookings.filter(b => ['cancelled', 'no_show'].includes(b.status)).length,
+        todayRevenue: todayBookings
+          .filter(b => b.status === 'completed')
+          .reduce((sum, b) => sum + (b.serviceId?.price || 0), 0),
+        weekRevenue: statsRes.data?.weekRevenue || 0,
+        monthRevenue: statsRes.data?.monthRevenue || 0,
+        totalCustomers: statsRes.data?.totalCustomers || 0,
+        activeBarbers: ensureArray(barbers).filter(b => b.isActive !== false).length,
+        inactiveBarbers: ensureArray(barbers).filter(b => b.isActive === false).length
+      };
+
+      // Process today's bookings for table
+      const processedTodayBookings = todayBookings.map(booking => ({
+        key: booking._id,
+        customer: booking.customerId?.name || booking.customerInfo?.customerName || 'N/A',
+        service: booking.serviceId?.name || 'N/A',
+        barber: booking.barberId?.userId?.name || booking.barberId?.name || 'Auto-assigned',
+        time: dayjs(booking.bookingDate).format('HH:mm'),
+        status: booking.status,
+        price: booking.serviceId?.price || 0,
+        phone: booking.customerId?.phone || booking.customerInfo?.customerPhone || 'N/A'
+      }));
+
+      setDashboardData({
+        kpis,
+        todayBookings: processedTodayBookings,
+        revenueChart: generateRevenueChart(allBookings),
+        bookingChart: generateBookingChart(allBookings),
+        statusChart: generateStatusChart(allBookings),
+        barberPerformance: processBarberPerformance(allBookings),
+        topCustomers: processTopCustomers(allBookings),
+        topBarbers: processTopBarbers(allBookings)
+      });
+
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Fetch chart data riêng
-  const fetchChartData = async () => {
-    setChartLoading(true);
-    try {
-      const from = chartRange[0].startOf('day').toISOString();
-      const to = chartRange[1].endOf('day').toISOString();
-      console.log('Chart API params:', { from, to, mode: chartMode });
-      const res = await axios.get('/api/bookings/chart-stats', {
-        params: { from, to, mode: chartMode }
-      });
-      console.log('Chart API data:', res.data.data);
-      setChartData(Array.isArray(res.data.data) ? res.data.data : []);
-    } catch (err) {
-      setChartData([]);
-      console.error('Chart API error:', err);
-    } finally {
-      setChartLoading(false);
-    }
-  };
-
-  // Khi pagination thay đổi (user bấm chuyển trang), gọi fetchBookings
-  useEffect(() => {
-    fetchBookings();
-    // eslint-disable-next-line
-  }, [pagination.current, pagination.pageSize]);
-
-  // Khi chart mode hoặc date range thay đổi, fetch chart data
-  useEffect(() => {
-    fetchChartData();
-    // eslint-disable-next-line
-  }, [chartRange, chartMode]);
-
-  const fetchStats = async () => {
-    try {
-      const res = await getBookingStats();
-      setStats(res.data || { upcoming: 0, past: 0, cancelled: 0, totalCustomer: 0 });
-    } catch (err) {
-      console.error('Error fetching stats:', err);
-      setStats({ upcoming: 0, past: 0, cancelled: 0, totalCustomer: 0 });
-    }
-  };
-
-  const handleViewDetail = async (bookingId) => {
-    setDetailLoading(true);
-    try {
-      const res = await getBookingDetail(bookingId);
-      setSelectedBooking(res.data);
-      setIsDetailModalVisible(true);
-    } catch (err) {
-      console.error('Error fetching booking detail:', err);
-      message.error('Lỗi khi tải chi tiết booking');
-    } finally {
-      setDetailLoading(false);
-    }
-  };
-
-  // Area chart data
-  const areaData = groupBookings(data, range[0], range[1], chartMode);
-
-  // Table columns
-  const columns = [
+  // Table columns for all bookings
+  const allBookingsColumns = [
     {
-      title: 'Avatar',
-      dataIndex: 'avatar',
-      key: 'avatar',
-      render: (_, rec) => {
-        const name = rec.customerName || rec.customerId?.name || '';
-        const avatarUrl = rec.customerId?.avatar || null;
-        return (
-          <Avatar src={avatarUrl} alt={name}>
-            {(!avatarUrl && name) ? name.charAt(0).toUpperCase() : 'U'}
-          </Avatar>
-        );
-      },
-    },
-    {
-      title: 'Customer Name',
-      dataIndex: 'customerName',
-      key: 'customerName',
-      render: (_, rec) => <span style={{ fontWeight: 600 }}>{rec.customerName || rec.customerId?.name || 'N/A'}</span>,
-    },
-    {
-      title: 'Barber Name',
-      dataIndex: 'barberName',
-      key: 'barberName',
-      render: (_, rec) => <span style={{ fontWeight: 600 }}>{rec.barberId?.userId?.name || 'N/A'}</span>,
-    },
-    {
-      title: 'Phone',
-      dataIndex: 'customerPhone',
-      key: 'customerPhone',
-      render: (_, rec) => rec.customerPhone || rec.customerId?.phone || 'N/A',
-    },
-    {
-      title: 'Date',
-      dataIndex: 'bookingDate',
-      key: 'bookingDate',
-      render: v => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : 'N/A'
-    },
-    {
-      title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
-      render: v => {
-        let color = '#FFD600', border = '#FFD600', bg = '#FFFBE6';
-        let text = v ? v.charAt(0).toUpperCase() + v.slice(1) : 'N/A';
-        if (v === 'confirmed') { color = '#6C47FF'; border = '#6C47FF'; bg = '#F0F5FF'; }
-        else if (v === 'completed') { color = '#00C896'; border = '#00C896'; bg = '#F6FFED'; }
-        else if (v === 'cancelled' || v === 'no_show') { color = '#FF4D4F'; border = '#FF4D4F'; bg = '#FFF1F0'; }
-        return (
-          <span style={{
-            color,
-            border: `1.5px solid ${border}`,
-            background: bg,
-            borderRadius: 6,
-            padding: '2px 12px',
-            fontWeight: 600,
-            display: 'inline-block',
-            minWidth: 70,
-            textAlign: 'center'
-          }}>
-            {text}
-          </span>
-        );
-      }
-    },
-    {
-      title: 'Actions',
-      key: 'actions',
+      title: 'Khách hàng',
+      dataIndex: 'customer',
+      key: 'customer',
       render: (_, record) => (
-        <Button
-          size="small"
-          onClick={() => handleViewDetail(record._id)}
-          loading={detailLoading}
-        >
-          View
-        </Button>
+        <Space>
+          <Avatar icon={<UserOutlined />} size="small" />
+          <div>
+            <div style={{ fontWeight: 500 }}>
+              {record.customerId?.name || record.customerInfo?.customerName || 'N/A'}
+            </div>
+            <Text type="secondary" style={{ fontSize: '12px' }}>
+              {record.customerId?.phone || record.customerInfo?.customerPhone || 'N/A'}
+            </Text>
+          </div>
+        </Space>
       )
     },
+    {
+      title: 'Dịch vụ',
+      dataIndex: 'service',
+      key: 'service',
+      render: (_, record) => record.serviceId?.name || 'N/A'
+    },
+    {
+      title: 'Barber',
+      dataIndex: 'barber',
+      key: 'barber',
+      render: (_, record) => record.barberId?.userId?.name || record.barberId?.name || 'Auto-assigned'
+    },
+    {
+      title: 'Ngày & Giờ',
+      dataIndex: 'bookingDate',
+      key: 'bookingDate',
+      render: (date) => dayjs(date).format('DD/MM/YYYY HH:mm'),
+      sorter: (a, b) => dayjs(a.bookingDate).unix() - dayjs(b.bookingDate).unix()
+    },
+    {
+      title: 'Trạng thái',
+      dataIndex: 'status',
+      key: 'status',
+      render: (status) => {
+        const statusConfig = {
+          pending: { color: 'orange', text: 'Chờ xác nhận' },
+          confirmed: { color: 'blue', text: 'Đã xác nhận' },
+          completed: { color: 'green', text: 'Hoàn thành' },
+          cancelled: { color: 'red', text: 'Đã hủy' },
+          no_show: { color: 'volcano', text: 'Vắng mặt' }
+        };
+        const config = statusConfig[status] || { color: 'default', text: status };
+        return <Tag color={config.color}>{config.text}</Tag>;
+      }
+    },
+    {
+      title: 'Giá',
+      dataIndex: 'price',
+      key: 'price',
+      render: (_, record) => `${(record.serviceId?.price || 0).toLocaleString()}đ`
+    },
+    {
+      title: 'Hành động',
+      key: 'action',
+      render: (_, record) => (
+        <Button
+          type="link"
+          icon={<EyeOutlined />}
+          size="small"
+          onClick={() => {/* Handle view details */}}
+        >
+          Xem
+        </Button>
+      )
+    }
   ];
 
-
-  // Table onChange để sort và phân trang
-  const handleTableChange = (paginationConfig, filters, sorterObj) => {
-    console.log('Table change:', { paginationConfig, filters, sorterObj });
-
-    // Cập nhật pagination
-    setPagination(p => ({
-      ...p,
-      current: paginationConfig.current,
-      pageSize: paginationConfig.pageSize
-    }));
-
-    // Cập nhật sorter
-    if (sorterObj && sorterObj.field) {
-      if (sorterObj.field === 'customerName') {
-        setSorter({ field: 'customerName', order: sorterObj.order });
-      } else if (sorterObj.field === 'bookingDate') {
-        setSorter({ field: 'bookingDate', order: sorterObj.order });
-      } else {
-        setSorter({ field: sorterObj.field, order: sorterObj.order });
+  // Table columns for today's bookings
+  const todayBookingsColumns = [
+    {
+      title: 'Khách hàng',
+      dataIndex: 'customer',
+      key: 'customer',
+      render: (text, record) => (
+        <Space>
+          <Avatar icon={<UserOutlined />} size="small" />
+          <div>
+            <div style={{ fontWeight: 500 }}>{text}</div>
+            <Text type="secondary" style={{ fontSize: '12px' }}>{record.phone}</Text>
+          </div>
+        </Space>
+      )
+    },
+    {
+      title: 'Dịch vụ',
+      dataIndex: 'service',
+      key: 'service'
+    },
+    {
+      title: 'Barber',
+      dataIndex: 'barber',
+      key: 'barber'
+    },
+    {
+      title: 'Giờ hẹn',
+      dataIndex: 'time',
+      key: 'time',
+      sorter: (a, b) => a.time.localeCompare(b.time)
+    },
+    {
+      title: 'Trạng thái',
+      dataIndex: 'status',
+      key: 'status',
+      render: (status) => {
+        const statusConfig = {
+          pending: { color: 'orange', text: 'Chờ xác nhận' },
+          confirmed: { color: 'blue', text: 'Đã xác nhận' },
+          completed: { color: 'green', text: 'Hoàn thành' },
+          cancelled: { color: 'red', text: 'Đã hủy' },
+          no_show: { color: 'volcano', text: 'Vắng mặt' }
+        };
+        const config = statusConfig[status] || { color: 'default', text: status };
+        return <Tag color={config.color}>{config.text}</Tag>;
       }
+    },
+    {
+      title: 'Giá',
+      dataIndex: 'price',
+      key: 'price',
+      render: (price) => `${price?.toLocaleString() || 0}đ`
+    },
+    {
+      title: 'Hành động',
+      key: 'action',
+      render: (_, record) => (
+        <Button
+          type="link"
+          icon={<EyeOutlined />}
+          size="small"
+          onClick={() => {/* Handle view details */}}
+        >
+          Xem
+        </Button>
+      )
     }
-  };
-
-  // Debounce search input
-  const handleSearchChange = (e) => {
-    debouncedSetSearch(e.target.value);
-  };
-
-  // Handle status filter change
-  const handleStatusChange = (value) => {
-    setStatus(value);
-  };
-
-  // Handle date range change
-  const handleRangeChange = (dates) => {
-    if (dates) {
-      setRange(dates);
-    }
-  };
-
-  // Handle barber filter change
-  const handleBarberChange = (value) => {
-    setBarberId(value);
-  };
-
-  // Handle service filter change
-  const handleServiceChange = (value) => {
-    setServiceId(value);
-  };
-
-  // Update handleSort to only allow 2 states (asc/desc)
-  const handleSort = (field) => {
-    if (sorter.field !== field) {
-      setSorter({ field, order: 'ascend' });
-    } else {
-      setSorter({ field, order: sorter.order === 'ascend' ? 'descend' : 'ascend' });
-    }
-  };
+  ];
 
   return (
-    <div className="container mt-4">
-      {/* Stats Cards */}
-      <AppointmentStats />
+    <div style={{ padding: 24, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+      <Title level={2} style={{ marginBottom: 24 }}>
+        📊 Dashboard Quản lý Đặt lịch
+      </Title>
 
-      {/* Chart Section */}
-      <AppointmentChart
-        chartRange={chartRange}
-        chartMode={chartMode}
-        onChartRangeChange={dates => setChartRange(dates)}
-        onChartModeChange={setChartMode}
-      />
+      {/* 1. KPI/Stats Overview */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            <Statistic
+              title="Booking hôm nay"
+              value={dashboardData.kpis.todayBookings}
+              prefix={<CalendarOutlined />}
+              valueStyle={{ color: '#1890ff' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            <Statistic
+              title="Hoàn thành"
+              value={dashboardData.kpis.completedBookings}
+              prefix={<CheckCircleOutlined />}
+              valueStyle={{ color: '#52c41a' }}
+            />
+            <Text type="secondary" style={{ fontSize: '12px' }}>
+              Chờ: {dashboardData.kpis.pendingBookings} | Hủy: {dashboardData.kpis.cancelledBookings}
+            </Text>
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            <Statistic
+              title="Doanh thu hôm nay"
+              value={dashboardData.kpis.todayRevenue}
+              prefix={<DollarOutlined />}
+              suffix="đ"
+              valueStyle={{ color: '#faad14' }}
+            />
+            <Text type="secondary" style={{ fontSize: '12px' }}>
+              Tuần: {dashboardData.kpis.weekRevenue?.toLocaleString()}đ
+            </Text>
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            <Statistic
+              title="Khách hàng"
+              value={dashboardData.kpis.totalCustomers}
+              prefix={<UserOutlined />}
+              valueStyle={{ color: '#722ed1' }}
+            />
+            <Text type="secondary" style={{ fontSize: '12px' }}>
+              Barber: {dashboardData.kpis.activeBarbers} hoạt động
+            </Text>
+          </Card>
+        </Col>
+      </Row>
 
-      {/* Search and Filter Controls */}
-      <div className="mb-3 d-flex align-items-center" style={{ gap: 10, flexWrap: 'wrap' }}>
-        <Input
-          placeholder="Search by name, phone..."
-          onChange={e => debouncedSetSearch(e.target.value)}
-          allowClear
-          style={{ width: 220, marginRight: 8 }}
-        />
-        <Select
-          placeholder="Status"
-          style={{ width: 150 }}
-          allowClear
-          value={status}
-          onChange={handleStatusChange}
-        >
-          <Option value="pending">Pending</Option>
-          <Option value="confirmed">Confirmed</Option>
-          <Option value="cancelled">Cancelled</Option>
-          <Option value="completed">Completed</Option>
-        </Select>
-        <Select
-          placeholder="Filter by Barber"
-          style={{ width: 200 }}
-          allowClear
-          value={barberId}
-          onChange={handleBarberChange}
-        >
-          {uniqueBarbers.map(barber => (
-            <Option key={barber._id} value={barber._id}>
-              {barber.name}
-            </Option>
-          ))}
-        </Select>
-        <Select
-          placeholder="Filter by Service"
-          style={{ width: 200 }}
-          allowClear
-          value={serviceId}
-          onChange={handleServiceChange}
-        >
-          {uniqueServices.map(service => (
-            <Option key={service._id} value={service._id}>
-              {service.name}
-            </Option>
-          ))}
-        </Select>
-      </div>
+      {/* 2. Lịch hẹn hôm nay */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col span={24}>
+          <Card
+            title="📅 Lịch hẹn hôm nay"
+            extra={
+              <Space>
+                <Button type="primary" icon={<FilterOutlined />}>
+                  Lọc
+                </Button>
+                <Search
+                  placeholder="Tìm kiếm khách hàng..."
+                  style={{ width: 200 }}
+                  onSearch={(value) => setFilters({...filters, searchText: value})}
+                />
+              </Space>
+            }
+          >
+            <Table
+              columns={todayBookingsColumns}
+              dataSource={dashboardData.todayBookings}
+              loading={loading}
+              pagination={{
+                pageSize: 10,
+                showSizeChanger: true,
+                showQuickJumper: true,
+                showTotal: (total) => `Tổng ${total} lịch hẹn`
+              }}
+              scroll={{ x: 800 }}
+            />
+          </Card>
+        </Col>
+      </Row>
 
-      {/* Table Section */}
-      <AppointmentTable
-        search={search}
-        status={status}
-        barberId={barberId}
-        serviceId={serviceId}
-        currentPage={currentPage}
-        pageSize={pageSize}
-        onPageChange={setCurrentPage}
-        onPageSizeChange={setPageSize}
-        columns={columns}
-      />
+      {/* 3. Biểu đồ và thống kê */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} lg={12}>
+          <Card title="📊 Doanh thu tháng hiện tại">
+            <Line
+              data={dashboardData.revenueChart}
+              xField="date"
+              yField="revenue"
+              smooth={true}
+              color="#1890ff"
+              point={{ size: 3 }}
+              height={300}
+              tooltip={{
+                formatter: (datum) => {
+                  return { name: 'Doanh thu', value: `${datum.revenue?.toLocaleString()}đ` };
+                }
+              }}
+              yAxis={{
+                label: {
+                  formatter: (value) => `${(value / 1000).toFixed(0)}K`
+                }
+              }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} lg={12}>
+          <Card title="📈 Booking tuần hiện tại">
+            <Column
+              data={dashboardData.bookingChart}
+              xField="date"
+              yField="bookings"
+              color="#52c41a"
+              height={300}
+              tooltip={{
+                formatter: (datum) => {
+                  return {
+                    name: `${datum.day || ''} - Số booking`,
+                    value: `${datum.bookings} booking`
+                  };
+                }
+              }}
+              columnStyle={{
+                radius: [4, 4, 0, 0]
+              }}
+            />
+          </Card>
+        </Col>
+      </Row>
 
-      {/* Detail Modal */}
-      <Modal
-        title="Booking Detail"
-        open={isDetailModalVisible}
-        onCancel={() => setIsDetailModalVisible(false)}
-        footer={null}
-        width={600}
-      >
-        {detailLoading ? (
-          <div className="text-center"><Spin /></div>
-        ) : selectedBooking ? (
-          <div>
-            <p><strong>Customer:</strong> {selectedBooking.customerName || selectedBooking.customerId?.name || 'N/A'}</p>
-            <p><strong>Phone:</strong> {selectedBooking.customerPhone || selectedBooking.customerId?.phone || 'N/A'}</p>
-            <p><strong>Email:</strong> {selectedBooking.customerEmail || selectedBooking.customerId?.email || 'N/A'}</p>
-            <p><strong>Service:</strong> {selectedBooking.serviceId?.name || 'N/A'}</p>
-            <p><strong>Barber:</strong> {selectedBooking.barberId?.userId?.name || 'N/A'}</p>
-            <p><strong>Date:</strong> {selectedBooking.bookingDate ? dayjs(selectedBooking.bookingDate).format('DD/MM/YYYY HH:mm') : 'N/A'}</p>
-            <p><strong>Duration:</strong> {selectedBooking.durationMinutes || 0} minutes</p>
-            <p><strong>Status:</strong> {selectedBooking.status || 'N/A'}</p>
-            {selectedBooking.note && <p><strong>Note:</strong> {selectedBooking.note}</p>}
-          </div>
-        ) : (
-          <p>No booking data available</p>
-        )}
-      </Modal>
+      {/* 3.5. Biểu đồ phân bố trạng thái */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} lg={12}>
+          <Card title="🥧 Phân bố trạng thái booking">
+            <Pie
+              data={dashboardData.statusChart}
+              angleField="value"
+              colorField="type"
+              radius={0.8}
+              height={300}
+              label={{
+                type: 'outer',
+                content: '{name} ({percentage})'
+              }}
+              interactions={[{ type: 'element-active' }]}
+              legend={{
+                position: 'bottom'
+              }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} lg={12}>
+          <Card title="📊 Hiệu suất barber">
+            <div style={{ height: 300, padding: 20 }}>
+              {ensureArray(dashboardData.barberPerformance).map((barber, index) => (
+                <div key={index} style={{ marginBottom: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <Text strong>{barber.name}</Text>
+                    <Text>{barber.totalBookings} booking</Text>
+                  </div>
+                  <Progress
+                    percent={Math.min((barber.totalBookings / 50) * 100, 100)}
+                    strokeColor="#52c41a"
+                    showInfo={false}
+                  />
+                </div>
+              ))}
+            </div>
+          </Card>
+        </Col>
+      </Row>
+
+      {/* 4. Khách hàng và barber nổi bật */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} lg={12}>
+          <Card title="👑 Khách hàng thân thiết">
+            <Space direction="vertical" style={{ width: '100%' }}>
+              {ensureArray(dashboardData.topCustomers).map((customer, index) => (
+                <Card key={index} size="small" style={{ backgroundColor: '#fafafa' }}>
+                  <Row justify="space-between" align="middle">
+                    <Col>
+                      <Space>
+                        <Avatar icon={<UserOutlined />} />
+                        <div>
+                          <Text strong>{customer.name}</Text>
+                          <br />
+                          <Text type="secondary">{customer.totalBookings} lần đặt</Text>
+                        </div>
+                      </Space>
+                    </Col>
+                    <Col>
+                      <Text strong style={{ color: '#52c41a' }}>
+                        {customer.totalSpent?.toLocaleString()}đ
+                      </Text>
+                    </Col>
+                  </Row>
+                </Card>
+              ))}
+            </Space>
+          </Card>
+        </Col>
+        <Col xs={24} lg={12}>
+          <Card title="🧑‍🎨 Barber xuất sắc">
+            <Space direction="vertical" style={{ width: '100%' }}>
+              {ensureArray(dashboardData.topBarbers).map((barber, index) => (
+                <Card key={index} size="small" style={{ backgroundColor: '#fafafa' }}>
+                  <Row justify="space-between" align="middle">
+                    <Col>
+                      <Space>
+                        <Avatar icon={<UserOutlined />} />
+                        <div>
+                          <Text strong>{barber.name}</Text>
+                          <br />
+                          <Space>
+                            <Text type="secondary">{barber.totalBookings} booking</Text>
+                            <Tag color="gold">★ {barber.rating}</Tag>
+                          </Space>
+                        </div>
+                      </Space>
+                    </Col>
+                    <Col>
+                      <Progress
+                        type="circle"
+                        size={50}
+                        percent={barber.completionRate}
+                        format={percent => `${percent}%`}
+                      />
+                    </Col>
+                  </Row>
+                </Card>
+              ))}
+            </Space>
+          </Card>
+        </Col>
+      </Row>
+
+      {/* 5. Bộ lọc và tìm kiếm nâng cao */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col span={24}>
+          <Card title="🔍 Bộ lọc và tìm kiếm nâng cao">
+            <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+              <Col xs={24} sm={12} md={8}>
+                <Text strong>Tìm kiếm:</Text>
+                <Search
+                  style={{ width: '100%', marginTop: 8 }}
+                  placeholder="Tìm theo tên, SĐT, email khách hàng..."
+                  allowClear
+                  value={filters.searchText}
+                  onChange={(e) => setFilters({...filters, searchText: e.target.value})}
+                  onSearch={applyFilters}
+                />
+              </Col>
+              <Col xs={24} sm={12} md={8}>
+                <Text strong>Thời gian:</Text>
+                <RangePicker
+                  style={{ width: '100%', marginTop: 8 }}
+                  value={filters.dateRange}
+                  onChange={(dates) => setFilters({...filters, dateRange: dates})}
+                  format="DD/MM/YYYY"
+                />
+              </Col>
+            </Row>
+            <Row gutter={[16, 16]}>
+              <Col xs={24} sm={12} md={6}>
+                <Text strong>Barber:</Text>
+                <Select
+                  style={{ width: '100%', marginTop: 8 }}
+                  placeholder="Chọn barber"
+                  allowClear
+                  value={filters.barber}
+                  onChange={(value) => setFilters({...filters, barber: value})}
+                >
+                  {ensureArray(barbers).map(barber => (
+                    <Option key={barber._id} value={barber._id}>
+                      {barber.userId?.name || barber.name}
+                    </Option>
+                  ))}
+                </Select>
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Text strong>Dịch vụ:</Text>
+                <Select
+                  style={{ width: '100%', marginTop: 8 }}
+                  placeholder="Chọn dịch vụ"
+                  allowClear
+                  value={filters.service}
+                  onChange={(value) => setFilters({...filters, service: value})}
+                >
+                  {ensureArray(services).map(service => (
+                    <Option key={service._id} value={service._id}>
+                      {service.name}
+                    </Option>
+                  ))}
+                </Select>
+              </Col>
+              <Col xs={24} sm={12} md={6}>
+                <Text strong>Trạng thái:</Text>
+                <Select
+                  style={{ width: '100%', marginTop: 8 }}
+                  placeholder="Chọn trạng thái"
+                  allowClear
+                  value={filters.status}
+                  onChange={(value) => setFilters({...filters, status: value})}
+                >
+                  <Option value="pending">Chờ xác nhận</Option>
+                  <Option value="confirmed">Đã xác nhận</Option>
+                  <Option value="completed">Hoàn thành</Option>
+                  <Option value="cancelled">Đã hủy</Option>
+                  <Option value="no_show">Vắng mặt</Option>
+                </Select>
+              </Col>
+            </Row>
+            <Row style={{ marginTop: 16 }}>
+              <Col span={24}>
+                <Space>
+                  <Button type="primary" icon={<SearchOutlined />} onClick={applyFilters} loading={filterLoading}>
+                    Áp dụng bộ lọc
+                  </Button>
+                  <Button onClick={() => {
+                    setFilters({
+                      dateRange: [dayjs().startOf('month'), dayjs().endOf('month')],
+                      barber: null,
+                      service: null,
+                      status: null,
+                      searchText: ''
+                    });
+                    setFilteredBookings(allBookings);
+                  }}>
+                    Đặt lại
+                  </Button>
+                  <Text type="secondary">
+                    Tìm thấy {filteredBookings.length} kết quả
+                  </Text>
+                </Space>
+              </Col>
+            </Row>
+
+            {/* Bảng hiển thị tất cả booking */}
+            <Divider />
+            <Table
+              columns={allBookingsColumns}
+              dataSource={filteredBookings}
+              loading={filterLoading}
+              rowKey="_id"
+              pagination={{
+                pageSize: 20,
+                showSizeChanger: true,
+                showQuickJumper: true,
+                showTotal: (total, range) => `${range[0]}-${range[1]} của ${total} booking`,
+                pageSizeOptions: ['10', '20', '50', '100']
+              }}
+              scroll={{ x: 1200 }}
+              size="middle"
+            />
+          </Card>
+        </Col>
+      </Row>
     </div>
   );
 };
 
-export default Appointment;
+export default AdminBookingDashboard;

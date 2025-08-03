@@ -47,12 +47,13 @@ const TimeSlotSelectionStep = ({
   // New state for barber choice mode
   const [chooseBarberManually, setChooseBarberManually] = useState(false);
   const [selectedBarberInStep, setSelectedBarberInStep] = useState(null);
+  const [userChangedDate, setUserChangedDate] = useState(false); // Track if user manually changed date
 
   // Restore previous selections when component mounts or selectedTimeSlot changes
   useEffect(() => {
     if (selectedTimeSlot) {
-      // Restore date selection
-      if (selectedTimeSlot.date) {
+      // Only restore date if user hasn't manually changed it
+      if (selectedTimeSlot.date && !userChangedDate) {
         setSelectedDate(dayjs(selectedTimeSlot.date));
       }
 
@@ -65,7 +66,7 @@ const TimeSlotSelectionStep = ({
         setSelectedBarberInStep(selectedTimeSlot.selectedBarberInStep);
       }
     }
-  }, [selectedTimeSlot]);
+  }, [selectedTimeSlot, userChangedDate]);
 
   // Load available slots when date or barber selection changes
   useEffect(() => {
@@ -134,6 +135,7 @@ const TimeSlotSelectionStep = ({
     setSelectedDate(date);
     setAvailableSlots([]);
     setError('');
+    setUserChangedDate(true); // Mark that user manually changed date
     // Reset barber selection when date changes
     if (chooseBarberManually) {
       setSelectedBarberInStep(null);
@@ -178,6 +180,9 @@ const TimeSlotSelectionStep = ({
 
     onTimeSlotSelect(enhancedTimeSlot);
 
+    // Reset the user changed date flag since they've now selected a time slot
+    setUserChangedDate(false);
+
     // Also notify parent about barber selection if manual mode
     if (chooseBarberManually && selectedBarberInStep && onBarberSelect) {
       onBarberSelect(selectedBarberInStep, false); // false = not auto-assign
@@ -204,9 +209,12 @@ const TimeSlotSelectionStep = ({
       };
     }
 
-    // Create updated time slot object
+    // Create updated time slot object with current selected date
     const updatedTimeSlot = {
       ...selectedTimeSlot,
+      date: dateString, // ✅ Update with current selected date
+      dateTime: `${dateString} ${selectedTimeSlot.time}`, // ✅ Update dateTime
+      label: `${selectedDate.format('DD/MM/YYYY')} at ${selectedTimeSlot.time}`, // ✅ Update label
       barber: barberInfo,
       isAutoAssign: isAutoAssign,
       chooseBarberManually: !isAutoAssign,
@@ -233,8 +241,9 @@ const TimeSlotSelectionStep = ({
       }
     }
 
-    // If we have a previously selected time slot, update it with new barber choice
-    if (selectedTimeSlot && selectedDate) {
+    // Only update if we have a time slot for the current selected date
+    if (selectedTimeSlot && selectedDate &&
+        selectedTimeSlot.date === selectedDate.format('YYYY-MM-DD')) {
       updateTimeSlotWithNewBarber(null, !chooseManually);
     }
   };
@@ -250,8 +259,9 @@ const TimeSlotSelectionStep = ({
       onBarberSelect(barber, false); // false = not auto-assign
     }
 
-    // If we have a previously selected time slot, update it with new barber info
-    if (selectedTimeSlot && selectedDate) {
+    // Only update if we have a time slot for the current selected date
+    if (selectedTimeSlot && selectedDate &&
+        selectedTimeSlot.date === selectedDate.format('YYYY-MM-DD')) {
       updateTimeSlotWithNewBarber(barber, false);
     }
   };
