@@ -6,7 +6,10 @@ exports.getUserAddresses = async (req, res) => {
   try {
     const addresses = await Address.find({ 
       userId: req.user.id, 
-      isActive: true 
+      $or: [
+        { isDeleted: false },
+        { isDeleted: { $exists: false } }
+      ]
     }).sort({ isDefault: -1, createdAt: -1 });
 
     res.status(200).json({
@@ -27,7 +30,10 @@ exports.getDefaultAddress = async (req, res) => {
     const defaultAddress = await Address.findOne({ 
       userId: req.user.id, 
       isDefault: true,
-      isActive: true 
+      $or: [
+        { isDeleted: false },
+        { isDeleted: { $exists: false } }
+      ]
     });
 
     res.status(200).json({
@@ -59,7 +65,10 @@ exports.createAddress = async (req, res) => {
       district: addressData.district,
       ward: addressData.ward,
       street: addressData.street,
-      isActive: true
+      $or: [
+        { isDeleted: false },
+        { isDeleted: { $exists: false } }
+      ]
     });
 
     if (existingActiveAddress) {
@@ -70,9 +79,13 @@ exports.createAddress = async (req, res) => {
     }
 
     // Kiểm tra và khôi phục địa chỉ đã soft delete
+    console.log('🔍 Checking for soft deleted addresses to restore...');
+    console.log('Address data:', addressData);
+    
     const restoredAddress = await Address.findOrRestore(addressData);
     
     if (restoredAddress) {
+      console.log('✅ Found and restored address:', restoredAddress._id);
       // Nếu khôi phục và được set làm mặc định
       if (req.body.isDefault) {
         await Address.updateMany(
@@ -88,12 +101,27 @@ exports.createAddress = async (req, res) => {
         });
       }
 
+      // Kiểm tra xem có phải exact match hay province match
+      const isExactMatch = (
+        restoredAddress.recipientName === addressData.recipientName &&
+        restoredAddress.phone === addressData.phone &&
+        restoredAddress.district === addressData.district &&
+        restoredAddress.ward === addressData.ward &&
+        restoredAddress.street === addressData.street
+      );
+
+      const message = isExactMatch 
+        ? 'Địa chỉ đã được khôi phục thành công'
+        : 'Địa chỉ đã được cập nhật và khôi phục thành công (tối ưu từ địa chỉ cũ cùng tỉnh/thành phố)';
+
       return res.status(200).json({
         success: true,
-        message: 'Địa chỉ đã được khôi phục thành công',
+        message: message,
         data: restoredAddress
       });
     }
+
+    console.log('❌ No soft deleted address found to restore, creating new address...');
 
     // Nếu đây là địa chỉ đầu tiên hoặc được set làm mặc định
     if (req.body.isDefault) {
@@ -197,32 +225,16 @@ exports.deleteAddress = async (req, res) => {
       });
     }
 
-    // Nếu đây là địa chỉ mặc định, cần set địa chỉ khác làm mặc định
+    // Không cho phép xóa địa chỉ mặc định
     if (existingAddress.isDefault) {
-      const otherAddress = await Address.findOne({
-        userId: req.user.id,
-        _id: { $ne: id },
-        isActive: true
+      return res.status(400).json({
+        success: false,
+        message: 'Không thể xóa địa chỉ mặc định. Vui lòng set địa chỉ khác làm mặc định trước.'
       });
-
-      if (otherAddress) {
-        otherAddress.isDefault = true;
-        await otherAddress.save();
-        
-        // Cập nhật defaultAddressId trong User
-        await User.findByIdAndUpdate(req.user.id, {
-          defaultAddressId: otherAddress._id
-        });
-      } else {
-        // Không còn địa chỉ nào, xóa defaultAddressId
-        await User.findByIdAndUpdate(req.user.id, {
-          defaultAddressId: null
-        });
-      }
     }
 
-    // Soft delete
-    await Address.findByIdAndUpdate(id, { isActive: false });
+    // Soft delete sử dụng static method
+    await Address.softDelete(id);
 
     res.status(200).json({
       success: true,
@@ -245,7 +257,10 @@ exports.setDefaultAddress = async (req, res) => {
     const existingAddress = await Address.findOne({ 
       _id: id, 
       userId: req.user.id,
-      isActive: true
+      $or: [
+        { isDeleted: false },
+        { isDeleted: { $exists: false } }
+      ]
     });
 
     if (!existingAddress) {
@@ -281,4 +296,42 @@ exports.setDefaultAddress = async (req, res) => {
       message: error.message 
     });
   }
-}; 
+};
+
+// Kiểm tra địa chỉ đã soft delete cùng tỉnh/thành phố
+exports.checkSoftDeletedAddress = async (req, res) => {
+  try {
+    const { province } = req.body;
+    
+    if (!province) {
+      return res.status(400).json({
+        success: false,
+        message: 'Thiếu thông tin tỉnh/thành phố'
+      });
+    }
+
+    const softDeletedAddress = await Address.findOne({
+      userId: req.user.id,
+      province,
+      isDeleted: true
+    });
+
+    res.status(200).json({
+      success: true,
+      data: softDeletedAddress ? {
+        id: softDeletedAddress._id,
+        recipientName: softDeletedAddress.recipientName,
+        phone: softDeletedAddress.phone,
+        district: softDeletedAddress.district,
+        ward: softDeletedAddress.ward,
+        street: softDeletedAddress.street,
+        deletedAt: softDeletedAddress.deletedAt
+      } : null
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      success: false, 
+      message: error.message 
+    });
+  }
+};

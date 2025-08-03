@@ -404,65 +404,31 @@ const ProductDetail = () => {
       console.log('Quantity to add:', quantity);
       console.log('User logged in:', !!user);
       
-      // Nếu đã đạt stock trong giỏ hàng, không thêm nữa
-      console.log('🔍 Checking if cart quantity >= product stock');
-      console.log('🔍 Current cart quantity:', currentCartQuantity);
+      // Tính tổng số lượng user muốn có (trong giỏ hàng + muốn thêm)
+      const totalRequestedQuantity = currentCartQuantity + quantity;
+      console.log('🔍 Total requested quantity:', totalRequestedQuantity);
       console.log('🔍 Product stock:', product.stock);
-      console.log('🔍 Comparison result:', currentCartQuantity >= product.stock);
       
-      if (currentCartQuantity >= product.stock) {
-        console.log('❌ Cart quantity already at max, preventing addition');
-        console.log('Current cart quantity:', currentCartQuantity, 'Product stock:', product.stock);
-        console.log('Showing cart limit reached toast');
-        const message = `${product.name} đã đạt số lượng tối đa trong giỏ hàng. Đã có ${currentCartQuantity} sản phẩm trong giỏ hàng (tối đa ${product.stock}).`;
-        console.log('📝 Warning message:', message);
-        showWarningToast(message);
-        return;
-      }
-
-      // Tính số lượng thực tế có thể thêm
-      const actualQuantityToAdd = Math.min(quantity, product.stock - currentCartQuantity);
-      console.log('✅ Actual quantity to add:', actualQuantityToAdd);
-      
-      // Nếu không thể thêm gì cả (đã đạt max)
-      if (actualQuantityToAdd <= 0) {
-        console.log('❌ Cannot add any more items, showing cart limit toast');
-        const message = `${product.name} đã đạt số lượng tối đa trong giỏ hàng. Đã có ${currentCartQuantity} sản phẩm trong giỏ hàng (tối đa ${product.stock}).`;
-        showWarningToast(message);
+      // Kiểm tra xem tổng số lượng có vượt quá stock không
+      if (totalRequestedQuantity > product.stock) {
+        console.log('❌ Total requested quantity exceeds stock');
+        console.log('❌ Showing "Số lượng sản phẩm không đủ" message');
+        showWarningToast("Số lượng sản phẩm không đủ");
         return;
       }
       
       console.log('=== CALLING ADD TO CART ===');
-      const success = await addToCart(product, actualQuantityToAdd);
+      const success = await addToCart(product, quantity);
       console.log('=== ADD TO CART RESULT ===');
       console.log('Success:', success);
       
-             if (success) {
-         // Chỉ hiển thị success toast nếu thực sự thêm được sản phẩm
-                   if (actualQuantityToAdd > 0) {
-            // Check if the added quantity is less than the requested quantity
-            console.log('🔍 DEBUG: actualQuantityToAdd =', actualQuantityToAdd, 'quantity =', quantity);
-            console.log('🔍 DEBUG: actualQuantityToAdd < quantity =', actualQuantityToAdd < quantity);
-            console.log('🔍 DEBUG: Types - actualQuantityToAdd:', typeof actualQuantityToAdd, 'quantity:', typeof quantity);
-            
-            if (actualQuantityToAdd < quantity) {
-              console.log('⚠️ Showing warning toast: quantity not enough');
-              showWarningToast("Số lượng sản phẩm còn lại không đủ");
-                         } else {
-               // If actualQuantityToAdd === quantity, it means the full requested quantity was added
-               console.log('✅ Showing custom success toast');
-               showCustomToast("Sản phẩm đã được thêm vào giỏ hàng");
-             }
-          } else {
-           // Nếu không thêm được gì (đã đạt max), hiển thị toast giới hạn
-           console.log('❌ Cannot add any more items, showing cart limit toast');
-           const message = `${product.name} đã đạt số lượng tối đa trong giỏ hàng. Đã có ${currentCartQuantity} sản phẩm trong giỏ hàng (tối đa ${product.stock}).`;
-           showWarningToast(message);
-         }
-               } else {
-         console.log('❌ Showing error toast');
-         showWarningToast("Thêm vào giỏ hàng thất bại. Vui lòng thử lại hoặc kiểm tra đăng nhập.");
-       }
+      if (success) {
+        console.log('✅ Showing custom success toast');
+        showCustomToast("Sản phẩm đã được thêm vào giỏ hàng");
+      } else {
+        console.log('❌ Showing error toast');
+        showWarningToast("Thêm vào giỏ hàng thất bại. Vui lòng thử lại hoặc kiểm tra đăng nhập.");
+      }
     }
   };
 
@@ -484,53 +450,30 @@ const ProductDetail = () => {
     console.log('Quantity to add:', quantity);
     console.log('User logged in:', !!user);
     
-    // Nếu đã đạt stock trong giỏ hàng, không thêm nữa
-    if (currentCartQuantity >= product.stock) {
-      console.log('❌ Cart quantity already at max, preventing buy now');
-      const message = `${product.name} đã đạt số lượng tối đa trong giỏ hàng. Đã có ${currentCartQuantity} sản phẩm trong giỏ hàng (tối đa ${product.stock}).`;
-      showWarningToast(message);
-      return;
-    }
-
-    // Tính số lượng thực tế có thể thêm
-    const actualQuantityToAdd = Math.min(quantity, product.stock - currentCartQuantity);
-    console.log('✅ Actual quantity to add:', actualQuantityToAdd);
+    // Tính tổng số lượng user muốn có (trong giỏ hàng + muốn thêm)
+    const totalRequestedQuantity = currentCartQuantity + quantity;
+    console.log('🔍 Total requested quantity:', totalRequestedQuantity);
+    console.log('🔍 Product stock:', product.stock);
     
-    // Nếu không thể thêm gì cả (đã đạt max)
-    if (actualQuantityToAdd <= 0) {
-      const message = `${product.name} đã đạt số lượng tối đa trong giỏ hàng. Đã có ${currentCartQuantity} sản phẩm trong giỏ hàng (tối đa ${product.stock}).`;
-      showWarningToast(message);
+    // Kiểm tra xem tổng số lượng có vượt quá stock không
+    if (totalRequestedQuantity > product.stock) {
+      console.log('❌ Total requested quantity exceeds stock');
+      console.log('❌ Showing "Số lượng sản phẩm không đủ" message');
+      showWarningToast("Số lượng sản phẩm không đủ");
       return;
     }
     
-         const success = await addToCart(product, actualQuantityToAdd);
-     if (success) {
-       // Chỉ chuyển hướng nếu thực sự thêm được sản phẩm vào giỏ hàng
-       if (actualQuantityToAdd > 0) {
-         // Hiển thị thông báo trước khi chuyển hướng
-         console.log('🔍 DEBUG (Buy Now): actualQuantityToAdd =', actualQuantityToAdd, 'quantity =', quantity);
-         console.log('🔍 DEBUG (Buy Now): actualQuantityToAdd < quantity =', actualQuantityToAdd < quantity);
-         console.log('🔍 DEBUG (Buy Now): Types - actualQuantityToAdd:', typeof actualQuantityToAdd, 'quantity:', typeof quantity);
-         
-         if (actualQuantityToAdd < quantity) {
-           console.log('⚠️ Showing warning toast: quantity not enough (Buy Now)');
-           showWarningToast("Số lượng sản phẩm còn lại không đủ");
-           // Do not navigate if the requested quantity was not fully added
-                   } else {
-            showCustomToast("Sản phẩm đã được thêm vào giỏ hàng");
+    const success = await addToCart(product, quantity);
+    if (success) {
+      showCustomToast("Sản phẩm đã được thêm vào giỏ hàng");
 
-            // Delay navigation to allow user to see the toast
-            setTimeout(() => {
-              navigate(user ? "/cart" : "/cart-guest");
-            }, 1000);
-          }
-       } else {
-         const message = `${product.name} đã đạt số lượng tối đa trong giỏ hàng. Đã có ${currentCartQuantity} sản phẩm trong giỏ hàng (tối đa ${product.stock}).`;
-         showWarningToast(message);
-       }
-     } else {
-       showWarningToast("Mua ngay thất bại. Vui lòng thử lại hoặc kiểm tra đăng nhập.");
-     }
+      // Delay navigation to allow user to see the toast
+      setTimeout(() => {
+        navigate(user ? "/cart" : "/cart-guest");
+      }, 1000);
+    } else {
+      showWarningToast("Mua ngay thất bại. Vui lòng thử lại hoặc kiểm tra đăng nhập.");
+    }
   };
 
   const toggleFavorite = () => {
@@ -662,21 +605,11 @@ const ProductDetail = () => {
               <span className="quantity-label">Số lượng:</span>
               <InputNumber
                 min={1}
-                max={product ? Math.max(1, product.stock - getCurrentCartQuantity()) : 1}
                 value={quantity}
                 onChange={(val) => {
                   // Chỉ xử lý khi value là số hợp lệ và >= 1
                   if (val && typeof val === 'number' && val >= 1) {
-                    // Tính số lượng tối đa có thể thêm
-                    const currentCartQuantity = getCurrentCartQuantity();
-                    const maxCanAdd = product.stock - currentCartQuantity;
-                    if (maxCanAdd <= 0) {
-                      setQuantity(1); // Nếu đã đạt max, set về 1
-                    } else if (val > maxCanAdd) {
-                      setQuantity(maxCanAdd);
-                    } else {
-                      setQuantity(val);
-                    }
+                    setQuantity(val);
                   } else {
                     // Nếu giá trị không hợp lệ, reset về 1
                     setQuantity(1);
@@ -689,13 +622,15 @@ const ProductDetail = () => {
                     e.preventDefault();
                   }
                 }}
-                disabled={getCurrentCartQuantity() >= product.stock}
               />
               {getCurrentCartQuantity() > 0 && (
                 <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
                   Đã có {getCurrentCartQuantity()} sản phẩm trong giỏ hàng
                   {getCurrentCartQuantity() >= product.stock && (
                     <span style={{ color: '#ff4d4f', fontWeight: 'bold' }}> (Đã đạt tối đa)</span>
+                  )}
+                  {getCurrentCartQuantity() < product.stock && (
+                    <span> (Có thể thêm tối đa {product.stock - getCurrentCartQuantity()} sản phẩm)</span>
                   )}
                 </div>
               )}
@@ -707,16 +642,15 @@ const ProductDetail = () => {
                 icon={<ShoppingCartOutlined />}
                 className="add-cart-btn"
                 onClick={handleAddToCart}
-                disabled={getCurrentCartQuantity() >= product.stock}
               >
-                {getCurrentCartQuantity() >= product.stock ? 'Đã đạt giới hạn' : 'Thêm vào giỏ hàng'}
+                Thêm vào giỏ hàng
               </Button>
               <Button
                 type="default"
                 className="buy-now-btn"
                 onClick={handleBuyNow}
-                disabled={getCurrentCartQuantity() >= product.stock}
               >
+                Mua ngay
                 {getCurrentCartQuantity() >= product.stock ? 'Đã đạt giới hạn' : 'Mua ngay'}
               </Button>
             </div>

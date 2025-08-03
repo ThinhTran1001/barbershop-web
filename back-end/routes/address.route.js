@@ -15,6 +15,9 @@ router.get('/default', addressController.getDefaultAddress);
 // Tạo địa chỉ mới
 router.post('/', addressController.createAddress);
 
+// Kiểm tra địa chỉ đã soft delete
+router.post('/check-soft-deleted', addressController.checkSoftDeletedAddress);
+
 // Cập nhật địa chỉ
 router.put('/:id', addressController.updateAddress);
 

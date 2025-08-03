@@ -8,7 +8,9 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "init-schedules": "node scripts/initialize-schedules.js",
     "init-schedules:14": "node scripts/initialize-schedules.js 14",
-    "init-schedules:30": "node scripts/initialize-schedules.js 30"
+    "init-schedules:30": "node scripts/initialize-schedules.js 30",
+    "cleanup-addresses": "node services/cleanup-deleted-addresses.js",
+    "check-soft-deleted": "node services/check-soft-deleted-addresses.js"
   },
   "keywords": [],
   "author": "",

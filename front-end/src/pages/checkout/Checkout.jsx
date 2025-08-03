@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import {
   Button,
   Form,
@@ -12,8 +13,9 @@ import {
   Tag,
   Radio,
   Typography,
+  message,
 } from "antd";
-import { ShoppingCartOutlined } from "@ant-design/icons";
+import { ShoppingCartOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useUserCart } from "../../context/UserCartContext";
 import {
@@ -23,6 +25,7 @@ import {
   createAddress,
   getUserAddresses,
   setDefaultAddress,
+  deleteAddress,
 } from "../../services/api";
 import "../../css/checkout/checkout.css";
 import { useAuth } from "../../context/AuthContext";
@@ -67,6 +70,14 @@ const Checkout = () => {
   // Edit address states
   const [editingAddress, setEditingAddress] = useState(null);
   const [showEditAddressForm, setShowEditAddressForm] = useState(false);
+  
+  // Confirm dialog state
+  const [confirmDialog, setConfirmDialog] = useState({
+    show: false,
+    title: '',
+    message: '',
+    onConfirm: null
+  });
 
   // Fetch provinces on mount
   useEffect(() => {
@@ -460,6 +471,33 @@ const Checkout = () => {
     }
   };
 
+  // Hàm xử lý xóa địa chỉ
+  const handleDeleteAddress = async (addressId) => {
+    try {
+      const response = await deleteAddress(addressId);
+      if (response.data.success) {
+        notification.success({
+          message: 'Thành công',
+          description: 'Đã xóa địa chỉ thành công'
+        });
+        
+        // Nếu địa chỉ bị xóa là địa chỉ đang được chọn, reset selection
+        if (selectedAddressId === addressId) {
+          setSelectedAddressId(null);
+          setSelectedAddress(null);
+        }
+        
+        // Refresh danh sách địa chỉ
+        await fetchUserAddresses();
+      }
+    } catch (error) {
+      notification.error({
+        message: 'Lỗi',
+        description: 'Không thể xóa địa chỉ: ' + error.message
+      });
+    }
+  };
+
   // Hàm hiển thị chi tiết voucher
   const [viewingVoucher, setViewingVoucher] = useState(null);
 
@@ -631,8 +669,10 @@ const Checkout = () => {
                                 boxShadow: '0 2px 4px rgba(24, 144, 255, 0.2)',
                                 transition: 'all 0.2s ease'
                               }}
-                              onClick={() => {
+                              onClick={async () => {
                                 setShowNewAddressForm(false); // Reset về danh sách địa chỉ
+                                // Refresh danh sách địa chỉ khi mở modal
+                                await fetchUserAddresses();
                                 // Tự động chọn địa chỉ hiện tại khi mở modal
                                 if (selectedAddress) {
                                   setSelectedAddressId(selectedAddress._id);
@@ -651,8 +691,10 @@ const Checkout = () => {
                     <Button 
                       type="dashed" 
                       block 
-                      onClick={() => {
+                      onClick={async () => {
                         setShowNewAddressForm(false); // Reset về danh sách địa chỉ
+                        // Refresh danh sách địa chỉ khi mở modal
+                        await fetchUserAddresses();
                         setAddressModalVisible(true);
                       }}
                       style={{ height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -795,22 +837,75 @@ const Checkout = () => {
                                       )}
                                     </div>
                                   </div>
-                                  <Button 
-                                    type="link" 
-                                    size="small"
-                                    style={{ 
-                                      color: '#1890ff',
-                                      padding: '4px 8px',
-                                      height: 'auto',
-                                      fontSize: '12px'
-                                    }}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleEditAddress(address);
-                                    }}
-                                  >
-                                    Cập nhật địa chỉ
-                                  </Button>
+                                  <div style={{ 
+                                    display: 'flex', 
+                                    gap: '4px', 
+                                    alignItems: 'center',
+                                    marginTop: '8px'
+                                  }}>
+                                    <Button 
+                                      type="text" 
+                                      size="small"
+                                      icon={<EditOutlined />}
+                                      style={{ 
+                                        color: '#1890ff',
+                                        padding: '2px 6px',
+                                        height: '24px',
+                                        fontSize: '11px',
+                                        border: '1px solid #d9d9d9',
+                                        borderRadius: '4px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '2px'
+                                      }}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEditAddress(address);
+                                      }}
+                                    >
+                                      Cập nhật
+                                    </Button>
+                                    <Button 
+                                      type="text" 
+                                      size="small"
+                                      icon={<DeleteOutlined />}
+                                      danger
+                                      disabled={address.isDefault}
+                                      style={{ 
+                                        padding: '2px 6px',
+                                        height: '24px',
+                                        fontSize: '11px',
+                                        border: '1px solid #ff4d4f',
+                                        borderRadius: '4px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '2px',
+                                        opacity: address.isDefault ? 0.5 : 1,
+                                        cursor: address.isDefault ? 'not-allowed' : 'pointer'
+                                      }}
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        if (address.isDefault) {
+                                          message.warning('Không thể xóa địa chỉ mặc định. Vui lòng set địa chỉ khác làm mặc định trước.');
+                                          return;
+                                        }
+                                        // Hiển thị confirm dialog
+                                        console.log('Setting confirm dialog to show');
+                                        setConfirmDialog({
+                                          show: true,
+                                          title: 'Xác nhận xóa địa chỉ',
+                                          message: `Bạn có muốn xóa địa chỉ "${address.recipientName} - ${address.phone}" khỏi danh sách không?`,
+                                          onConfirm: () => {
+                                            handleDeleteAddress(address._id);
+                                            setConfirmDialog({ show: false, title: '', message: '', onConfirm: null });
+                                          }
+                                        });
+                                      }}
+                                    >
+                                      Xóa
+                                    </Button>
+                                  </div>
                                 </div>
                               ))}
                             </div>
@@ -1214,6 +1309,32 @@ const Checkout = () => {
           </Card>
         </div>
       </div>
+      
+      {/* Custom Confirm Dialog */}
+      {console.log('confirmDialog.show:', confirmDialog.show)}
+      {confirmDialog.show && createPortal(
+        <div className="confirm-dialog-overlay">
+          <div className="confirm-dialog">
+            <h3>{confirmDialog.title}</h3>
+            <p>{confirmDialog.message}</p>
+            <div className="confirm-dialog-actions">
+              <Button 
+                onClick={() => setConfirmDialog({ show: false, title: '', message: '', onConfirm: null })}
+              >
+                Hủy
+              </Button>
+              <Button 
+                type="primary" 
+                danger
+                onClick={confirmDialog.onConfirm}
+              >
+                Đồng ý
+              </Button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

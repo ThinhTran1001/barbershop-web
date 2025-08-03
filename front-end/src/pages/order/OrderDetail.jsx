@@ -371,12 +371,7 @@ const OrderDetail = () => {
                   style={{ marginRight: '8px' }}
                 >
                   Chọn địa chỉ có sẵn
-                {/* </Button>
-                                 <Button 
-                   onClick={() => setShowNewAddressForm(true)}
-                 > */}
-                   {/* Thêm địa chỉ mới */}
-                 </Button>
+                </Button>
               </div>
             )}
           </div>
