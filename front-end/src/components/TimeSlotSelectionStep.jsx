@@ -19,7 +19,8 @@ import {
   CalendarOutlined,
   InfoCircleOutlined,
   ReloadOutlined,
-  CheckCircleOutlined
+  CheckCircleOutlined,
+  ExclamationCircleOutlined
 } from '@ant-design/icons';
 import { toast } from 'react-toastify';
 import { fetchAllAvailableSlots, fetchAvailableSlots, fetchAllSlots, fetchAllSlotsForBarber } from '../services/barberScheduleApi';
@@ -78,9 +79,34 @@ const TimeSlotSelectionStep = ({
   // Refresh slots when refreshTrigger changes (after booking completion)
   useEffect(() => {
     if (refreshTrigger && selectedDate && service) {
+      console.log('🔄 Refreshing slots due to booking completion:', {
+        refreshTrigger,
+        selectedDate: selectedDate?.format('YYYY-MM-DD'),
+        service: service?.name,
+        chooseBarberManually,
+        selectedBarberInStep: selectedBarberInStep?.name
+      });
+
+      // Clear current slots before reloading to avoid stale data
+      setAvailableSlots([]);
+      setError('');
+
       loadAvailableSlots();
     }
   }, [refreshTrigger]);
+
+  // Reset state when service changes (when parent resets booking data)
+  useEffect(() => {
+    if (!service) {
+      console.log('🧹 Clearing TimeSlotSelectionStep state due to service reset');
+      setSelectedDate(null);
+      setAvailableSlots([]);
+      setError('');
+      setChooseBarberManually(false);
+      setSelectedBarberInStep(null);
+      setUserChangedDate(false);
+    }
+  }, [service]);
 
   // Load available time slots for the selected date
   const loadAvailableSlots = async () => {
@@ -101,6 +127,12 @@ const TimeSlotSelectionStep = ({
         });
 
         if (response.success) {
+          console.log('📅 Loaded slots for specific barber:', {
+            barber: selectedBarberInStep?.name,
+            date: dateString,
+            slotsCount: response.allSlots?.length,
+            slots: response.allSlots?.map(s => ({ time: s.time, available: s.available }))
+          });
           setAvailableSlots(response.allSlots || []);
         } else {
           setError(response.message || 'Failed to load slots for selected barber');
@@ -114,6 +146,11 @@ const TimeSlotSelectionStep = ({
         });
 
         if (response.success) {
+          console.log('📅 Loaded slots for all barbers:', {
+            date: dateString,
+            slotsCount: response.allSlots?.length,
+            slots: response.allSlots?.map(s => ({ time: s.time, available: s.available, availableBarberCount: s.availableBarberCount }))
+          });
           setAvailableSlots(response.allSlots || []);
         } else {
           setError(response.message || 'Failed to load slots');
@@ -269,6 +306,21 @@ const TimeSlotSelectionStep = ({
   // Refresh time slots
   const handleRefresh = () => {
     if (selectedDate) {
+      console.log('🔄 Manual refresh triggered');
+      setAvailableSlots([]);
+      setError('');
+      loadAvailableSlots();
+    }
+  };
+
+  // Force refresh with state reset (for debugging)
+  const handleForceRefresh = () => {
+    console.log('🔄 Force refresh with state reset');
+    setAvailableSlots([]);
+    setError('');
+    setChooseBarberManually(false);
+    setSelectedBarberInStep(null);
+    if (selectedDate) {
       loadAvailableSlots();
     }
   };
@@ -276,6 +328,30 @@ const TimeSlotSelectionStep = ({
   // Disable past dates
   const disabledDate = (current) => {
     return current && current < dayjs().startOf('day');
+  };
+
+  // Check if time slot is in the past for today
+  const isTimeSlotInPast = (slotTime, slotDate) => {
+    if (!slotDate || !slotTime) return false;
+
+    const now = dayjs();
+    const slotDateTime = dayjs(`${slotDate} ${slotTime}`, 'YYYY-MM-DD HH:mm');
+
+    // If slot is today, check if time has passed
+    if (slotDateTime.format('YYYY-MM-DD') === now.format('YYYY-MM-DD')) {
+      return slotDateTime.isBefore(now);
+    }
+
+    // If slot is in the past date, it's definitely past
+    return slotDateTime.isBefore(now.startOf('day'));
+  };
+
+  // Check if all available slots are in the past
+  const areAllSlotsInPast = () => {
+    if (!selectedDate || availableSlots.length === 0) return false;
+
+    const dateString = selectedDate.format('YYYY-MM-DD');
+    return availableSlots.every(slot => isTimeSlotInPast(slot.time, dateString));
   };
 
   if (!service) {
@@ -445,14 +521,25 @@ const TimeSlotSelectionStep = ({
           </Col>
           <Col span={12}>
             <div style={{ textAlign: 'right' }}>
-              <Button
-                icon={<ReloadOutlined />}
-                onClick={handleRefresh}
-                loading={loading}
-                disabled={!selectedDate}
-              >
-                Refresh Slots
-              </Button>
+              <Space>
+                <Button
+                  icon={<ReloadOutlined />}
+                  onClick={handleRefresh}
+                  loading={loading}
+                  disabled={!selectedDate}
+                >
+                  Refresh Slots
+                </Button>
+                <Button
+                  type="dashed"
+                  onClick={handleForceRefresh}
+                  loading={loading}
+                  disabled={!selectedDate}
+                  title="Force refresh with state reset (for debugging)"
+                >
+                  Force Refresh
+                </Button>
+              </Space>
             </div>
           </Col>
         </Row>
@@ -508,13 +595,26 @@ const TimeSlotSelectionStep = ({
               <Text strong style={{ marginBottom: '16px', display: 'block' }}>
                 Available Time Slots for {selectedDate?.format('DD/MM/YYYY')}:
               </Text>
+
+              {/* Warning when all slots are in the past */}
+              {areAllSlotsInPast() && (
+                <Alert
+                  message="All time slots have passed"
+                  description="All available time slots for today have already passed. Please select a different date."
+                  type="warning"
+                  showIcon
+                  style={{ marginBottom: '16px' }}
+                />
+              )}
+
               <Row gutter={[12, 12]}>
                 {availableSlots.map((slot) => {
                   const isSelected = selectedTimeSlot?.time === slot.time &&
                                      selectedTimeSlot?.date === selectedDate?.format('YYYY-MM-DD');
                   const isSlotNotAvailable = !slot.available || slot.availableBarberCount === 0;
                   const needsBarberSelection = chooseBarberManually && !selectedBarberInStep;
-                  const shouldDisable = isSlotNotAvailable || needsBarberSelection;
+                  const isSlotInPast = isTimeSlotInPast(slot.time, selectedDate?.format('YYYY-MM-DD'));
+                  const shouldDisable = isSlotNotAvailable || needsBarberSelection || isSlotInPast;
 
                   return (
                     <Col xs={12} sm={8} md={6} lg={4} key={slot.time}>
@@ -522,6 +622,8 @@ const TimeSlotSelectionStep = ({
                         title={
                           needsBarberSelection
                             ? "Please select a barber first"
+                            : isSlotInPast
+                              ? "This time slot has already passed"
                             : isSlotNotAvailable
                               ? "This time slot is not available"
                               : slot.label
@@ -531,7 +633,7 @@ const TimeSlotSelectionStep = ({
                           type={isSelected ? 'primary' : 'default'}
                           onClick={() => !shouldDisable && handleTimeSlotSelect(slot)}
                           disabled={shouldDisable}
-                          className={`slot-button ${isSelected ? 'selected' : ''} ${shouldDisable ? 'disabled-overlay' : ''}`}
+                          className={`slot-button ${isSelected ? 'selected' : ''} ${shouldDisable ? 'disabled-overlay' : ''} ${isSlotInPast ? 'past-slot' : ''}`}
                           style={{
                             width: '100%',
                             height: '60px',
@@ -539,11 +641,17 @@ const TimeSlotSelectionStep = ({
                             flexDirection: 'column',
                             justifyContent: 'center',
                             alignItems: 'center',
-                            backgroundColor: shouldDisable ? '#f5f5f5' : undefined,
-                            borderColor: shouldDisable ? '#d9d9d9' : undefined,
-                            cursor: shouldDisable ? 'not-allowed' : 'pointer'
+                            backgroundColor: isSlotInPast ? '#fff2f0' : shouldDisable ? '#f5f5f5' : undefined,
+                            borderColor: isSlotInPast ? '#ffccc7' : shouldDisable ? '#d9d9d9' : undefined,
+                            color: isSlotInPast ? '#ff4d4f' : shouldDisable ? '#bfbfbf' : undefined,
+                            cursor: shouldDisable ? 'not-allowed' : 'pointer',
+                            opacity: isSlotInPast ? 0.6 : shouldDisable ? 0.8 : 1
                           }}
-                          icon={isSelected ? <CheckCircleOutlined /> : <ClockCircleOutlined />}
+                          icon={
+                            isSelected ? <CheckCircleOutlined /> :
+                            isSlotInPast ? <ExclamationCircleOutlined /> :
+                            <ClockCircleOutlined />
+                          }
                         >
                           <div style={{ fontSize: '14px', fontWeight: 'bold' }}>
                             {slot.time}
