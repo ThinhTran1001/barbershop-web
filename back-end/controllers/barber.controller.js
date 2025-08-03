@@ -218,8 +218,9 @@ exports.getBarberBookings = async (req, res) => {
       // Barbers can only see confirmed bookings
       query.status = { $in: ['confirmed', 'cancelled'] };
     } else if (requestingUserRole === 'admin') {
-      // Admins can see all bookings for this barber
-      // No additional status filter needed
+      // Admins can see all bookings except cancelled and rejected for calendar view
+      // This helps keep the calendar clean and focused on active bookings
+      query.status = { $in: ['pending', 'confirmed', 'completed', 'no_show'] };
     }
 
     if (date) {

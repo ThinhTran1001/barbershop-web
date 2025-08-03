@@ -41,6 +41,7 @@ import BarberDashboard from "./pages/Barber/BarberDashboard.jsx";
 import BarberCalendarPage from "./pages/Barber/BarberCalendarPage.jsx";
 import BarberBookingManagement from "./pages/Barber/BarberBookingManagement.jsx";
 import BarberScheduleManagement from "./pages/Admin/BarberScheduleManagement.jsx";
+import AbsenceManagement from "./pages/Admin/AbsenceManagement.jsx";
 import BookingConfirmationManagement from "./pages/Admin/BookingConfirmationManagement.jsx";
 import BarberSetup from "./pages/Barber/BarberSetup.jsx";
 import BookingFeedbackPage from "./pages/Feedback/BookingFeedbackPage.jsx";
@@ -142,7 +143,7 @@ const router = createBrowserRouter([
           { path: "discount-product", element: <ManageDiscountProduct /> },
           { path: "appointment", element: <Appointment /> },
           { path: "barber-schedule", element: <BarberScheduleManagement /> },
-          { path: "absence-management", element: <BarberScheduleManagement /> },
+          { path: "absence-management", element: <AbsenceManagement /> },
           { path: "booking-confirmation", element: <BookingConfirmationManagement /> },
           { path: "noshow-management", element: <NoShowManagement /> },
           { path: "statistics", element: <Statistics /> },

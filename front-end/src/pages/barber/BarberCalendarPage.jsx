@@ -261,26 +261,35 @@ const BarberCalendarPage = () => {
       <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
         {listData.slice(0, 3).map((item, index) => (
           <li key={index} style={{ marginBottom: 2 }}>
-            <Badge 
-              status={item.type} 
-              text={
-                <span style={{ 
-                  fontSize: '10px', 
-                  cursor: item.booking ? 'pointer' : 'default',
-                  textDecoration: item.booking ? 'underline' : 'none'
-                }}>
-                  {item.content}
-                </span>
+            <Tag
+              color={
+                item.booking?.status === 'pending' ? 'orange' :
+                item.booking?.status === 'confirmed' ? 'blue' :
+                item.booking?.status === 'completed' ? 'green' :
+                item.booking?.status === 'cancelled' ? 'red' :
+                item.booking?.status === 'no_show' ? 'volcano' : 'default'
               }
-            />
+              style={{
+                fontSize: '9px',
+                padding: '2px 6px',
+                lineHeight: '1.2',
+                margin: 0,
+                cursor: item.booking ? 'pointer' : 'default',
+                fontWeight: '500'
+              }}
+            >
+              {item.content}
+            </Tag>
           </li>
         ))}
         {listData.length > 3 && (
           <li>
-            <Badge 
-              status="default" 
-              text={<span style={{ fontSize: '10px' }}>+{listData.length - 3} more</span>}
-            />
+            <Tag
+              color="default"
+              style={{ fontSize: '8px', padding: '1px 4px', margin: 0 }}
+            >
+              +{listData.length - 3} more
+            </Tag>
           </li>
         )}
       </ul>

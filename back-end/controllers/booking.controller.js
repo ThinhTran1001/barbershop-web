@@ -1611,21 +1611,29 @@ exports.rejectBooking = async (req, res) => {
 
     await booking.save();
 
-    // Release barber schedule slots
+    // CRITICAL: Unmark time slots in the barber schedule (same as cancel booking)
     const BarberSchedule = require('../models/barber-schedule.model');
     const bookingDate = new Date(booking.bookingDate);
     const dateStr = bookingDate.toISOString().split('T')[0];
 
     try {
-      await BarberSchedule.releaseBookingSlots(
+      const scheduleResult = await BarberSchedule.unmarkSlotsAsBooked(
         booking.barberId,
         dateStr,
-        booking._id
+        booking._id,
+        null // No session for standalone MongoDB
       );
-      console.log(`Released schedule slots for rejected booking ${booking._id}`);
+
+      console.log(`Successfully unmarked ${scheduleResult.totalSlotsUnbooked} slots for rejected booking:`, scheduleResult.unbookedSlots);
     } catch (scheduleError) {
-      console.error('Error releasing schedule slots for rejected booking:', scheduleError);
-      // Don't fail the rejection if schedule update fails
+      console.error('Error unmarking schedule slots for rejected booking:', scheduleError);
+      // Don't fail the rejection if schedule update fails, but log the error
+      console.error('Schedule update failed for rejected booking:', {
+        bookingId: booking._id,
+        barberId: booking.barberId,
+        date: dateStr,
+        error: scheduleError.message
+      });
     }
 
     // TODO: Send notification to customer
