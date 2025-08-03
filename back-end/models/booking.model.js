@@ -99,6 +99,21 @@ const bookingSchema = new Schema({
         ref: 'User',
         default: null
     },
+    // Barber reassignment tracking
+    reassignedFrom: {
+        type: Schema.Types.ObjectId,
+        ref: 'Barber',
+        default: null
+    },
+    reassignedAt: {
+        type: Date,
+        default: null
+    },
+    reassignedBy: {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+    },
     noShowNote: {
         type: String,
         trim: true,

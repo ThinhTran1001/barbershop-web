@@ -26,7 +26,7 @@ const barberAbsenceSchema = new Schema({
     },
     isApproved: {
         type: Boolean,
-        default: false
+        default: null // null = pending, true = approved, false = rejected
     },
     approvedBy: {
         type: Schema.Types.ObjectId,

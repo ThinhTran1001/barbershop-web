@@ -18,8 +18,9 @@ export default function HeroSection() {
   const handleBooking = (e) => {
     if (!user) {
       showToast("danger", "Vui lòng đăng nhập để đặt lịch hẹn");
+      navigate("/login");
     } else {
-      navigate("/browse-services");
+      navigate("/book-service");
     }
   };
 

@@ -218,8 +218,9 @@ exports.getBarberBookings = async (req, res) => {
       // Barbers can only see confirmed bookings
       query.status = { $in: ['confirmed', 'cancelled'] };
     } else if (requestingUserRole === 'admin') {
-      // Admins can see all bookings for this barber
-      // No additional status filter needed
+      // Admins can see all bookings except cancelled and rejected for calendar view
+      // This helps keep the calendar clean and focused on active bookings
+      query.status = { $in: ['pending', 'confirmed', 'completed', 'no_show'] };
     }
 
     if (date) {
@@ -581,3 +582,355 @@ exports.getAvailableBarbers = async (req, res) => {
     });
   }
 };
+
+// Get available barbers for specific time slot (Customer accessible)
+exports.getAvailableBarbersForCustomers = async (req, res) => {
+  try {
+
+    const { date, timeSlot, serviceId } = req.query;
+
+    if (!date) {
+
+      return res.status(400).json({
+        message: 'Date is required'
+      });
+    }
+
+    // Validate date format (YYYY-MM-DD)
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(date)) {
+      return res.status(400).json({
+        message: 'Invalid date format. Use YYYY-MM-DD'
+      });
+    }
+
+    // Validate timeSlot format (HH:MM) if provided
+    if (timeSlot) {
+      const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+      if (!timeRegex.test(timeSlot)) {
+        return res.status(400).json({
+          message: 'Invalid timeSlot format. Use HH:MM'
+        });
+      }
+    }
+
+    // Get all available barbers with customer-friendly information
+    const barbers = await Barber.find({ isAvailable: true })
+      .populate('userId', 'name email profileImageUrl')
+      .select('userId specialties experienceYears averageRating totalBookings profileImageUrl autoAssignmentEligible');
+
+    // Import required models
+    const BarberSchedule = require('../models/barber-schedule.model');
+    const Booking = require('../models/booking.model');
+    const BarberAbsence = require('../models/barber-absence.model');
+
+    // Filter barbers based on schedule availability
+    const availableBarbers = [];
+
+    for (const barber of barbers) {
+      // Check if barber is absent on this date
+      const bookingDateObj = timeSlot
+        ? new Date(`${date}T${timeSlot}:00.000Z`)
+        : new Date(`${date}T00:00:00.000Z`);
+      const isAbsent = await BarberAbsence.isBarberAbsent(barber._id, bookingDateObj);
+      if (isAbsent) {
+        continue;
+      }
+
+      // Check if barber has a schedule for this date
+      const schedule = await BarberSchedule.findOne({
+        barberId: barber._id,
+        date: date
+      });
+
+      // If no schedule exists, barber is potentially available
+      if (!schedule) {
+        availableBarbers.push({
+          _id: barber._id,
+          name: barber.userId?.name || 'Unknown',
+          email: barber.userId?.email,
+          profileImageUrl: barber.profileImageUrl || barber.userId?.profileImageUrl,
+          specialties: barber.specialties || [],
+          experienceYears: barber.experienceYears || 0,
+          averageRating: barber.averageRating || 0,
+          totalBookings: barber.totalBookings || 0,
+          autoAssignmentEligible: barber.autoAssignmentEligible || false,
+          availabilityStatus: 'available'
+        });
+        continue;
+      }
+
+      // Check if barber is not off that day
+      if (schedule.isOffDay) {
+        continue;
+      }
+
+      // If no specific timeSlot is provided, just check if barber is generally available for the date
+      if (!timeSlot) {
+        availableBarbers.push({
+          _id: barber._id,
+          name: barber.userId?.name || 'Unknown',
+          email: barber.userId?.email,
+          profileImageUrl: barber.profileImageUrl || barber.userId?.profileImageUrl,
+          specialties: barber.specialties || [],
+          experienceYears: barber.experienceYears || 0,
+          averageRating: barber.averageRating || 0,
+          totalBookings: barber.totalBookings || 0,
+          autoAssignmentEligible: barber.autoAssignmentEligible || false,
+          availabilityStatus: 'available'
+        });
+        continue;
+      }
+
+      // Check if the specific time slot is available
+      const slot = schedule.availableSlots?.find(slot => slot.time === timeSlot);
+      if (!slot || slot.isBooked) {
+        continue;
+      }
+
+      // Check for existing bookings at this time
+      const existingBooking = await Booking.findOne({
+        barberId: barber._id,
+        bookingDate: {
+          $gte: new Date(`${date}T${timeSlot}:00.000Z`),
+          $lt: new Date(`${date}T${timeSlot}:30.000Z`)
+        },
+        status: { $in: ['pending', 'confirmed'] }
+      });
+
+      if (!existingBooking) {
+        availableBarbers.push({
+          _id: barber._id,
+          name: barber.userId?.name || 'Unknown',
+          email: barber.userId?.email,
+          profileImageUrl: barber.profileImageUrl || barber.userId?.profileImageUrl,
+          specialties: barber.specialties || [],
+          experienceYears: barber.experienceYears || 0,
+          averageRating: barber.averageRating || 0,
+          totalBookings: barber.totalBookings || 0,
+          autoAssignmentEligible: barber.autoAssignmentEligible || false,
+          availabilityStatus: 'available'
+        });
+      }
+    }
+
+    // Sort by rating and experience for better customer experience
+    availableBarbers.sort((a, b) => {
+      // Primary sort: average rating (descending)
+      if (b.averageRating !== a.averageRating) {
+        return b.averageRating - a.averageRating;
+      }
+      // Secondary sort: experience years (descending)
+      return b.experienceYears - a.experienceYears;
+    });
+
+    console.log('Returning response with', availableBarbers.length, 'barbers');
+    res.json({
+      success: true,
+      availableBarbers,
+      date,
+      timeSlot,
+      total: availableBarbers.length,
+      message: availableBarbers.length > 0
+        ? `Found ${availableBarbers.length} available barber(s) for ${date} at ${timeSlot}`
+        : `No barbers available for ${date} at ${timeSlot}`
+    });
+
+  } catch (error) {
+    console.error('Error getting available barbers for customers:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to get available barbers'
+    });
+  }
+};
+
+// Auto-assign best available barber for specific time slot (Customer accessible)
+exports.autoAssignBarberForSlot = async (req, res) => {
+  try {
+    const { date, timeSlot, serviceId } = req.body;
+
+    if (!date || !timeSlot) {
+      return res.status(400).json({
+        success: false,
+        message: 'Date and timeSlot are required'
+      });
+    }
+
+    // Validate date format (YYYY-MM-DD)
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(date)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid date format. Use YYYY-MM-DD'
+      });
+    }
+
+    // Validate timeSlot format (HH:MM)
+    const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+    if (!timeRegex.test(timeSlot)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid timeSlot format. Use HH:MM'
+      });
+    }
+
+    // Get all available barbers eligible for auto-assignment
+    const barbers = await Barber.find({
+      isAvailable: true,
+      autoAssignmentEligible: true
+    })
+      .populate('userId', 'name email profileImageUrl')
+      .select('userId specialties experienceYears averageRating totalBookings profileImageUrl autoAssignmentEligible maxDailyBookings');
+
+    if (barbers.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No barbers available for auto-assignment'
+      });
+    }
+
+    // Import required models
+    const BarberSchedule = require('../models/barber-schedule.model');
+    const Booking = require('../models/booking.model');
+    const BarberAbsence = require('../models/barber-absence.model');
+
+    // Filter and score barbers based on availability and performance
+    const eligibleBarbers = [];
+
+    for (const barber of barbers) {
+      // Check if barber is absent on this date
+      const bookingDateObj = new Date(`${date}T${timeSlot}:00.000Z`);
+      const isAbsent = await BarberAbsence.isBarberAbsent(barber._id, bookingDateObj);
+      if (isAbsent) {
+        continue;
+      }
+
+      // Check if barber has a schedule for this date
+      const schedule = await BarberSchedule.findOne({
+        barberId: barber._id,
+        date: date
+      });
+
+      // Check schedule availability
+      let isScheduleAvailable = true;
+      if (schedule) {
+        // Check if barber is off that day
+        if (schedule.isOffDay) {
+          continue;
+        }
+
+        // Check if the specific time slot is available
+        const slot = schedule.timeSlots?.find(slot => slot.time === timeSlot);
+        if (slot && slot.isBooked) {
+          continue;
+        }
+      }
+
+      // Check for existing bookings at this time
+      const existingBooking = await Booking.findOne({
+        barberId: barber._id,
+        bookingDate: {
+          $gte: new Date(`${date}T${timeSlot}:00.000Z`),
+          $lt: new Date(`${date}T${timeSlot}:30.000Z`)
+        },
+        status: { $in: ['pending', 'confirmed'] }
+      });
+
+      if (existingBooking) {
+        continue;
+      }
+
+      // Check daily booking limit
+      const dateStr = date;
+      const dailyBookings = await Booking.countDocuments({
+        barberId: barber._id,
+        bookingDate: {
+          $gte: new Date(dateStr + 'T00:00:00.000Z'),
+          $lt: new Date(dateStr + 'T23:59:59.999Z')
+        },
+        status: { $in: ['pending', 'confirmed'] }
+      });
+
+      if (dailyBookings >= (barber.maxDailyBookings || 10)) {
+        continue;
+      }
+
+      // Calculate availability score for auto-assignment
+      const maxDailyBookings = barber.maxDailyBookings || 10;
+      const workloadScore = (maxDailyBookings - dailyBookings) / maxDailyBookings; // Higher is better (less busy)
+      const ratingScore = (barber.averageRating || 0) / 5; // Normalize to 0-1
+      const experienceScore = Math.min((barber.experienceYears || 0) / 10, 1); // Cap at 10 years
+
+      // Weighted scoring: 40% rating, 30% workload, 20% experience, 10% total bookings (inverse)
+      const totalBookingsScore = Math.max(0, 1 - ((barber.totalBookings || 0) / 1000)); // Inverse score for total bookings
+      const finalScore = (ratingScore * 0.4) + (workloadScore * 0.3) + (experienceScore * 0.2) + (totalBookingsScore * 0.1);
+
+      eligibleBarbers.push({
+        _id: barber._id,
+        name: barber.userId?.name || 'Unknown',
+        email: barber.userId?.email,
+        profileImageUrl: barber.profileImageUrl || barber.userId?.profileImageUrl,
+        specialties: barber.specialties || [],
+        experienceYears: barber.experienceYears || 0,
+        averageRating: barber.averageRating || 0,
+        totalBookings: barber.totalBookings || 0,
+        currentDailyBookings: dailyBookings,
+        maxDailyBookings: maxDailyBookings,
+        availabilityScore: finalScore,
+        workloadScore,
+        ratingScore,
+        experienceScore
+      });
+    }
+
+    if (eligibleBarbers.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: `No barbers available for auto-assignment on ${date} at ${timeSlot}`
+      });
+    }
+
+    // Sort by availability score (highest first)
+    eligibleBarbers.sort((a, b) => b.availabilityScore - a.availabilityScore);
+
+    // Select the best available barber
+    const selectedBarber = eligibleBarbers[0];
+
+    res.json({
+      success: true,
+      assignedBarber: {
+        _id: selectedBarber._id,
+        name: selectedBarber.name,
+        email: selectedBarber.email,
+        profileImageUrl: selectedBarber.profileImageUrl,
+        specialties: selectedBarber.specialties,
+        experienceYears: selectedBarber.experienceYears,
+        averageRating: selectedBarber.averageRating,
+        totalBookings: selectedBarber.totalBookings
+      },
+      assignmentDetails: {
+        date,
+        timeSlot,
+        availabilityScore: selectedBarber.availabilityScore,
+        reason: 'Auto-assigned based on rating, availability, and workload distribution'
+      },
+      alternativeBarbers: eligibleBarbers.slice(1, 4).map(barber => ({
+        _id: barber._id,
+        name: barber.name,
+        averageRating: barber.averageRating,
+        availabilityScore: barber.availabilityScore
+      })),
+      message: `Successfully assigned ${selectedBarber.name} for ${date} at ${timeSlot}`
+    });
+
+  } catch (error) {
+    console.error('Error auto-assigning barber for slot:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to auto-assign barber'
+    });
+  }
+};
+
+

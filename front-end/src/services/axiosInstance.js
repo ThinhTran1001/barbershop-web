@@ -56,16 +56,8 @@ api.interceptors.response.use(
   }
 );
 
-// Thêm interceptor cho request để tự động gắn token
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+// Note: Authentication is handled via httpOnly cookies
+// No need to manually add Authorization header
+// The browser will automatically send cookies with withCredentials: true
 
 export default api;

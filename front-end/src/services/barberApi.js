@@ -112,3 +112,18 @@ export const getBarberPublicById = async (barberId) => {
 
 export const getBarberFeedbackById = (id) => api.get(`/feedback-barber/${id}`); // Use the 'api' instance
 
+// Get available barbers for customers (no authentication required)
+export const getAvailableBarbersForCustomers = async (date, timeSlot, serviceId) => {
+  // Use direct axios call without authentication for this public endpoint
+  // Create a fresh axios instance without interceptors to avoid auth headers
+  const publicAxios = axios.create();
+  const res = await publicAxios.get(`${API_BASE}/available-for-customers`, {
+    params: {
+      date,
+      timeSlot,
+      serviceId
+    }
+  });
+  return res.data;
+};
+

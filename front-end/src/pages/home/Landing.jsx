@@ -2,7 +2,7 @@ import React from "react";
 import HeroSection from "../../components/landing/HeroSection";
 import AboutSection from "../../components/landing/AboutSection";
 import VoucherSection from "../../components/landing/VoucherSection";
-// import Services from "../../components/landing/Services";
+import Services from "../../components/landing/Services";
 import BusinessHours from "../../components/landing/BussinessHour";
 import Barbers from "../../components/landing/Barber";
 import BookingForm from "../../components/landing/Booking";
@@ -19,9 +19,10 @@ export default function Landing() {
       <HeroSection />
       <AboutSection />
       {/* <VoucherSection /> */}
-      {/* <Services /> */}
+      
       <div id="services">
-        <ServiceBooking/>
+        <Services />
+        {/* <ServiceBooking/> */}
       </div>
       <VoucherSection />
       <br></br>   

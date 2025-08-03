@@ -2,6 +2,7 @@ const BarberAbsence = require('../models/barber-absence.model');
 const Booking = require('../models/booking.model');
 const Barber = require('../models/barber.model');
 const User = require('../models/user.model');
+const BarberSchedule = require('../models/barber-schedule.model');
 
 // Create barber absence (Barber only)
 exports.createBarberAbsence = async (req, res) => {
@@ -58,7 +59,7 @@ exports.createBarberAbsence = async (req, res) => {
       reason,
       description,
       createdBy,
-      isApproved: false // Always start as pending approval
+      isApproved: null // Always start as pending approval (null = pending)
     });
 
     // Find affected bookings
@@ -116,7 +117,11 @@ exports.getAllAbsences = async (req, res) => {
     
     if (barberId) filter.barberId = barberId;
     if (reason) filter.reason = reason;
-    if (isApproved !== undefined) filter.isApproved = isApproved === 'true';
+    if (isApproved !== undefined) {
+      if (isApproved === 'true') filter.isApproved = true;
+      else if (isApproved === 'false') filter.isApproved = false;
+      else if (isApproved === 'null' || isApproved === 'pending') filter.isApproved = null;
+    }
     
     if (startDate || endDate) {
       filter.$or = [];
@@ -275,8 +280,9 @@ exports.getMyAbsenceRequests = async (req, res) => {
     const filter = { barberId: barber._id };
 
     // Filter by approval status if provided
-    if (status === 'pending') filter.isApproved = false;
+    if (status === 'pending') filter.isApproved = null;
     if (status === 'approved') filter.isApproved = true;
+    if (status === 'rejected') filter.isApproved = false;
 
     // Filter by date range if provided
     if (startDate || endDate) {
@@ -519,11 +525,20 @@ exports.getBarberCalendar = async (req, res) => {
 
     while (currentDate <= endDate) {
       const dateStr = currentDate.toISOString().split('T')[0];
-      
-      // Check if barber is absent
-      const isAbsent = absences.some(absence => 
-        currentDate >= absence.startDate && currentDate <= absence.endDate
-      );
+
+      // Check if barber is absent (compare dates only, ignore time)
+      const isAbsent = absences.some(absence => {
+        const absenceStart = new Date(absence.startDate);
+        const absenceEnd = new Date(absence.endDate);
+        const checkDate = new Date(currentDate);
+
+        // Set all times to midnight for accurate date comparison
+        absenceStart.setHours(0, 0, 0, 0);
+        absenceEnd.setHours(23, 59, 59, 999);
+        checkDate.setHours(12, 0, 0, 0); // Use noon to avoid timezone issues
+
+        return checkDate >= absenceStart && checkDate <= absenceEnd;
+      });
 
       // Count bookings for this date
       const dayBookings = bookings.filter(booking => 
@@ -597,23 +612,40 @@ exports.getBarberSchedule = async (req, res) => {
 
     while (currentDate <= endDate) {
       const dateStr = currentDate.toISOString().split('T')[0];
-      
-      // Check if barber is absent
-      const isAbsent = absences.some(absence => 
-        currentDate >= absence.startDate && currentDate <= absence.endDate
-      );
+
+      // Check if barber is absent (compare dates only, ignore time)
+      const isAbsent = absences.some(absence => {
+        const absenceStart = new Date(absence.startDate);
+        const absenceEnd = new Date(absence.endDate);
+        const checkDate = new Date(currentDate);
+
+        // Set all times to midnight for accurate date comparison
+        absenceStart.setHours(0, 0, 0, 0);
+        absenceEnd.setHours(23, 59, 59, 999);
+        checkDate.setHours(12, 0, 0, 0); // Use noon to avoid timezone issues
+
+        return checkDate >= absenceStart && checkDate <= absenceEnd;
+      });
 
       // Count bookings for this date
-      const dayBookings = bookings.filter(booking => 
+      const dayBookings = bookings.filter(booking =>
         booking.bookingDate.toISOString().split('T')[0] === dateStr
       );
 
       calendar.push({
         date: dateStr,
         isAbsent,
-        absenceReason: isAbsent ? absences.find(absence => 
-          currentDate >= absence.startDate && currentDate <= absence.endDate
-        )?.reason : null,
+        absenceReason: isAbsent ? absences.find(absence => {
+          const absenceStart = new Date(absence.startDate);
+          const absenceEnd = new Date(absence.endDate);
+          const checkDate = new Date(currentDate);
+
+          absenceStart.setHours(0, 0, 0, 0);
+          absenceEnd.setHours(23, 59, 59, 999);
+          checkDate.setHours(12, 0, 0, 0);
+
+          return checkDate >= absenceStart && checkDate <= absenceEnd;
+        })?.reason : null,
         bookingsCount: dayBookings.length,
         totalBookedMinutes: dayBookings.reduce((sum, booking) => 
           sum + booking.durationMinutes, 0
@@ -714,6 +746,50 @@ exports.reassignAffectedBookings = async (req, res) => {
         booking.reassignedBy = req.userId;
 
         await booking.save();
+
+        // Update barber schedules using the same logic as confirm booking
+        try {
+          const bookingDate = new Date(booking.bookingDate);
+          const dateStr = bookingDate.toISOString().split('T')[0];
+          const startTimeStr = bookingDate.toTimeString().substring(0, 5);
+
+          // Get service duration for proper slot marking
+          const Service = require('../models/service.model');
+          const service = await Service.findById(booking.serviceId);
+          const durationMinutes = service ? service.durationMinutes : 30; // Default 30 minutes
+
+          // 1. Free up slots for the old barber (if not absent)
+          // Note: If old barber is absent, their schedule is already marked as unavailable
+          // We still need to unmark the slots to keep data consistent
+          try {
+            await BarberSchedule.unmarkSlotsAsBooked(
+              oldBarberId,
+              dateStr,
+              booking._id,
+              null // No session for standalone operation
+            );
+            console.log(`Freed up slots for old barber ${oldBarberId}`);
+          } catch (unmaskError) {
+            console.error('Error freeing slots for old barber:', unmaskError);
+            // Continue even if this fails
+          }
+
+          // 2. Mark slots as booked for the new barber using the same method as confirm booking
+          const scheduleResult = await BarberSchedule.markSlotsAsBooked(
+            newBarberId,
+            dateStr,
+            startTimeStr,
+            durationMinutes,
+            booking._id,
+            null // No session for standalone operation
+          );
+
+          console.log(`Successfully marked ${scheduleResult.totalSlotsBooked} slots as booked for new barber ${newBarberId}:`, scheduleResult.bookedSlots);
+        } catch (scheduleError) {
+          console.error('Error updating barber schedules:', scheduleError);
+          // Continue with the reassignment even if schedule update fails
+          // But log the error for debugging
+        }
 
         results.push({
           bookingId,

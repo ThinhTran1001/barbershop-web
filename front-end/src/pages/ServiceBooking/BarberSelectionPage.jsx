@@ -20,9 +20,10 @@ import {
   Avatar,
   Divider,
   Modal,
-  Space
+  Space,
+  Alert
 } from 'antd';
-import { UserOutlined, StarOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import { UserOutlined, StarOutlined, ClockCircleOutlined, InfoCircleOutlined, ArrowRightOutlined } from '@ant-design/icons';
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -321,6 +322,29 @@ const BarberSelectionPage = () => {
 
   return (
     <div style={{ maxWidth: 1400, margin: '0 auto', padding: 24 }}>
+      {/* New Booking Flow Notice */}
+      <Alert
+        message="🎉 Improved Booking Experience Available!"
+        description={
+          <Space direction="vertical" size="small">
+            <div>We've launched a new single-page booking experience that's faster and easier to use.</div>
+            <Button
+              type="primary"
+              icon={<ArrowRightOutlined />}
+              onClick={() => navigate('/book-service')}
+              size="small"
+            >
+              Try New Booking Experience
+            </Button>
+          </Space>
+        }
+        type="info"
+        showIcon
+        icon={<InfoCircleOutlined />}
+        style={{ marginBottom: 24 }}
+        closable
+      />
+
       <Title level={2} style={{ marginBottom: 24 }}>
         Chọn thợ cắt tóc
         {selectedService.name && (

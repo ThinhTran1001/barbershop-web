@@ -188,10 +188,18 @@ const ServiceListPage = () => {
   };
 
   const handleBook = (service) => {
-    localStorage.setItem('selectedService', JSON.stringify(service));
+    // Clear any existing booking data for fresh start
+    localStorage.removeItem('selectedService');
     localStorage.removeItem('selectedBarber');
     localStorage.removeItem('selectedTimeSlot');
-    navigate('/choose-barber');
+
+    // Navigate to new single-page booking flow
+    navigate('/book-service', {
+      state: {
+        preSelectedService: service,
+        fromServiceList: true
+      }
+    });
   };
 
   const renderServices = (services) => {

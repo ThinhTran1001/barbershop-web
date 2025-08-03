@@ -28,15 +28,16 @@ const AbsenceStatusBadge = ({
       };
     } else if (isApproved === false) {
       return {
-        color: 'processing',
-        text: 'Pending',
-        icon: <ClockCircleOutlined />
-      };
-    } else {
-      return {
         color: 'error',
         text: 'Rejected',
         icon: <CloseCircleOutlined />
+      };
+    } else {
+      // isApproved is null or undefined - pending status
+      return {
+        color: 'processing',
+        text: 'Pending',
+        icon: <ClockCircleOutlined />
       };
     }
   };

@@ -10,16 +10,20 @@ const {
 
 // Booking CRUD operations
 router.post('/', authenticate, bookingController.createBooking);
+// IMPORTANT: Specific routes must come before parameterized routes
+router.post('/single-page', authenticate, bookingController.createBookingSinglePage);
 router.get('/me', authenticate, applyRoleBasedBookingFilter, bookingController.getMyBookings);
 router.get('/all', authenticate, applyRoleBasedBookingFilter, bookingController.getAllBookings);
 router.get('/stats', authenticate, bookingController.getBookingStats);
 router.get('/chart-stats', bookingController.getBookingChartStats);
+// Parameterized routes must come last
 router.get('/:id', authenticate, bookingController.getBookingDetail);
 
 // Admin-only booking management
 router.get('/pending/list', authenticate, authorizeRoles('admin'), bookingController.getPendingBookings);
 router.put('/:bookingId/confirm', authenticate, requireAdminForBookingConfirmation, bookingController.confirmBooking);
 router.post('/bulk-confirm', authenticate, requireAdminForBookingConfirmation, bookingController.bulkConfirmBookings);
+router.put('/:bookingId/assign-barber', authenticate, authorizeRoles('admin'), bookingController.assignBarberToBooking);
 
 // Booking status management
 router.put('/:bookingId/status', authenticate, checkBookingUpdatePermission, bookingController.updateBookingStatus);
