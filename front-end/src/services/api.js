@@ -6,6 +6,7 @@ export const getProductById = (id) => api.get(`/products/${id}`);
 export const createProduct = (data) => api.post(`/products`, data);
 export const updateProduct = (id, data) => api.put(`/products/${id}`, data);
 export const deleteProduct = (id) => api.delete(`/products/${id}`);
+export const validateStock = (items) => api.post(`/products/validate-stock`, { items });
 
 // Category
 export const getCategories = () => api.get(`/categories`);
@@ -84,6 +85,7 @@ export const createOrder = (data) => api.post('/orders', data);
 export const createOrderGuest = (data) => api.post('/orders/guest', data);
 export const updateOrder = (id, data) => api.put(`/orders/${id}`, data);
 export const deleteOrder = (id) => api.delete(`/orders/${id}`);
+export const preCheckoutStockValidation = (items) => api.post('/orders/pre-checkout-validation', { items });
 
 // Cart
 export const getCart = (params) => api.get('/carts', { params });
@@ -111,6 +113,7 @@ export const createAddress = (data) => api.post('/addresses', data);
 export const updateAddress = (id, data) => api.put(`/addresses/${id}`, data);
 export const deleteAddress = (id) => api.delete(`/addresses/${id}`);
 export const setDefaultAddress = (id) => api.patch(`/addresses/${id}/set-default`);
+export const checkSoftDeletedAddress = (data) => api.post('/addresses/check-soft-deleted', data);
 
 // OAuth
 export const initiateGoogleLogin = () => {

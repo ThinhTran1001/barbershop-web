@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import {
   Button,
   Form,
@@ -12,8 +13,9 @@ import {
   Tag,
   Radio,
   Typography,
+  message,
 } from "antd";
-import { ShoppingCartOutlined } from "@ant-design/icons";
+import { ShoppingCartOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useUserCart } from "../../context/UserCartContext";
 import {
@@ -23,6 +25,8 @@ import {
   createAddress,
   getUserAddresses,
   setDefaultAddress,
+  deleteAddress,
+  updateAddress,
 } from "../../services/api";
 import "../../css/checkout/checkout.css";
 import { useAuth } from "../../context/AuthContext";
@@ -67,6 +71,14 @@ const Checkout = () => {
   // Edit address states
   const [editingAddress, setEditingAddress] = useState(null);
   const [showEditAddressForm, setShowEditAddressForm] = useState(false);
+  
+  // Confirm dialog state
+  const [confirmDialog, setConfirmDialog] = useState({
+    show: false,
+    title: '',
+    message: '',
+    onConfirm: null
+  });
 
   // Fetch provinces on mount
   useEffect(() => {
@@ -103,6 +115,10 @@ const Checkout = () => {
 
   /* ----------------------------- Derived values ------------------------------ */
   const buyNowItems = location.state?.products;
+  const fromCart = location.state?.fromCart;
+  
+  // Nếu đến từ cart và có products được truyền, sử dụng products đó
+  // Nếu không có products được truyền, sử dụng tất cả cart items
   const itemsToCheckout = buyNowItems?.length ? buyNowItems : cart.items;
 
   const subtotal = useMemo(
@@ -301,9 +317,29 @@ const Checkout = () => {
         };
         localStorage.setItem("pendingOrder", JSON.stringify(draftToStore));
 
+        // Xóa localStorage selectedAddress khi chuyển sang PayOS
+        if (user) {
+          localStorage.removeItem(`selectedAddress_${user.id}`);
+          console.log('🧹 Cleared selectedAddress from localStorage before PayOS redirect');
+        } else {
+          // Xóa localStorage cho guest user
+          localStorage.removeItem('selectedAddress_guest');
+          console.log('🧹 Cleared guest selectedAddress from localStorage before PayOS redirect');
+        }
+
         window.location.href = res.data.redirectUrl; // chuyển sang trang PayOS
       } else {
         if (!buyNowItems?.length) clearCart();
+
+        // Xóa localStorage khi đặt hàng thành công để reset về trạng thái ban đầu
+        if (user) {
+          localStorage.removeItem(`selectedAddress_${user.id}`);
+          console.log('🧹 Cleared selectedAddress from localStorage after successful order');
+        } else {
+          // Xóa localStorage cho guest user
+          localStorage.removeItem('selectedAddress_guest');
+          console.log('🧹 Cleared guest selectedAddress from localStorage after successful order');
+        }
 
         setOrderSuccess(true);
         notification.success({
@@ -358,31 +394,52 @@ const Checkout = () => {
     initData();
   }, [user, form]);
 
-  // Tự động chọn địa chỉ mặc định khi user đã đăng nhập
+  // Tự động chọn địa chỉ mặc định khi user đã đăng nhập (chỉ lần đầu)
   useEffect(() => {
-    if (user && !selectedAddressId) {
-      // Lấy danh sách địa chỉ của user và chọn địa chỉ mặc định
+    if (user && !selectedAddressId && !addressesLoaded) {
+      // Lấy danh sách địa chỉ của user và chọn địa chỉ mặc định (chỉ lần đầu)
       const fetchUserAddresses = async () => {
         try {
           const response = await getUserAddresses();
           const addresses = response.data?.data || [];
           setUserAddresses(addresses); // Cập nhật state userAddresses
           
-          // Tìm địa chỉ mặc định
-          let defaultAddress = addresses.find(addr => addr.isDefault);
+          // Kiểm tra xem có địa chỉ đã chọn trước đó trong localStorage không
+          const savedAddressId = localStorage.getItem(`selectedAddress_${user.id}`);
+          let selectedAddress = null;
           
-          // Nếu không có địa chỉ mặc định nhưng có địa chỉ, chọn địa chỉ đầu tiên
-          if (!defaultAddress && addresses.length > 0) {
-            defaultAddress = addresses[0];
+          if (savedAddressId) {
+            // Tìm địa chỉ đã lưu trong danh sách hiện tại
+            selectedAddress = addresses.find(addr => addr._id === savedAddressId);
+            console.log('🔍 Found saved address in localStorage:', selectedAddress);
           }
           
-          if (defaultAddress) {
-            setSelectedAddressId(defaultAddress._id);
-            setSelectedAddress(defaultAddress);
-            // Cập nhật form values với thông tin địa chỉ mặc định
+          // Nếu không có địa chỉ đã lưu hoặc địa chỉ đã lưu không còn tồn tại
+          if (!selectedAddress) {
+            console.log('❌ No saved address found, using default');
+            // Tìm địa chỉ mặc định
+            selectedAddress = addresses.find(addr => addr.isDefault);
+            
+            // Nếu không có địa chỉ mặc định nhưng có địa chỉ, chọn địa chỉ đầu tiên
+            if (!selectedAddress && addresses.length > 0) {
+              selectedAddress = addresses[0];
+            }
+          }
+          
+          if (selectedAddress) {
+            setSelectedAddressId(selectedAddress._id);
+            setSelectedAddress(selectedAddress);
+            
+            // Chỉ lưu vào localStorage nếu chưa có hoặc nếu đây là địa chỉ mặc định (lần đầu)
+            if (!savedAddressId) {
+              localStorage.setItem(`selectedAddress_${user.id}`, selectedAddress._id);
+              console.log('💾 First time: saved default address to localStorage');
+            }
+            
+            // Cập nhật form values với thông tin địa chỉ đã chọn
             form.setFieldsValue({
-              name: defaultAddress.recipientName || '',
-              phone: defaultAddress.phone || ''
+              name: selectedAddress.recipientName || '',
+              phone: selectedAddress.phone || ''
             });
           }
           setAddressesLoaded(true);
@@ -396,7 +453,52 @@ const Checkout = () => {
     } else if (!user) {
       setAddressesLoaded(true);
     }
-  }, [user, selectedAddressId, form]);
+  }, [user, addressesLoaded]); // Bỏ selectedAddressId và form khỏi dependencies
+
+  // Fetch addresses khi cần thiết (không ảnh hưởng đến selection)
+  useEffect(() => {
+    if (user && addressesLoaded) {
+      // Chỉ fetch addresses mà không thay đổi selection
+      const refreshAddressesOnly = async () => {
+        try {
+          const response = await getUserAddresses();
+          const addresses = response.data?.data || [];
+          setUserAddresses(addresses);
+        } catch (error) {
+          console.error("Error fetching user addresses:", error);
+        }
+      };
+      refreshAddressesOnly();
+    }
+  }, [user]);
+
+  // Khôi phục selection từ localStorage khi component mount
+  useEffect(() => {
+    if (user && userAddresses.length > 0 && !selectedAddressId) {
+      const savedAddressId = localStorage.getItem(`selectedAddress_${user.id}`);
+      console.log('🔍 Restoring address from localStorage:', { savedAddressId, userAddresses: userAddresses.length });
+      
+      if (savedAddressId) {
+        const savedAddress = userAddresses.find(addr => addr._id === savedAddressId);
+        console.log('🔍 Found saved address:', savedAddress);
+        
+        if (savedAddress) {
+          setSelectedAddressId(savedAddress._id);
+          setSelectedAddress(savedAddress);
+          // Cập nhật form values
+          form.setFieldsValue({
+            name: savedAddress.recipientName || '',
+            phone: savedAddress.phone || ''
+          });
+          console.log('✅ Restored address selection:', savedAddress._id);
+        } else {
+          console.log('❌ Saved address not found in current addresses list');
+        }
+      } else {
+        console.log('❌ No saved address in localStorage');
+      }
+    }
+  }, [user, userAddresses, selectedAddressId, form]);
 
   // Luôn fetch lại cart khi vào trang checkout để đảm bảo lấy số lượng mới nhất
   useEffect(() => {
@@ -416,6 +518,28 @@ const Checkout = () => {
     }
   };
 
+  // Hàm refresh danh sách địa chỉ và cập nhật địa chỉ đang chọn
+  const refreshAddressesAndUpdateSelection = async () => {
+    try {
+      const addresses = await fetchUserAddresses();
+      
+      // Nếu có địa chỉ đang được chọn, cập nhật lại thông tin
+      if (selectedAddressId) {
+        const updatedSelectedAddress = addresses.find(addr => addr._id === selectedAddressId);
+        if (updatedSelectedAddress) {
+          setSelectedAddress(updatedSelectedAddress);
+          // Cập nhật form values nếu cần
+          form.setFieldsValue({
+            name: updatedSelectedAddress.recipientName || '',
+            phone: updatedSelectedAddress.phone || ''
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error refreshing addresses:", error);
+    }
+  };
+
   // Hàm xử lý chỉnh sửa địa chỉ
   const handleEditAddress = (address) => {
     setEditingAddress(address);
@@ -426,9 +550,6 @@ const Checkout = () => {
   // Hàm xử lý cập nhật địa chỉ
   const handleUpdateAddress = async (values) => {
     try {
-      // Import updateAddress function
-      const { updateAddress } = await import('../../services/api');
-      
       // Nếu đang set địa chỉ này thành mặc định
       if (values.isDefault) {
         // Tìm địa chỉ mặc định hiện tại và bỏ mặc định
@@ -452,11 +573,85 @@ const Checkout = () => {
       // Refresh danh sách địa chỉ
       await fetchUserAddresses();
       
+      // Nếu địa chỉ vừa cập nhật đang được chọn, cập nhật form values
+      if (selectedAddressId === editingAddress._id) {
+        const updatedAddress = { ...editingAddress, ...values };
+        setSelectedAddress(updatedAddress);
+        form.setFieldsValue({
+          name: updatedAddress.recipientName || '',
+          phone: updatedAddress.phone || ''
+        });
+      }
+      
     } catch (error) {
+      console.error('Error updating address:', error);
       notification.error({
         message: 'Lỗi',
-        description: 'Không thể cập nhật địa chỉ: ' + error.message
+        description: 'Không thể cập nhật địa chỉ: ' + (error.response?.data?.message || error.message)
       });
+    }
+  };
+
+  // Hàm xử lý xóa địa chỉ
+  const handleDeleteAddress = async (addressId) => {
+    try {
+      const response = await deleteAddress(addressId);
+      if (response.data.success) {
+        notification.success({
+          message: 'Thành công',
+          description: 'Đã xóa địa chỉ thành công'
+        });
+        
+        // Refresh danh sách địa chỉ trước
+        await fetchUserAddresses();
+        
+        // Xử lý logic sau khi xóa
+        if (selectedAddressId === addressId) {
+          // Nếu xóa địa chỉ đang được chọn
+          if (userAddresses.length <= 1) {
+            // Nếu đây là địa chỉ cuối cùng
+            setSelectedAddressId(null);
+            setSelectedAddress(null);
+            notification.info({
+              message: 'Thông báo',
+              description: 'Bạn đã xóa địa chỉ cuối cùng. Vui lòng thêm địa chỉ mới.'
+            });
+          } else {
+            // Tự động chọn địa chỉ khác (ưu tiên địa chỉ mặc định)
+            const remainingAddresses = userAddresses.filter(addr => addr._id !== addressId);
+            const defaultAddress = remainingAddresses.find(addr => addr.isDefault);
+            const fallbackAddress = remainingAddresses[0];
+            
+            const newSelectedAddress = defaultAddress || fallbackAddress;
+            setSelectedAddressId(newSelectedAddress._id);
+            setSelectedAddress(newSelectedAddress);
+            
+            // Cập nhật form values với thông tin địa chỉ mới
+            form.setFieldsValue({
+              name: newSelectedAddress.recipientName || '',
+              phone: newSelectedAddress.phone || ''
+            });
+            
+            notification.info({
+              message: 'Thông báo',
+              description: `Đã tự động chọn địa chỉ "${newSelectedAddress.recipientName}"`
+            });
+          }
+        }
+      }
+    } catch (error) {
+      // Xử lý lỗi cụ thể
+      if (error.response?.status === 400) {
+        notification.error({
+          message: 'Không thể xóa',
+          description: error.response.data.message || 'Không thể xóa địa chỉ mặc định'
+        });
+      } else {
+        notification.error({
+          message: 'Lỗi',
+          description: 'Không thể xóa địa chỉ: ' + (error.message || 'Lỗi không xác định')
+        });
+      }
     }
   };
 
@@ -631,8 +826,10 @@ const Checkout = () => {
                                 boxShadow: '0 2px 4px rgba(24, 144, 255, 0.2)',
                                 transition: 'all 0.2s ease'
                               }}
-                              onClick={() => {
+                              onClick={async () => {
                                 setShowNewAddressForm(false); // Reset về danh sách địa chỉ
+                                // Refresh danh sách địa chỉ khi mở modal
+                                await fetchUserAddresses();
                                 // Tự động chọn địa chỉ hiện tại khi mở modal
                                 if (selectedAddress) {
                                   setSelectedAddressId(selectedAddress._id);
@@ -651,8 +848,10 @@ const Checkout = () => {
                     <Button 
                       type="dashed" 
                       block 
-                      onClick={() => {
+                      onClick={async () => {
                         setShowNewAddressForm(false); // Reset về danh sách địa chỉ
+                        // Refresh danh sách địa chỉ khi mở modal
+                        await fetchUserAddresses();
                         setAddressModalVisible(true);
                       }}
                       style={{ height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -673,7 +872,10 @@ const Checkout = () => {
                 open={addressModalVisible}
                 onCancel={() => {
                   setAddressModalVisible(false);
-                  // Không reset selectedAddressId để giữ nguyên địa chỉ đã chọn
+                  // Refresh danh sách địa chỉ để đảm bảo hiển thị đúng thông tin từ backend
+                  if (user) {
+                    refreshAddressesAndUpdateSelection();
+                  }
                   setShowNewAddressForm(false);
                   setShowEditAddressForm(false);
                   setEditingAddress(null);
@@ -681,7 +883,10 @@ const Checkout = () => {
                 footer={showNewAddressForm || showEditAddressForm ? null : [
                   <Button key="cancel" onClick={() => {
                     setAddressModalVisible(false);
-                    // Không reset selectedAddressId để giữ nguyên địa chỉ đã chọn
+                    // Refresh danh sách địa chỉ để đảm bảo hiển thị đúng thông tin từ backend
+                    if (user) {
+                      refreshAddressesAndUpdateSelection();
+                    }
                   }}>
                     Huỷ
                   </Button>,
@@ -719,8 +924,8 @@ const Checkout = () => {
                         provinces={provinces}
                         districts={districts}
                         wards={wards}
-                        selectedProvince={null}
-                        selectedDistrict={null}
+                        selectedProvince={editingAddress ? provinces.find(p => p.name === editingAddress.province) : null}
+                        selectedDistrict={editingAddress ? districts.find(d => d.name === editingAddress.district) : null}
                         selectedWard={null}
                         onProvinceChange={code => {
                           const province = provinces.find(p => p.code === code);
@@ -747,7 +952,34 @@ const Checkout = () => {
                         {userAddresses.length > 0 ? (
                           <Radio.Group 
                             value={selectedAddressId} 
-                            onChange={(e) => setSelectedAddressId(e.target.value)}
+                            onChange={(e) => {
+                              const newAddressId = e.target.value;
+                              const selectedAddress = userAddresses.find(addr => addr._id === newAddressId);
+                              
+                              setSelectedAddressId(newAddressId);
+                              setSelectedAddress(selectedAddress);
+                              
+                              // Cập nhật form values với thông tin địa chỉ mới
+                              if (selectedAddress) {
+                                form.setFieldsValue({
+                                  name: selectedAddress.recipientName || '',
+                                  phone: selectedAddress.phone || ''
+                                });
+                                
+                                // Thông báo cho user biết thông tin đã được cập nhật
+                                notification.info({
+                                  message: 'Đã cập nhật thông tin giao hàng',
+                                  description: `Tên: ${selectedAddress.recipientName} | SĐT: ${selectedAddress.phone}`,
+                                  duration: 2
+                                });
+                              }
+                              
+                              // Lưu lựa chọn vào localStorage
+                              if (user) {
+                                localStorage.setItem(`selectedAddress_${user.id}`, newAddressId);
+                                console.log('💾 Saved address selection to localStorage:', newAddressId);
+                              }
+                            }}
                             style={{ width: '100%' }}
                           >
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -769,7 +1001,29 @@ const Checkout = () => {
                                     <Radio 
                                       value={address._id} 
                                       style={{ marginRight: '12px', flexShrink: 0 }}
-                                      onClick={() => setSelectedAddressId(address._id)}
+                                      onClick={() => {
+                                        setSelectedAddressId(address._id);
+                                        setSelectedAddress(address);
+                                        
+                                        // Cập nhật form values với thông tin địa chỉ mới
+                                        form.setFieldsValue({
+                                          name: address.recipientName || '',
+                                          phone: address.phone || ''
+                                        });
+                                        
+                                        // Thông báo cho user biết thông tin đã được cập nhật
+                                        notification.info({
+                                          message: 'Đã cập nhật thông tin giao hàng',
+                                          description: `Tên: ${address.recipientName} | SĐT: ${address.phone}`,
+                                          duration: 2
+                                        });
+                                        
+                                        // Lưu lựa chọn vào localStorage
+                                        if (user) {
+                                          localStorage.setItem(`selectedAddress_${user.id}`, address._id);
+                                          console.log('💾 Saved address selection to localStorage (click):', address._id);
+                                        }
+                                      }}
                                     />
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                       <div style={{ 
@@ -795,22 +1049,89 @@ const Checkout = () => {
                                       )}
                                     </div>
                                   </div>
-                                  <Button 
-                                    type="link" 
-                                    size="small"
-                                    style={{ 
-                                      color: '#1890ff',
-                                      padding: '4px 8px',
-                                      height: 'auto',
-                                      fontSize: '12px'
-                                    }}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleEditAddress(address);
-                                    }}
-                                  >
-                                    Cập nhật địa chỉ
-                                  </Button>
+                                  <div style={{ 
+                                    display: 'flex', 
+                                    gap: '4px', 
+                                    alignItems: 'center',
+                                    marginTop: '8px'
+                                  }}>
+                                    <Button 
+                                      type="text" 
+                                      size="small"
+                                      icon={<EditOutlined />}
+                                      style={{ 
+                                        color: '#1890ff',
+                                        padding: '2px 6px',
+                                        height: '24px',
+                                        fontSize: '11px',
+                                        border: '1px solid #d9d9d9',
+                                        borderRadius: '4px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '2px'
+                                      }}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEditAddress(address);
+                                      }}
+                                    >
+                                      Cập nhật
+                                    </Button>
+                                    <Button 
+                                      type="text" 
+                                      size="small"
+                                      icon={<DeleteOutlined />}
+                                      danger
+                                      disabled={address.isDefault || selectedAddressId === address._id}
+                                      style={{ 
+                                        padding: '2px 6px',
+                                        height: '24px',
+                                        fontSize: '11px',
+                                        border: '1px solid #ff4d4f',
+                                        borderRadius: '4px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '2px',
+                                        opacity: (address.isDefault || selectedAddressId === address._id) ? 0.5 : 1,
+                                        cursor: (address.isDefault || selectedAddressId === address._id) ? 'not-allowed' : 'pointer'
+                                      }}
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        
+                                        // Kiểm tra xem có phải địa chỉ mặc định không
+                                        if (address.isDefault) {
+                                          message.warning('Không thể xóa địa chỉ mặc định. Vui lòng set địa chỉ khác làm mặc định trước.');
+                                          return;
+                                        }
+                                        
+                                        // Kiểm tra xem có phải địa chỉ cuối cùng không
+                                        if (userAddresses.length <= 1) {
+                                          message.warning('Đây là địa chỉ cuối cùng. Vui lòng thêm địa chỉ mới trước khi xóa.');
+                                          return;
+                                        }
+                                        
+                                        // Kiểm tra xem có phải địa chỉ đang được chọn để checkout không
+                                        if (selectedAddressId === address._id) {
+                                          message.warning('Không thể xóa địa chỉ đang được chọn để checkout. Vui lòng chọn địa chỉ khác trước.');
+                                          return;
+                                        }
+                                        
+                                        // Hiển thị confirm dialog
+                                        setConfirmDialog({
+                                          show: true,
+                                          title: 'Xác nhận xóa địa chỉ',
+                                          message: `Bạn có muốn xóa địa chỉ "${address.recipientName} - ${address.phone}" khỏi danh sách không?`,
+                                          onConfirm: () => {
+                                            handleDeleteAddress(address._id);
+                                            setConfirmDialog({ show: false, title: '', message: '', onConfirm: null });
+                                          }
+                                        });
+                                      }}
+                                    >
+                                      Xóa
+                                    </Button>
+                                  </div>
                                 </div>
                               ))}
                             </div>
@@ -880,15 +1201,20 @@ const Checkout = () => {
                             const response = await createAddress(addressData);
                             const newAddress = response.data?.data;
                             
-                            // Chỉ tự động chọn nếu đây là địa chỉ đầu tiên
-                            if (isFirstAddress) {
-                              setSelectedAddressId(newAddress._id);
-                              setSelectedAddress(newAddress);
-                              setAddressModalVisible(false);
-                            } else {
-                              // Nếu không phải địa chỉ đầu tiên, chỉ quay lại danh sách
-                              setShowNewAddressForm(false);
+                            // Tự động chọn địa chỉ mới và lưu vào localStorage
+                            setSelectedAddressId(newAddress._id);
+                            setSelectedAddress(newAddress);
+                            
+                            // Cập nhật form values với thông tin địa chỉ mới
+                            form.setFieldsValue({
+                              name: newAddress.recipientName || '',
+                              phone: newAddress.phone || ''
+                            });
+                            
+                            if (user) {
+                              localStorage.setItem(`selectedAddress_${user.id}`, newAddress._id);
                             }
+                            setAddressModalVisible(false);
                             
                             // Refresh danh sách địa chỉ
                             await fetchUserAddresses();
@@ -896,8 +1222,8 @@ const Checkout = () => {
                             notification.success({
                               message: 'Thành công',
                               description: isFirstAddress 
-                                ? 'Địa chỉ mới đã được thêm và đặt làm mặc định' 
-                                : 'Địa chỉ mới đã được thêm thành công'
+                                ? 'Địa chỉ mới đã được thêm, đặt làm mặc định và chọn để checkout' 
+                                : 'Địa chỉ mới đã được thêm và chọn để checkout'
                             });
                           } catch (error) {
                             notification.error({
@@ -952,7 +1278,11 @@ const Checkout = () => {
 
                     <AddressSelector
                       value={selectedAddressId}
-                      onChange={setSelectedAddressId}
+                      onChange={(addressId) => {
+                        setSelectedAddressId(addressId);
+                        // Lưu lựa chọn vào localStorage cho guest user
+                        localStorage.setItem('selectedAddress_guest', addressId);
+                      }}
                       onAddressSelect={() => {}}
                       isGuest={true}
                       provinces={provinces}
@@ -1160,9 +1490,30 @@ const Checkout = () => {
                 return (
                   <div key={idx} className="checkout-product-row" style={{ display: 'grid', gridTemplateColumns: '60px 1fr 80px 100px', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #f0f0f0' }}>
                     <div className="checkout-product-image" style={{ textAlign: 'center' }}>
-                      <img src={item.image || item.product?.image} alt={item.name || item.product?.name} style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4 }} />
+                      <img 
+                        src={item.image || item.product?.image} 
+                        alt={item.name || item.product?.name} 
+                        style={{ 
+                          width: 40, 
+                          height: 40, 
+                          objectFit: 'cover', 
+                          borderRadius: 4,
+                          cursor: 'pointer'
+                        }}
+                        onClick={() => navigate(`/products/${item.productId || item.product?._id}`)}
+                      />
                     </div>
-                    <div className="checkout-product-name" style={{ textAlign: 'left' }}>{item.name || item.product?.name}</div>
+                    <div 
+                      className="checkout-product-name" 
+                      style={{ 
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        color: '#1890ff'
+                      }}
+                      onClick={() => navigate(`/products/${item.productId || item.product?._id}`)}
+                    >
+                      {item.name || item.product?.name}
+                    </div>
                     <div className="checkout-product-quantity" style={{ textAlign: 'center' }}>x{item.quantity}</div>
                     <div className="checkout-product-price" style={{ textAlign: 'center' }}>
                       {discount > 0 ? (
@@ -1214,6 +1565,32 @@ const Checkout = () => {
           </Card>
         </div>
       </div>
+      
+      {/* Custom Confirm Dialog */}
+      {console.log('confirmDialog.show:', confirmDialog.show)}
+      {confirmDialog.show && createPortal(
+        <div className="confirm-dialog-overlay">
+          <div className="confirm-dialog">
+            <h3>{confirmDialog.title}</h3>
+            <p>{confirmDialog.message}</p>
+            <div className="confirm-dialog-actions">
+              <Button 
+                onClick={() => setConfirmDialog({ show: false, title: '', message: '', onConfirm: null })}
+              >
+                Hủy
+              </Button>
+              <Button 
+                type="primary" 
+                danger
+                onClick={confirmDialog.onConfirm}
+              >
+                Đồng ý
+              </Button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

@@ -24,6 +24,13 @@ export const AuthProvider = ({children}) => {
   const login = async (credentials) => {
     await loginUser(credentials);
     const res = await getMe();       // 👈 gọi trực tiếp luôn ở đây
+    
+    // Xóa localStorage của user cũ nếu có
+    if (user && user.id !== res.data.user.id) {
+      localStorage.removeItem(`selectedAddress_${user.id}`);
+      console.log('🧹 Cleared previous user selectedAddress from localStorage');
+    }
+    
     setUser(res.data.user);
     return res.data.user;            // 👈 trả lại user để LoginForm dùng
   };
@@ -32,6 +39,12 @@ export const AuthProvider = ({children}) => {
     try {
       await logoutUser();
       setUser(null);
+      
+      // Xóa localStorage khi logout để reset về trạng thái ban đầu
+      if (user) {
+        localStorage.removeItem(`selectedAddress_${user.id}`);
+        console.log('🧹 Cleared selectedAddress from localStorage on logout');
+      }
     } catch (err) {
       console.error("Error logout:", err);
     }

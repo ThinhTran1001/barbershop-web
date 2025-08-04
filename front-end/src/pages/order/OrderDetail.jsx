@@ -92,14 +92,25 @@ const OrderDetail = () => {
   const [selectedAddressId, setSelectedAddressId] = useState(null);
   const [showNewAddressForm, setShowNewAddressForm] = useState(false);
   const [provinces, setProvinces] = useState([]);
+  const [refreshKey, setRefreshKey] = useState(0); // Force re-render
 
   const fetchOrderDetail = async () => {
     try {
       setLoading(true);
-      console.log('Fetching order with id:', id); // Debug orderId
+      console.log('🔄 Fetching order with id:', id);
       const response = await getOrderById(id);
       const { order: orderData, items, payment } = response.data.data;
-      setOrder({ ...orderData, items, payment });
+      
+      // Debug: Log thông tin đơn hàng sau khi fetch
+      console.log('📋 Order details after fetch:', {
+        customerName: orderData.customerName,
+        customerPhone: orderData.customerPhone,
+        shippingAddress: orderData.shippingAddress
+      });
+      
+      const newOrderData = { ...orderData, items, payment };
+      console.log('🔄 Setting new order data:', newOrderData);
+      setOrder(newOrderData);
 
       // Kiểm tra status feedback
       try {
@@ -169,18 +180,58 @@ const OrderDetail = () => {
       const fullAddress = `${selectedAddress.street}, ${selectedAddress.ward}, ${selectedAddress.district}, ${selectedAddress.province}`;
       
       // Kiểm tra xem địa chỉ có thay đổi không
-      if (fullAddress === order.shippingAddress) {
-        message.info('Địa chỉ này đã được sử dụng cho đơn hàng này!');
+      if (fullAddress === order.shippingAddress && 
+          selectedAddress.recipientName === order.customerName &&
+          selectedAddress.phone === order.customerPhone) {
+        message.info('Thông tin giao hàng này đã được sử dụng cho đơn hàng này!');
         setShowAddressModal(false);
         setSelectedAddressId(null);
         return;
       }
 
-      await updateOrder(id, { shippingAddress: fullAddress });
-      message.success('Đã cập nhật địa chỉ giao hàng!');
+      // Debug: Log thông tin trước khi cập nhật
+      console.log('🔄 Updating order with new address info:', {
+        orderId: id,
+        oldInfo: {
+          name: order.customerName,
+          phone: order.customerPhone,
+          address: order.shippingAddress
+        },
+        newInfo: {
+          name: selectedAddress.recipientName,
+          phone: selectedAddress.phone,
+          address: fullAddress
+        }
+      });
+
+      // Cập nhật cả địa chỉ, tên và số điện thoại
+      const updateResponse = await updateOrder(id, { 
+        shippingAddress: fullAddress,
+        customerName: selectedAddress.recipientName,
+        customerPhone: selectedAddress.phone
+      });
+      
+      console.log('✅ Update response:', updateResponse);
+      
+      message.success('Đã cập nhật thông tin giao hàng thành công!');
+      
+      // Thông báo chi tiết về thông tin đã cập nhật
+      notification.info({
+        message: 'Thông tin giao hàng đã được cập nhật',
+        description: `Tên: ${selectedAddress.recipientName} | SĐT: ${selectedAddress.phone} | Địa chỉ: ${fullAddress}`,
+        duration: 3
+      });
+      
       setShowAddressModal(false);
       setSelectedAddressId(null);
-      fetchOrderDetail();
+      
+      // Force refresh với delay để đảm bảo backend đã cập nhật
+      setTimeout(() => {
+        console.log('🔄 Force refreshing order details...');
+        fetchOrderDetail();
+        // Force re-render
+        setRefreshKey(prev => prev + 1);
+      }, 500);
     } catch (err) {
       message.error(err.response?.data?.message || 'Không thể cập nhật địa chỉ.');
     }
@@ -202,9 +253,26 @@ const OrderDetail = () => {
       // Refresh danh sách địa chỉ
       await fetchUserAddresses();
       
-      // Nếu là địa chỉ đầu tiên, tự động chọn
+      // Nếu là địa chỉ đầu tiên, tự động chọn và cập nhật đơn hàng
       if (isFirstAddress && newAddress) {
         setSelectedAddressId(newAddress._id);
+        
+        // Tự động cập nhật đơn hàng với địa chỉ mới
+        const fullAddress = `${newAddress.street}, ${newAddress.ward}, ${newAddress.district}, ${newAddress.province}`;
+        await updateOrder(id, { 
+          shippingAddress: fullAddress,
+          customerName: newAddress.recipientName,
+          customerPhone: newAddress.phone
+        });
+        
+        // Refresh thông tin đơn hàng
+        fetchOrderDetail();
+        
+        notification.info({
+          message: 'Đã tự động cập nhật thông tin giao hàng',
+          description: `Tên: ${newAddress.recipientName} | SĐT: ${newAddress.phone}`,
+          duration: 3
+        });
       }
     } catch (error) {
       message.error(error.response?.data?.message || 'Không thể thêm địa chỉ mới');
@@ -257,7 +325,7 @@ const OrderDetail = () => {
   const discount = subtotal - order.totalAmount;
 
   return (
-    <div className="order-detail-container">
+    <div className="order-detail-container" key={refreshKey}>
       {/* Toast */}
       <div className="position-fixed" style={{ top: '4rem', right: '1rem', zIndex: 1060 }}>
         {toast.show && (
@@ -371,12 +439,7 @@ const OrderDetail = () => {
                   style={{ marginRight: '8px' }}
                 >
                   Chọn địa chỉ có sẵn
-                {/* </Button>
-                                 <Button 
-                   onClick={() => setShowNewAddressForm(true)}
-                 > */}
-                   {/* Thêm địa chỉ mới */}
-                 </Button>
+                </Button>
               </div>
             )}
           </div>

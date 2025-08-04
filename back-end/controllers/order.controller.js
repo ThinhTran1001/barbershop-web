@@ -531,7 +531,7 @@ exports.getSingleOrder = async (req, res) => {
 exports.updateOrder = async (req, res) => {
   try {
     const orderId = req.params.id;
-    const { status, shippingAddress } = req.body;
+    const { status, shippingAddress, customerName, customerPhone } = req.body;
     const user = req.user;
 
     const order = await Order.findById(orderId);
@@ -568,6 +568,13 @@ exports.updateOrder = async (req, res) => {
       } else if (order.status === 'pending') {
         if (shippingAddress && !order.addressChanged) {
           order.shippingAddress = shippingAddress;
+          // Cập nhật cả tên và số điện thoại nếu có
+          if (customerName) {
+            order.customerName = customerName;
+          }
+          if (customerPhone) {
+            order.customerPhone = customerPhone;
+          }
           order.addressChanged = true;
         } else if (shippingAddress && order.addressChanged) {
           return res.status(400).json({ success: false, message: 'Bạn chỉ được đổi địa chỉ 1 lần khi đơn hàng đang chờ xử lý.' });
@@ -580,6 +587,17 @@ exports.updateOrder = async (req, res) => {
     // === ADMIN ===
     else if (user.role === 'admin') {
       const allowedStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
+
+      // Admin có thể cập nhật địa chỉ, tên và số điện thoại
+      if (shippingAddress) {
+        order.shippingAddress = shippingAddress;
+        if (customerName) {
+          order.customerName = customerName;
+        }
+        if (customerPhone) {
+          order.customerPhone = customerPhone;
+        }
+      }
 
       if (status) {
         if (!allowedStatuses.includes(status)) {
@@ -654,6 +672,21 @@ exports.updateOrder = async (req, res) => {
     else {
       return res.status(403).json({ success: false, message: 'Không có quyền cập nhật đơn hàng' });
     }
+
+    // Debug log
+    console.log('🔄 Updating order:', {
+      orderId,
+      oldInfo: {
+        customerName: order.customerName,
+        customerPhone: order.customerPhone,
+        shippingAddress: order.shippingAddress
+      },
+      newInfo: {
+        customerName,
+        customerPhone,
+        shippingAddress
+      }
+    });
 
     order.updatedAt = new Date();
     await order.save();
@@ -893,5 +926,79 @@ exports.finalizeOrderGuest = async (req, res) => {
   } catch (err) {
     console.error("Finalize Guest Error:", err);
     res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.preCheckoutStockValidation = async (req, res) => {
+  try {
+    const { items } = req.body;
+    
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Danh sách sản phẩm không hợp lệ'
+      });
+    }
+
+    const validationResults = [];
+    let hasOutOfStockItems = false;
+    let hasInsufficientStockItems = false;
+
+    for (const item of items) {
+      const product = await Product.findById(item.productId);
+      
+      if (!product) {
+        validationResults.push({
+          productId: item.productId,
+          productName: item.name || 'Sản phẩm không xác định',
+          requestedQuantity: item.quantity,
+          currentStock: 0,
+          valid: false,
+          error: 'Sản phẩm không tồn tại'
+        });
+        hasOutOfStockItems = true;
+        continue;
+      }
+
+      const isValid = product.stock >= item.quantity;
+      const isOutOfStock = product.stock <= 0;
+      const isInsufficientStock = product.stock < item.quantity;
+
+      if (isOutOfStock) {
+        hasOutOfStockItems = true;
+      } else if (isInsufficientStock) {
+        hasInsufficientStockItems = true;
+      }
+
+      validationResults.push({
+        productId: item.productId,
+        productName: product.name,
+        requestedQuantity: item.quantity,
+        currentStock: product.stock,
+        valid: isValid,
+        error: isOutOfStock ? 'Sản phẩm đã hết hàng' : 
+               isInsufficientStock ? `Chỉ còn ${product.stock} sản phẩm trong kho` : null
+      });
+    }
+
+    const canProceedToCheckout = !hasOutOfStockItems && !hasInsufficientStockItems;
+
+    return res.status(200).json({
+      success: true,
+      canProceedToCheckout,
+      hasOutOfStockItems,
+      hasInsufficientStockItems,
+      validationResults,
+      message: canProceedToCheckout ? 
+        'Tất cả sản phẩm đều có đủ hàng' : 
+        'Có sản phẩm hết hàng hoặc không đủ số lượng'
+    });
+
+  } catch (error) {
+    console.error('Lỗi kiểm tra tồn kho trước checkout:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Lỗi server khi kiểm tra tồn kho'
+    });
   }
 };
