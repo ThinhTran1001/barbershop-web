@@ -843,13 +843,16 @@ exports.autoAssignBarberForSlot = async (req, res) => {
       });
     }
 
-    // Get all available barbers eligible for auto-assignment
+    // FORCE FRESH DATA: Get all available barbers eligible for auto-assignment
     const barbers = await Barber.find({
       isAvailable: true,
       autoAssignmentEligible: true
     })
       .populate('userId', 'name email profileImageUrl')
-      .select('userId specialties experienceYears averageRating totalBookings profileImageUrl autoAssignmentEligible maxDailyBookings');
+      .select('userId specialties experienceYears averageRating totalBookings profileImageUrl autoAssignmentEligible maxDailyBookings')
+      .lean();
+
+
 
     console.log(`🔍 Found ${barbers.length} barbers eligible for auto-assignment:`,
       barbers.map(b => b.userId?.name));
@@ -875,15 +878,10 @@ exports.autoAssignBarberForSlot = async (req, res) => {
     const currentMonthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59, 999);
 
     for (const barber of barbers) {
-      console.log(`\n🔍 Checking barber: ${barber.userId?.name}`);
-
       // Check if barber is absent on this date
       const bookingDateObj = new Date(`${date}T${timeSlot}:00.000Z`);
       const isAbsent = await BarberAbsence.isBarberAbsent(barber._id, bookingDateObj);
-      if (isAbsent) {
-        console.log(`❌ ${barber.userId?.name}: Absent on this date`);
-        continue;
-      }
+      if (isAbsent) continue;
 
       // Check if barber has a schedule for this date
       const schedule = await BarberSchedule.findOne({
@@ -981,7 +979,7 @@ exports.autoAssignBarberForSlot = async (req, res) => {
 
       console.log(`✅ ${barber.userId?.name}: Eligible for auto-assignment`);
 
-      eligibleBarbers.push({
+      const barberData = {
         _id: barber._id,
         name: barber.userId?.name || 'Unknown',
         email: barber.userId?.email,
@@ -997,7 +995,21 @@ exports.autoAssignBarberForSlot = async (req, res) => {
         workloadScore,
         ratingScore,
         experienceScore
+      };
+
+      // CRITICAL: Calculate REAL-TIME total bookings instead of using stored value
+      const realTimeTotalBookings = await Booking.countDocuments({
+        barberId: barber._id,
+        status: { $in: ['pending', 'confirmed', 'completed'] }
       });
+
+      // Update barberData with real-time count
+      barberData.totalBookings = realTimeTotalBookings;
+      barberData.storedTotalBookings = barber.totalBookings || 0; // Keep original for comparison
+
+
+
+      eligibleBarbers.push(barberData);
     }
 
     if (eligibleBarbers.length === 0) {
@@ -1007,69 +1019,101 @@ exports.autoAssignBarberForSlot = async (req, res) => {
       });
     }
 
-    // NEW LOGIC: Check if monthly bookings are equal or different
-    const monthlyBookingCounts = eligibleBarbers.map(b => b.monthlyBookings);
-    const minMonthlyBookings = Math.min(...monthlyBookingCounts);
-    const maxMonthlyBookings = Math.max(...monthlyBookingCounts);
-    const hasEqualMonthlyBookings = minMonthlyBookings === maxMonthlyBookings;
+    // NEW LOGIC: Check if total bookings are equal or different
+    const totalBookingCounts = eligibleBarbers.map(b => b.totalBookings);
+    const minTotalBookings = Math.min(...totalBookingCounts);
+    const maxTotalBookings = Math.max(...totalBookingCounts);
+    const hasEqualTotalBookings = minTotalBookings === maxTotalBookings;
 
-    console.log('📊 Monthly Booking Analysis:', {
+    console.log('📊 [AUTO-ASSIGN] Total Booking Analysis (REAL-TIME):', {
       eligibleBarbers: eligibleBarbers.map(b => ({
         name: b.name,
-        monthlyBookings: b.monthlyBookings,
-        availabilityScore: b.availabilityScore
+        storedTotalBookings: b.storedTotalBookings,
+        realTimeTotalBookings: b.totalBookings,
+        availabilityScore: b.availabilityScore.toFixed(3),
+        dataConsistent: b.storedTotalBookings === b.totalBookings
       })),
-      monthlyBookingCounts,
-      minMonthlyBookings,
-      maxMonthlyBookings,
-      hasEqualMonthlyBookings
+      totalBookingCounts,
+      minTotalBookings,
+      maxTotalBookings,
+      hasEqualTotalBookings,
+      logicPath: hasEqualTotalBookings ? 'EQUAL_BOOKINGS' : 'DIFFERENT_BOOKINGS',
+      usingRealTimeData: true
     });
+
+    // CRITICAL DEBUG: Verify the logic path
+    if (hasEqualTotalBookings) {
+      console.log(`🎯 [AUTO-ASSIGN] LOGIC PATH: Equal bookings (${minTotalBookings}) - will use scoring algorithm`);
+    } else {
+      console.log(`🎯 [AUTO-ASSIGN] LOGIC PATH: Different bookings (min: ${minTotalBookings}, max: ${maxTotalBookings}) - will prioritize minimum`);
+    }
 
     let selectedBarber;
 
-    if (hasEqualMonthlyBookings) {
-      if (minMonthlyBookings === 0) {
-        // All barbers have 0 bookings -> use round-robin based on barber ID to ensure fairness
-        console.log('📊 All barbers have 0 monthly bookings, using round-robin selection');
-        eligibleBarbers.sort((a, b) => a._id.toString().localeCompare(b._id.toString()));
+    if (hasEqualTotalBookings) {
+      // All barbers have equal total bookings -> use original scoring algorithm (rating, experience, availability)
+      console.log(`📊 All barbers have equal total bookings (${minTotalBookings} each), using original scoring algorithm`);
+      console.log('📊 Scoring criteria: 40% rating + 30% workload + 20% experience + 10% total bookings');
 
-        // Simple round-robin: use current hour to determine selection
-        const currentHour = new Date().getHours();
-        const selectedIndex = currentHour % eligibleBarbers.length;
-        selectedBarber = eligibleBarbers[selectedIndex];
-        console.log(`✅ Selected by round-robin (hour ${currentHour} % ${eligibleBarbers.length}): ${selectedBarber.name}`);
-      } else {
-        // All barbers have equal monthly bookings (> 0) -> use original scoring algorithm
-        console.log(`📊 All barbers have equal monthly bookings (${minMonthlyBookings} each), using original scoring algorithm`);
-        eligibleBarbers.sort((a, b) => b.availabilityScore - a.availabilityScore);
-        selectedBarber = eligibleBarbers[0];
-        console.log(`✅ Selected by scoring: ${selectedBarber.name} (score: ${selectedBarber.availabilityScore})`);
-      }
+      eligibleBarbers.sort((a, b) => b.availabilityScore - a.availabilityScore);
+      selectedBarber = eligibleBarbers[0];
+
+      console.log('📊 Top 3 barbers by score:',
+        eligibleBarbers.slice(0, 3).map(b => ({
+          name: b.name,
+          score: b.availabilityScore.toFixed(3),
+          rating: b.averageRating,
+          experience: b.experienceYears,
+          totalBookings: b.totalBookings
+        }))
+      );
+
+      console.log(`✅ Selected by scoring: ${selectedBarber.name} (score: ${selectedBarber.availabilityScore.toFixed(3)})`);
     } else {
-      // Different monthly bookings -> prioritize barbers with fewer monthly bookings
-      console.log('📊 Different monthly bookings detected, prioritizing barbers with fewer bookings');
-      console.log(`🎯 Minimum monthly bookings: ${minMonthlyBookings}`);
+      // Different total bookings -> prioritize barbers with fewer total bookings
+      console.log('📊 Different total bookings detected, prioritizing barbers with fewer total bookings');
+      console.log(`🎯 Minimum total bookings: ${minTotalBookings}`);
 
-      // Filter barbers with minimum monthly bookings
-      const barbersWithMinBookings = eligibleBarbers.filter(b => b.monthlyBookings === minMonthlyBookings);
+      // Filter barbers with minimum total bookings
+      console.log(`🔍 [AUTO-ASSIGN] Filtering barbers with totalBookings === ${minTotalBookings}:`);
 
-      console.log('🔍 Barbers with minimum bookings:', barbersWithMinBookings.map(b => ({
-        name: b.name,
-        monthlyBookings: b.monthlyBookings,
-        availabilityScore: b.availabilityScore
-      })));
+      const barbersWithMinBookings = eligibleBarbers.filter(b => {
+        const matches = b.totalBookings === minTotalBookings;
+        console.log(`  - ${b.name}: totalBookings=${b.totalBookings}, matches=${matches}`);
+        return matches;
+      });
+
+      console.log(`🔍 [AUTO-ASSIGN] Found ${barbersWithMinBookings.length} barbers with minimum total bookings:`,
+        barbersWithMinBookings.map(b => ({
+          name: b.name,
+          totalBookings: b.totalBookings,
+          availabilityScore: b.availabilityScore.toFixed(3)
+        }))
+      );
 
       if (barbersWithMinBookings.length === 1) {
-        // Only one barber with minimum bookings
+        // Only one barber with minimum total bookings
         selectedBarber = barbersWithMinBookings[0];
-        console.log(`✅ Selected (only one with min bookings): ${selectedBarber.name}`);
+        console.log(`✅ Selected (only one with min total bookings): ${selectedBarber.name} (${selectedBarber.totalBookings} bookings)`);
       } else {
-        // Multiple barbers with same minimum bookings -> use original scoring among them
+        // Multiple barbers with same minimum total bookings -> use original scoring among them
+        console.log(`📊 Multiple barbers (${barbersWithMinBookings.length}) with minimum total bookings, using scoring among them`);
         barbersWithMinBookings.sort((a, b) => b.availabilityScore - a.availabilityScore);
         selectedBarber = barbersWithMinBookings[0];
-        console.log(`✅ Selected by scoring among min booking barbers: ${selectedBarber.name} (score: ${selectedBarber.availabilityScore})`);
+
+        console.log('📊 Top candidates from minimum booking group:',
+          barbersWithMinBookings.slice(0, 3).map(b => ({
+            name: b.name,
+            totalBookings: b.totalBookings,
+            score: b.availabilityScore.toFixed(3)
+          }))
+        );
+
+        console.log(`✅ Selected by scoring among min booking barbers: ${selectedBarber.name} (score: ${selectedBarber.availabilityScore.toFixed(3)})`);
       }
     }
+
+
 
     res.json({
       success: true,
@@ -1087,11 +1131,11 @@ exports.autoAssignBarberForSlot = async (req, res) => {
         date,
         timeSlot,
         availabilityScore: selectedBarber.availabilityScore,
-        monthlyBookings: selectedBarber.monthlyBookings,
-        hasEqualMonthlyBookings: hasEqualMonthlyBookings,
-        reason: hasEqualMonthlyBookings
-          ? 'Auto-assigned based on rating, availability, and workload distribution (equal monthly bookings)'
-          : `Auto-assigned based on monthly booking distribution (${selectedBarber.monthlyBookings} bookings this month)`
+        totalBookings: selectedBarber.totalBookings,
+        hasEqualTotalBookings: hasEqualTotalBookings,
+        reason: hasEqualTotalBookings
+          ? 'Auto-assigned based on rating, experience, and availability (equal total bookings)'
+          : `Auto-assigned based on total booking distribution (${selectedBarber.totalBookings} total bookings)`
       },
       alternativeBarbers: eligibleBarbers
         .filter(b => b._id !== selectedBarber._id)
@@ -1101,7 +1145,7 @@ exports.autoAssignBarberForSlot = async (req, res) => {
           name: barber.name,
           averageRating: barber.averageRating,
           availabilityScore: barber.availabilityScore,
-          monthlyBookings: barber.monthlyBookings
+          totalBookings: barber.totalBookings
         })),
       message: `Successfully assigned ${selectedBarber.name} for ${date} at ${timeSlot}`
     });
@@ -1201,8 +1245,8 @@ exports.testAutoAssign = async (req, res) => {
       });
     }
 
-    console.log(`\n🧪 TESTING AUTO-ASSIGN for ${date} at ${timeSlot}`);
-    console.log('='.repeat(60));
+    console.log(`\n🧪 TESTING AUTO-ASSIGN (Total Bookings Logic) for ${date} at ${timeSlot}`);
+    console.log('='.repeat(70));
 
     // Call the auto-assign function
     const result = await exports.autoAssignBarberForSlot({
@@ -1214,7 +1258,7 @@ exports.testAutoAssign = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Test completed, check console logs',
+      message: 'Test completed, check console logs for total booking distribution',
       result
     });
 
@@ -1644,6 +1688,299 @@ exports.fixScheduleRecord = async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to fix schedule record'
+    });
+  }
+};
+
+// Debug endpoint to check barber totalBookings vs actual booking count
+exports.debugTotalBookings = async (req, res) => {
+  try {
+    const Booking = require('../models/booking.model');
+
+    // Get all barbers with their totalBookings
+    const barbers = await Barber.find({ isAvailable: true })
+      .populate('userId', 'name')
+      .select('userId totalBookings');
+
+    const results = [];
+
+    for (const barber of barbers) {
+      // Count actual bookings in database
+      const actualBookingCount = await Booking.countDocuments({
+        barberId: barber._id,
+        status: { $in: ['pending', 'confirmed', 'completed'] }
+      });
+
+      // Get recent bookings for verification
+      const recentBookings = await Booking.find({
+        barberId: barber._id,
+        status: { $in: ['pending', 'confirmed', 'completed'] }
+      })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select('bookingDate status createdAt');
+
+      const discrepancy = (barber.totalBookings || 0) !== actualBookingCount;
+
+      results.push({
+        barberId: barber._id,
+        name: barber.userId?.name || 'Unknown',
+        storedTotalBookings: barber.totalBookings || 0,
+        actualBookingCount,
+        discrepancy,
+        recentBookings: recentBookings.map(b => ({
+          date: b.bookingDate,
+          status: b.status,
+          createdAt: b.createdAt
+        }))
+      });
+    }
+
+    // Summary
+    const totalDiscrepancies = results.filter(r => r.discrepancy).length;
+
+    res.json({
+      success: true,
+      summary: {
+        totalBarbers: results.length,
+        barbersWithDiscrepancies: totalDiscrepancies,
+        allDataConsistent: totalDiscrepancies === 0
+      },
+      barbers: results,
+      message: totalDiscrepancies === 0
+        ? 'All barber totalBookings are consistent with actual booking counts'
+        : `Found ${totalDiscrepancies} barber(s) with inconsistent totalBookings`
+    });
+
+  } catch (error) {
+    console.error('Error debugging total bookings:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to debug total bookings'
+    });
+  }
+};
+
+// Fix inconsistent totalBookings by recalculating from actual bookings
+exports.fixTotalBookings = async (req, res) => {
+  try {
+    const Booking = require('../models/booking.model');
+
+    // Get all barbers
+    const barbers = await Barber.find({ isAvailable: true })
+      .populate('userId', 'name')
+      .select('userId totalBookings');
+
+    const results = [];
+
+    for (const barber of barbers) {
+      // Count actual bookings in database
+      const actualBookingCount = await Booking.countDocuments({
+        barberId: barber._id,
+        status: { $in: ['pending', 'confirmed', 'completed'] }
+      });
+
+      const oldTotalBookings = barber.totalBookings || 0;
+      const needsUpdate = oldTotalBookings !== actualBookingCount;
+
+      if (needsUpdate) {
+        // Update the barber's totalBookings to match actual count
+        await Barber.findByIdAndUpdate(barber._id, {
+          totalBookings: actualBookingCount
+        });
+
+        console.log(`✅ Fixed totalBookings for ${barber.userId?.name}: ${oldTotalBookings} → ${actualBookingCount}`);
+      }
+
+      results.push({
+        barberId: barber._id,
+        name: barber.userId?.name || 'Unknown',
+        oldTotalBookings,
+        newTotalBookings: actualBookingCount,
+        wasUpdated: needsUpdate
+      });
+    }
+
+    const updatedCount = results.filter(r => r.wasUpdated).length;
+
+    res.json({
+      success: true,
+      summary: {
+        totalBarbers: results.length,
+        barbersUpdated: updatedCount,
+        allFixed: true
+      },
+      barbers: results,
+      message: updatedCount === 0
+        ? 'All barber totalBookings were already consistent'
+        : `Fixed totalBookings for ${updatedCount} barber(s)`
+    });
+
+  } catch (error) {
+    console.error('Error fixing total bookings:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to fix total bookings'
+    });
+  }
+};
+
+// Quick test endpoint to check current barber totalBookings
+exports.quickCheckTotalBookings = async (req, res) => {
+  try {
+    const barbers = await Barber.find({ isAvailable: true })
+      .populate('userId', 'name')
+      .select('userId totalBookings averageRating experienceYears')
+      .sort({ totalBookings: 1 });
+
+    const results = barbers.map(b => ({
+      id: b._id,
+      name: b.userId?.name || 'Unknown',
+      totalBookings: b.totalBookings || 0,
+      averageRating: b.averageRating || 0,
+      experienceYears: b.experienceYears || 0
+    }));
+
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      barbers: results,
+      message: `Found ${results.length} available barbers`
+    });
+
+  } catch (error) {
+    console.error('Error checking total bookings:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to check total bookings'
+    });
+  }
+};
+
+// Test auto-assign with real-time data verification
+exports.testAutoAssignWithVerification = async (req, res) => {
+  try {
+    const { date, timeSlot } = req.body;
+
+    if (!date || !timeSlot) {
+      return res.status(400).json({
+        success: false,
+        message: 'Date and timeSlot are required'
+      });
+    }
+
+    console.log(`\n🧪 [VERIFICATION TEST] Testing auto-assign for ${date} at ${timeSlot}`);
+    console.log('='.repeat(80));
+
+    // Step 1: Check current totalBookings
+    const Booking = require('../models/booking.model');
+    const barbers = await Barber.find({ isAvailable: true, autoAssignmentEligible: true })
+      .populate('userId', 'name')
+      .select('userId totalBookings')
+      .lean();
+
+    console.log('📊 [VERIFICATION] Current barber totalBookings from database:');
+    for (const barber of barbers) {
+      const actualCount = await Booking.countDocuments({
+        barberId: barber._id,
+        status: { $in: ['pending', 'confirmed', 'completed'] }
+      });
+
+      console.log(`  - ${barber.userId?.name}: stored=${barber.totalBookings || 0}, actual=${actualCount}, consistent=${(barber.totalBookings || 0) === actualCount}`);
+    }
+
+    // Step 2: Call auto-assign
+    console.log('\n🎯 [VERIFICATION] Calling auto-assign...');
+    const result = await exports.autoAssignBarberForSlot({
+      body: { date, timeSlot, serviceId: null }
+    }, {
+      json: (data) => data,
+      status: (code) => ({ json: (data) => ({ ...data, statusCode: code }) })
+    });
+
+    console.log('\n✅ [VERIFICATION] Auto-assign completed');
+    console.log('='.repeat(80));
+
+    res.json({
+      success: true,
+      message: 'Verification test completed - check console logs for detailed analysis',
+      result,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Error in verification test:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to run verification test'
+    });
+  }
+};
+
+// Test real-time booking count calculation
+exports.testRealTimeBookingCount = async (req, res) => {
+  try {
+    const Booking = require('../models/booking.model');
+
+    // Get all barbers
+    const barbers = await Barber.find({ isAvailable: true, autoAssignmentEligible: true })
+      .populate('userId', 'name')
+      .select('userId totalBookings')
+      .lean();
+
+    const results = [];
+
+    for (const barber of barbers) {
+      // Calculate real-time total bookings
+      const realTimeTotalBookings = await Booking.countDocuments({
+        barberId: barber._id,
+        status: { $in: ['pending', 'confirmed', 'completed'] }
+      });
+
+      // Get recent bookings for verification
+      const recentBookings = await Booking.find({
+        barberId: barber._id,
+        status: { $in: ['pending', 'confirmed', 'completed'] }
+      })
+      .sort({ createdAt: -1 })
+      .limit(3)
+      .select('bookingDate status createdAt');
+
+      results.push({
+        barberId: barber._id,
+        name: barber.userId?.name || 'Unknown',
+        storedTotalBookings: barber.totalBookings || 0,
+        realTimeTotalBookings,
+        difference: realTimeTotalBookings - (barber.totalBookings || 0),
+        recentBookings: recentBookings.map(b => ({
+          date: b.bookingDate,
+          status: b.status,
+          createdAt: b.createdAt
+        }))
+      });
+    }
+
+    // Sort by real-time total bookings
+    results.sort((a, b) => a.realTimeTotalBookings - b.realTimeTotalBookings);
+
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      summary: {
+        totalBarbers: results.length,
+        minRealTimeBookings: Math.min(...results.map(r => r.realTimeTotalBookings)),
+        maxRealTimeBookings: Math.max(...results.map(r => r.realTimeTotalBookings)),
+        barbersWithInconsistentData: results.filter(r => r.difference !== 0).length
+      },
+      barbers: results,
+      message: 'Real-time booking count calculation completed'
+    });
+
+  } catch (error) {
+    console.error('Error testing real-time booking count:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to test real-time booking count'
     });
   }
 };

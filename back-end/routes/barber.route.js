@@ -16,7 +16,12 @@ router.get('/available-for-customers', barberController.getAvailableBarbersForCu
 router.get('/available', authenticate, barberController.getAvailableBarbers);
 router.post('/auto-assign-for-slot', barberController.autoAssignBarberForSlot);
 router.get('/debug-monthly-bookings', barberController.debugMonthlyBookings);
+router.get('/debug-total-bookings', barberController.debugTotalBookings);
+router.get('/quick-check-total-bookings', barberController.quickCheckTotalBookings);
+router.post('/fix-total-bookings', barberController.fixTotalBookings);
 router.post('/test-auto-assign', barberController.testAutoAssign);
+router.post('/test-auto-assign-verification', barberController.testAutoAssignWithVerification);
+router.get('/test-realtime-booking-count', barberController.testRealTimeBookingCount);
 router.get('/test-absence-logic', barberController.testAbsenceLogic);
 router.get('/debug-absence-issues', barberController.debugAbsenceIssues);
 router.get('/debug-barber-availability', barberController.debugBarberAvailability);

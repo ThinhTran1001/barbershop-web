@@ -8,6 +8,9 @@ const {
   checkBookingUpdatePermission
 } = require('../middlewares/booking.middleware');
 
+// Test endpoints (must come before parameterized routes)
+router.post('/test/booking-flow-auto-assign', bookingController.testBookingFlowAutoAssign);
+
 // Booking CRUD operations
 router.post('/', authenticate, bookingController.createBooking);
 // IMPORTANT: Specific routes must come before parameterized routes
@@ -42,5 +45,7 @@ router.get('/:bookingId/completion-eligibility', authenticate, bookingController
 // Booking conflict checking
 router.post('/check-availability', authenticate, bookingController.checkAvailability);
 router.get('/conflicts', authenticate, bookingController.getBookingConflicts);
+
+
 
 module.exports = router;
