@@ -33,6 +33,7 @@ const barberRoute = require('./routes/barber.route');
 const noShowRoutes = require('./routes/no-show.routes');
 const paymentRoutes = require('./routes/payment.route');
 const addressRoutes = require('./routes/address.route');
+const testRoutes = require('./routes/test.route');
 
 const cors = require('cors');
 const cookieParser = require("cookie-parser");
@@ -93,6 +94,7 @@ app.use('/api/barbers', barberRoute);
 app.use('/api/no-shows', noShowRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/addresses', addressRoutes);
+app.use('/api/test', testRoutes);
 
 const PORT = process.env.PORT || 3000;
 initSocket(server); 

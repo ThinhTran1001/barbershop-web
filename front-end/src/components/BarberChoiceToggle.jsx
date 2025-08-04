@@ -88,7 +88,7 @@ const BarberChoiceToggle = ({
                   • All available time slots across all barbers will be shown
                 </Text>
                 <Text>
-                  • Assignment is based on barber ratings, experience, and availability
+                  • Priority: Barbers with fewer total bookings first, then by ratings & experience
                 </Text>
               </Space>
             }

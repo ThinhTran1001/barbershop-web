@@ -56,8 +56,8 @@ const BarberAbsenceRequest = ({ onRequestSubmitted }) => {
 
     try {
       const requestData = {
-        startDate: values.dateRange[0].toISOString(),
-        endDate: values.dateRange[1].toISOString(),
+        startDate: values.dateRange[0].format('YYYY-MM-DD'),
+        endDate: values.dateRange[1].format('YYYY-MM-DD'),
         reason: values.reason,
         description: values.description
       };

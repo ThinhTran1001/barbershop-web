@@ -203,6 +203,17 @@ exports.createBooking = async (req, res) => {
 
     await booking.save();
 
+    // CRITICAL: Update barber's totalBookings count
+    try {
+      await Barber.findByIdAndUpdate(barberId, {
+        $inc: { totalBookings: 1 }
+      });
+      console.log(`✅ Updated totalBookings for barber ${barberId}`);
+    } catch (updateError) {
+      console.error('Error updating barber totalBookings:', updateError);
+      // Don't fail the booking creation if this update fails, but log it
+    }
+
     // CRITICAL: Mark time slots as booked in the barber schedule
     const BarberSchedule = require('../models/barber-schedule.model');
     const bookingStartTime = new Date(bookingDate);
@@ -228,11 +239,6 @@ exports.createBooking = async (req, res) => {
         errorCode: 'SCHEDULE_UPDATE_FAILED'
       });
     }
-
-    // Update barber's total bookings count
-    await Barber.findByIdAndUpdate(barberId, {
-      $inc: { totalBookings: 1 }
-    });
 
     // Populate the response
     const populatedBooking = await Booking.findById(booking._id)
@@ -275,7 +281,8 @@ exports.createBookingSinglePage = async (req, res) => {
       customerName,
       customerEmail,
       customerPhone,
-      autoAssignBarber = false // Flag to indicate auto-assignment preference
+      autoAssignBarber = false, // Flag to indicate auto-assignment preference
+      isAutoAssign = false // Alternative parameter name from frontend
     } = req.body;
 
     const customerId = req.userId;
@@ -337,98 +344,61 @@ exports.createBookingSinglePage = async (req, res) => {
     let isAutoAssigned = false;
 
     // Handle auto-assignment logic
-    if (!barberId || barberId === 'random' || barberId === 'auto' || autoAssignBarber) {
+    const shouldAutoAssign = !barberId || barberId === 'random' || barberId === 'auto' || autoAssignBarber || isAutoAssign;
+
+    console.log(`🔍 [BOOKING] Auto-assign check:`, {
+      barberId,
+      autoAssignBarber,
+      isAutoAssign,
+      condition1: !barberId,
+      condition2: barberId === 'random',
+      condition3: barberId === 'auto',
+      condition4: autoAssignBarber,
+      condition5: isAutoAssign,
+      shouldAutoAssign
+    });
+
+    if (shouldAutoAssign) {
       try {
-        // Use the auto-assignment logic from our new endpoint
-        const Barber = require('../models/barber.model');
-        const BarberSchedule = require('../models/barber-schedule.model');
-        const BarberAbsence = require('../models/barber-absence.model');
+        console.log(`🎯 [BOOKING] Auto-assignment triggered for ${date} at ${timeSlot}`);
 
-        // Get all available barbers eligible for auto-assignment
-        const barbers = await Barber.find({
-          isAvailable: true,
-          autoAssignmentEligible: true
-        }).select('userId specialties experienceYears averageRating totalBookings maxDailyBookings');
 
-        if (barbers.length === 0) {
+        // Use the NEW auto-assignment logic (same as autoAssignBarberForSlot)
+        const barberController = require('./barber.controller');
+
+        // Create a mock request/response to call the auto-assign function
+        const mockReq = {
+          body: { date, timeSlot, serviceId }
+        };
+
+        let autoAssignResult = null;
+        const mockRes = {
+          json: (data) => {
+            autoAssignResult = data;
+            return data;
+          },
+          status: (code) => ({
+            json: (data) => {
+              autoAssignResult = { ...data, statusCode: code };
+              return autoAssignResult;
+            }
+          })
+        };
+
+        // Call the auto-assign function
+        await barberController.autoAssignBarberForSlot(mockReq, mockRes);
+
+        if (autoAssignResult && autoAssignResult.success && autoAssignResult.assignedBarber) {
+          finalBarberId = autoAssignResult.assignedBarber._id;
+          isAutoAssigned = true;
+        } else {
+          console.error('❌ [BOOKING] Auto-assignment failed:', autoAssignResult);
           return res.status(404).json({
             success: false,
-            message: 'No barbers available for auto-assignment',
-            errorCode: 'NO_BARBERS_AVAILABLE'
+            message: autoAssignResult?.message || 'No barbers available for auto-assignment',
+            errorCode: 'AUTO_ASSIGNMENT_FAILED'
           });
         }
-
-        // Filter and score barbers (simplified version of the auto-assignment logic)
-        const eligibleBarbers = [];
-
-        for (const barber of barbers) {
-          // Check if barber is absent
-          const isAbsent = await BarberAbsence.isBarberAbsent(barber._id, requestedDateTime);
-          if (isAbsent) continue;
-
-          // Check schedule availability
-          const schedule = await BarberSchedule.findOne({
-            barberId: barber._id,
-            date: date
-          });
-
-          if (schedule && schedule.isOffDay) continue;
-
-          if (schedule) {
-            const slot = schedule.availableSlots?.find(slot => slot.time === timeSlot);
-            if (slot && slot.isBooked) continue;
-          }
-
-          // Check for existing bookings
-          const existingBooking = await Booking.findOne({
-            barberId: barber._id,
-            bookingDate: {
-              $gte: new Date(`${date}T${timeSlot}:00.000Z`),
-              $lt: new Date(`${date}T${timeSlot}:30.000Z`)
-            },
-            status: { $in: ['pending', 'confirmed'] }
-          });
-
-          if (existingBooking) continue;
-
-          // Check daily booking limit
-          const dailyBookings = await Booking.countDocuments({
-            barberId: barber._id,
-            bookingDate: {
-              $gte: new Date(date + 'T00:00:00.000Z'),
-              $lt: new Date(date + 'T23:59:59.999Z')
-            },
-            status: { $in: ['pending', 'confirmed'] }
-          });
-
-          if (dailyBookings >= (barber.maxDailyBookings || 10)) continue;
-
-          // Calculate score
-          const maxDailyBookings = barber.maxDailyBookings || 10;
-          const workloadScore = (maxDailyBookings - dailyBookings) / maxDailyBookings;
-          const ratingScore = (barber.averageRating || 0) / 5;
-          const experienceScore = Math.min((barber.experienceYears || 0) / 10, 1);
-          const totalBookingsScore = Math.max(0, 1 - ((barber.totalBookings || 0) / 1000));
-          const finalScore = (ratingScore * 0.4) + (workloadScore * 0.3) + (experienceScore * 0.2) + (totalBookingsScore * 0.1);
-
-          eligibleBarbers.push({
-            barber,
-            score: finalScore
-          });
-        }
-
-        if (eligibleBarbers.length === 0) {
-          return res.status(404).json({
-            success: false,
-            message: `No barbers available for ${date} at ${timeSlot}`,
-            errorCode: 'NO_BARBERS_AVAILABLE_FOR_SLOT'
-          });
-        }
-
-        // Sort by score and select the best
-        eligibleBarbers.sort((a, b) => b.score - a.score);
-        finalBarberId = eligibleBarbers[0].barber._id;
-        isAutoAssigned = true;
 
       } catch (autoAssignError) {
         console.error('Error in auto-assignment:', autoAssignError);
@@ -569,6 +539,17 @@ exports.createBookingSinglePage = async (req, res) => {
 
     await booking.save();
 
+    // CRITICAL: Update barber's totalBookings count
+    try {
+      await Barber.findByIdAndUpdate(finalBarberId, {
+        $inc: { totalBookings: 1 }
+      });
+      console.log(`✅ Updated totalBookings for barber ${finalBarberId}`);
+    } catch (updateError) {
+      console.error('Error updating barber totalBookings:', updateError);
+      // Don't fail the booking creation if this update fails, but log it
+    }
+
     // Mark time slots as booked in the barber schedule
     const BarberSchedule = require('../models/barber-schedule.model');
     const bookingStartTime = new Date(bookingDate);
@@ -593,11 +574,6 @@ exports.createBookingSinglePage = async (req, res) => {
         errorCode: 'SCHEDULE_UPDATE_FAILED'
       });
     }
-
-    // Update barber's total bookings count
-    await Barber.findByIdAndUpdate(finalBarberId, {
-      $inc: { totalBookings: 1 }
-    });
 
     // Populate the response with enhanced information for single-page flow
     const populatedBooking = await Booking.findById(booking._id)
@@ -1260,6 +1236,17 @@ exports.cancelBooking = async (req, res) => {
     booking.note = booking.note ? `${booking.note}\nCancellation reason: ${reason}` : `Cancellation reason: ${reason}`;
     await booking.save();
 
+    // CRITICAL: Decrease barber's totalBookings count when booking is cancelled
+    try {
+      await Barber.findByIdAndUpdate(booking.barberId, {
+        $inc: { totalBookings: -1 }
+      });
+      console.log(`✅ Decreased totalBookings for barber ${booking.barberId} due to cancellation`);
+    } catch (updateError) {
+      console.error('Error updating barber totalBookings on cancellation:', updateError);
+      // Don't fail the cancellation if this update fails, but log it
+    }
+
     // Track cancellation as no-show record
     const NoShow = require('../models/no-show.model');
 
@@ -1610,6 +1597,17 @@ exports.rejectBooking = async (req, res) => {
     booking.rejectionNote = note || null;
 
     await booking.save();
+
+    // CRITICAL: Decrease barber's totalBookings count when booking is rejected
+    try {
+      await Barber.findByIdAndUpdate(booking.barberId, {
+        $inc: { totalBookings: -1 }
+      });
+      console.log(`✅ Decreased totalBookings for barber ${booking.barberId} due to rejection`);
+    } catch (updateError) {
+      console.error('Error updating barber totalBookings on rejection:', updateError);
+      // Don't fail the rejection if this update fails, but log it
+    }
 
     // CRITICAL: Unmark time slots in the barber schedule (same as cancel booking)
     const BarberSchedule = require('../models/barber-schedule.model');
@@ -2235,5 +2233,114 @@ exports.updateBookingDetails = async (req, res) => {
   } catch (err) {
     console.error('Error in updateBookingDetails:', err);
     res.status(500).json({ message: err.message });
+  }
+};
+
+// Test booking flow with auto-assign (without actually creating booking)
+exports.testBookingFlowAutoAssign = async (req, res) => {
+  try {
+    const { date, timeSlot, serviceId, customerId } = req.body;
+
+    if (!date || !timeSlot || !customerId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Date, timeSlot, and customerId are required'
+      });
+    }
+
+    console.log(`\n🧪 [TEST BOOKING FLOW] Testing auto-assign for ${date} at ${timeSlot}`);
+    console.log('='.repeat(80));
+
+    // Step 1: Check current barber data
+    const Booking = require('../models/booking.model');
+    const Barber = require('../models/barber.model');
+
+    const barbers = await Barber.find({ isAvailable: true, autoAssignmentEligible: true })
+      .populate('userId', 'name')
+      .select('userId totalBookings')
+      .lean();
+
+    console.log('📊 [TEST] Current barber data:');
+    for (const barber of barbers) {
+      const realTimeCount = await Booking.countDocuments({
+        barberId: barber._id,
+        status: { $in: ['pending', 'confirmed', 'completed'] }
+      });
+
+      console.log(`  - ${barber.userId?.name}: stored=${barber.totalBookings || 0}, realTime=${realTimeCount}`);
+    }
+
+    // Step 2: Simulate auto-assign logic
+    console.log('\n🎯 [TEST] Simulating auto-assign...');
+
+    let finalBarberId = null;
+    let autoAssignBarber = true; // Force auto-assign
+
+    // Handle auto-assignment logic (same as createBookingSinglePage)
+    if (autoAssignBarber) {
+      try {
+        console.log(`🎯 [TEST] Auto-assignment requested for ${date} at ${timeSlot}`);
+
+        // Use the NEW auto-assignment logic (same as autoAssignBarberForSlot)
+        const barberController = require('./barber.controller');
+
+        // Create a mock request/response to call the auto-assign function
+        const mockReq = {
+          body: { date, timeSlot, serviceId }
+        };
+
+        let autoAssignResult = null;
+        const mockRes = {
+          json: (data) => {
+            autoAssignResult = data;
+            return data;
+          },
+          status: (code) => ({
+            json: (data) => {
+              autoAssignResult = { ...data, statusCode: code };
+              return autoAssignResult;
+            }
+          })
+        };
+
+        // Call the auto-assign function
+        console.log(`🔍 [TEST] Calling autoAssignBarberForSlot with:`, mockReq.body);
+        await barberController.autoAssignBarberForSlot(mockReq, mockRes);
+        console.log(`🔍 [TEST] Auto-assign result:`, autoAssignResult);
+
+        if (autoAssignResult && autoAssignResult.success && autoAssignResult.assignedBarber) {
+          finalBarberId = autoAssignResult.assignedBarber._id;
+
+          console.log(`✅ [TEST] Auto-assigned barber: ${autoAssignResult.assignedBarber.name} (${autoAssignResult.assignedBarber.totalBookings} total bookings)`);
+          console.log(`📊 [TEST] Assignment reason: ${autoAssignResult.assignmentDetails.reason}`);
+          console.log(`🎯 [TEST] Final barber ID: ${finalBarberId}`);
+        } else {
+          console.error('❌ [TEST] Auto-assignment failed:', autoAssignResult);
+        }
+
+      } catch (autoAssignError) {
+        console.error('❌ [TEST] Error in auto-assignment:', autoAssignError);
+      }
+    }
+
+    console.log('\n✅ [TEST] Booking flow test completed');
+    console.log('='.repeat(80));
+
+    res.json({
+      success: true,
+      message: 'Test completed - check console logs for detailed analysis',
+      result: {
+        finalBarberId,
+        selectedBarberName: finalBarberId ? barbers.find(b => b._id.toString() === finalBarberId.toString())?.userId?.name : null,
+        timestamp: new Date().toISOString()
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in test booking flow:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to test booking flow'
+    });
   }
 };
