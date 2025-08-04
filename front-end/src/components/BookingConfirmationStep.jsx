@@ -83,17 +83,55 @@ const BookingConfirmationStep = ({
           );
 
           if (response.success && response.availableBarbers && response.availableBarbers.length > 0) {
-            // Select the best barber (highest rating, most experience, etc.)
-            const bestBarber = response.availableBarbers.reduce((best, current) => {
-              const bestScore = (best.averageRating || 0) * 0.7 + (best.experienceYears || 0) * 0.3;
-              const currentScore = (current.averageRating || 0) * 0.7 + (current.experienceYears || 0) * 0.3;
-              return currentScore > bestScore ? current : best;
-            });
+            // NEW LOGIC: Prioritize barbers with fewer total bookings
+            const barbers = response.availableBarbers;
 
-            setAutoAssignedBarber(bestBarber);
-            toast.success(`Auto-assigned barber: ${bestBarber.name}`, {
+            // Find minimum total bookings
+            const totalBookingCounts = barbers.map(b => b.totalBookings || 0);
+            const minTotalBookings = Math.min(...totalBookingCounts);
+            const maxTotalBookings = Math.max(...totalBookingCounts);
+            const hasEqualTotalBookings = minTotalBookings === maxTotalBookings;
+
+            let selectedBarber;
+
+            if (hasEqualTotalBookings) {
+              // All barbers have equal total bookings -> use scoring algorithm
+              selectedBarber = barbers.reduce((best, current) => {
+                const bestScore = (best.averageRating || 0) * 0.4 + (best.experienceYears || 0) * 0.2;
+                const currentScore = (current.averageRating || 0) * 0.4 + (current.experienceYears || 0) * 0.2;
+                return currentScore > bestScore ? current : best;
+              });
+            } else {
+              // Different total bookings -> prioritize barbers with fewer total bookings
+              const barbersWithMinBookings = barbers.filter(b => (b.totalBookings || 0) === minTotalBookings);
+
+              if (barbersWithMinBookings.length === 1) {
+                selectedBarber = barbersWithMinBookings[0];
+              } else {
+                // Multiple barbers with same minimum total bookings -> use scoring among them
+                selectedBarber = barbersWithMinBookings.reduce((best, current) => {
+                  const bestScore = (best.averageRating || 0) * 0.4 + (best.experienceYears || 0) * 0.2;
+                  const currentScore = (current.averageRating || 0) * 0.4 + (current.experienceYears || 0) * 0.2;
+                  return currentScore > bestScore ? current : best;
+                });
+              }
+            }
+
+            setAutoAssignedBarber(selectedBarber);
+
+            const reason = hasEqualTotalBookings
+              ? `Equal bookings (${minTotalBookings} each) - selected by rating/experience`
+              : `Different bookings (min: ${minTotalBookings}, max: ${maxTotalBookings}) - prioritized minimum`;
+
+            toast.success(`Auto-assigned: ${selectedBarber.name} (${selectedBarber.totalBookings || 0} bookings)`, {
               position: "top-right",
               autoClose: 3000,
+            });
+
+            console.log(`🎯 [FRONTEND AUTO-ASSIGN] Selected: ${selectedBarber.name}`, {
+              totalBookings: selectedBarber.totalBookings || 0,
+              reason,
+              allBarbers: barbers.map(b => ({ name: b.name, totalBookings: b.totalBookings || 0 }))
             });
           } else {
             // Don't show error toast - backend will handle auto-assignment during booking

@@ -11,23 +11,21 @@ import {
   Tag,
   Row,
   Col,
-  Descriptions,
-  Popconfirm
+  Descriptions
 } from 'antd';
 import { toast } from 'react-toastify';
 import {
   CheckOutlined,
   CloseOutlined,
-  DeleteOutlined,
   EyeOutlined,
   UserSwitchOutlined
 } from '@ant-design/icons';
 import {
   getAllAbsences,
-  updateAbsenceApproval,
-  deleteAbsence
+  updateAbsenceApproval
 } from '../../services/barberAbsenceApi.js';
 import AbsenceStatusBadge from '../../components/absence/AbsenceStatusBadge';
+import AbsenceApprovalModal from '../../components/absence/AbsenceApprovalModal';
 import { fetchAllBarbers } from '../../services/barberApi.js';
 import dayjs from 'dayjs';
 
@@ -40,6 +38,8 @@ const AbsenceManagement = () => {
   const [loading, setLoading] = useState(false);
   const [selectedAbsence, setSelectedAbsence] = useState(null);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [approvalModalVisible, setApprovalModalVisible] = useState(false);
+  const [absenceToApprove, setAbsenceToApprove] = useState(null);
   const [filters, setFilters] = useState({
     barberId: '',
     status: '',
@@ -88,8 +88,17 @@ const AbsenceManagement = () => {
   };
 
   const handleApprovalChange = async (absenceId, isApproved) => {
+    if (isApproved) {
+      // For approval, show the modal to handle affected bookings
+      const absence = absences.find(a => a._id === absenceId);
+      setAbsenceToApprove(absence);
+      setApprovalModalVisible(true);
+      return;
+    }
+
+    // For rejection, proceed with original logic
     const loadingToastId = toast.loading(
-      `${isApproved ? '✅ Approving' : '❌ Rejecting'} absence request...`,
+      '❌ Rejecting absence request...',
       {
         position: "top-right",
         autoClose: false,
@@ -101,12 +110,10 @@ const AbsenceManagement = () => {
     );
 
     try {
-      await updateAbsenceApproval(absenceId, isApproved);
+      await updateAbsenceApproval(absenceId, false);
 
       toast.update(loadingToastId, {
-        render: isApproved
-          ? `✅ Absence request approved successfully!\n📅 Barber schedule has been updated automatically.\n🔄 Affected bookings can now be reassigned.`
-          : `❌ Absence request rejected.\n📅 Barber schedule remains unchanged.\n✅ No further action required.`,
+        render: `❌ Absence request rejected.\n📅 Barber schedule remains unchanged.\n✅ No further action required.`,
         type: "success",
         isLoading: false,
         autoClose: 5000,
@@ -119,7 +126,7 @@ const AbsenceManagement = () => {
       loadAbsences();
     } catch (error) {
       toast.update(loadingToastId, {
-        render: `❌ Failed to ${isApproved ? 'approve' : 'reject'} absence request.\n🔍 Please check the details and try again.\n📞 Contact support if the issue persists.`,
+        render: `❌ Failed to reject absence request.\n🔍 Please check the details and try again.\n📞 Contact support if the issue persists.`,
         type: "error",
         isLoading: false,
         autoClose: 5000,
@@ -131,14 +138,10 @@ const AbsenceManagement = () => {
     }
   };
 
-  const handleDeleteAbsence = async (absenceId) => {
-    try {
-      await deleteAbsence(absenceId);
-      message.success('Absence deleted successfully');
-      loadAbsences();
-    } catch (error) {
-      message.error('Failed to delete absence');
-    }
+  // Handle successful approval from modal
+  const handleApprovalSuccess = () => {
+    loadAbsences();
+    setAbsenceToApprove(null);
   };
 
   const showAbsenceDetail = (absence) => {
@@ -223,19 +226,6 @@ const AbsenceManagement = () => {
               </Button>
             </>
           ) : null}
-          <Popconfirm
-            title="Delete this absence?"
-            description="This action cannot be undone."
-            onConfirm={() => handleDeleteAbsence(record._id)}
-            okText="Yes"
-            cancelText="No"
-          >
-            <Button
-              size="small"
-              danger
-              icon={<DeleteOutlined />}
-            />
-          </Popconfirm>
         </Space>
       )
     }
@@ -386,6 +376,17 @@ const AbsenceManagement = () => {
           </Descriptions>
         )}
       </Modal>
+
+      {/* Absence Approval Modal */}
+      <AbsenceApprovalModal
+        visible={approvalModalVisible}
+        onCancel={() => {
+          setApprovalModalVisible(false);
+          setAbsenceToApprove(null);
+        }}
+        onSuccess={handleApprovalSuccess}
+        absence={absenceToApprove}
+      />
     </div>
   );
 };
