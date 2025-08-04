@@ -24,4 +24,7 @@ router.post('/finalize-auth', orderController.finalizeOrderAuth);
 
 router.post('/finalize-guest', orderController.finalizeOrderGuest);
 
+// Kiểm tra tồn kho trước khi checkout
+router.post('/pre-checkout-validation', orderController.preCheckoutStockValidation);
+
 module.exports = router;

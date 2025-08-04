@@ -237,6 +237,30 @@
     border-color: #ff7875;
     color: white;
   }
+
+  /* Disabled button styles */
+  .add-cart-btn:disabled,
+  .buy-now-btn:disabled {
+    background-color: #f5f5f5 !important;
+    border-color: #d9d9d9 !important;
+    color: #bfbfbf !important;
+    cursor: not-allowed !important;
+  }
+
+  .add-cart-btn:disabled:hover,
+  .buy-now-btn:disabled:hover {
+    background-color: #f5f5f5 !important;
+    border-color: #d9d9d9 !important;
+    color: #bfbfbf !important;
+  }
+
+  /* Disabled input styles */
+  .ant-input-number-disabled {
+    background-color: #f5f5f5 !important;
+    border-color: #d9d9d9 !important;
+    color: #bfbfbf !important;
+    cursor: not-allowed !important;
+  }
   
   .secondary-actions {
     display: flex;

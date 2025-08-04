@@ -31,6 +31,7 @@ const NewAddressForm = ({
   const [searchText, setSearchText] = useState('');
   const [addressInput, setAddressInput] = useState('');
   const [showAddressDropdown, setShowAddressDropdown] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
 
   // Fetch districts cho province
   const fetchDistricts = useCallback(async (provinceCode) => {
@@ -70,31 +71,74 @@ const NewAddressForm = ({
         isDefault: initialValues.isDefault
       });
       
+      // Reset hasChanges khi form được khởi tạo
+      setHasChanges(false);
+      
       // Set local state cho province, district, ward
-      const province = provinces.find(p => p.name === initialValues.province);
-      const district = districts.find(d => d.name === initialValues.district);
-      const ward = wards.find(w => w.name === initialValues.ward);
+      // Tìm province, district, ward bằng name hoặc code
+      let province = provinces.find(p => p.name === initialValues.province || p.code === initialValues.province);
+      let district = districts.find(d => d.name === initialValues.district || d.code === initialValues.district);
+      
+
+      
+      // Tìm ward trong wards array hiện tại (có thể từ district khác)
+      let ward = wards.find(w => w.name === initialValues.ward || w.code === initialValues.ward);
+      
+
+      
+      // Nếu không tìm thấy, tạo object giả để tránh disable button
+      if (!province && initialValues.province) {
+        province = { name: initialValues.province, code: initialValues.province };
+      }
+      if (!district && initialValues.district) {
+        district = { name: initialValues.district, code: initialValues.district };
+      }
+      if (!ward && initialValues.ward) {
+        // Tạo ward object với thông tin từ initialValues
+        ward = { name: initialValues.ward, code: initialValues.ward };
+      }
       
       setSelectedProvinceLocal(province);
       setSelectedDistrictLocal(district);
       setSelectedWardLocal(ward);
       
-      // Sử dụng districts và wards từ props thay vì fetch lại
-      if (province && districts.length > 0) {
+      // Trong edit mode, luôn fetch districts và wards cần thiết
+      if (isEditMode && province) {
+        if (province.code) {
+          // Luôn fetch districts cho province hiện tại
+          fetchDistricts(province.code);
+        } else if (initialValues.province) {
+          // Fallback: tìm province code từ provinces array
+          const provinceWithCode = provinces.find(p => p.name === initialValues.province);
+          if (provinceWithCode) {
+            fetchDistricts(provinceWithCode.code);
+          }
+        }
+      } else if (province && districts.length > 0) {
+        // Trong create mode, sử dụng districts từ props
         setDistrictsLocal(districts);
       }
-      if (district && wards.length > 0) {
+      
+      // Trong edit mode, luôn fetch wards cho district hiện tại
+      if (isEditMode && district) {
+        if (district.code && district.code !== district.name) {
+          // Luôn fetch wards cho district hiện tại
+          fetchWards(district.code);
+        } else if (initialValues.district) {
+          // Fallback: tìm district code từ districts array
+          const districtWithCode = districts.find(d => d.name === initialValues.district);
+          if (districtWithCode && districtWithCode.code) {
+            fetchWards(districtWithCode.code);
+          }
+        }
+      } else if (district && wards.length > 0) {
+        // Trong create mode, sử dụng wards từ props
         setWardsLocal(wards);
       }
 
       // Set address input
       const fullAddress = `${initialValues.province}, ${initialValues.district}, ${initialValues.ward}`;
       setAddressInput(fullAddress);
-
-      // Tự động fetch wards nếu chưa có và đang trong chế độ edit
-      if (isEditMode && district && wardsLocal.length === 0) {
-        fetchWards(district.code);
-      }
     } else {
       form.resetFields();
       setSelectedProvinceLocal(null);
@@ -114,6 +158,8 @@ const NewAddressForm = ({
     }
   }, [form, initialValues, isEditMode, provinces]);
 
+
+
   // Fetch districts và wards khi cần thiết
   useEffect(() => {
     if (initialValues && isEditMode && selectedProvinceLocal && districtsLocal.length === 0) {
@@ -121,18 +167,33 @@ const NewAddressForm = ({
     }
   }, [initialValues, isEditMode, selectedProvinceLocal, districtsLocal.length, fetchDistricts]);
 
+  // Fetch wards khi có district và đang trong edit mode
   useEffect(() => {
-    if (initialValues && isEditMode && selectedDistrictLocal && wardsLocal.length === 0) {
+    if (initialValues && isEditMode && selectedDistrictLocal && selectedDistrictLocal.code && wardsLocal.length === 0) {
       fetchWards(selectedDistrictLocal.code);
     }
   }, [initialValues, isEditMode, selectedDistrictLocal, wardsLocal.length, fetchWards]);
 
-  // Tự động fetch wards khi có selectedDistrictLocal
+  // Tự động fetch wards khi có selectedDistrictLocal (cho cả edit và create mode)
   useEffect(() => {
-    if (selectedDistrictLocal && wardsLocal.length === 0) {
+    if (selectedDistrictLocal && selectedDistrictLocal.code && wardsLocal.length === 0) {
       fetchWards(selectedDistrictLocal.code);
     }
   }, [selectedDistrictLocal, wardsLocal.length, fetchWards]);
+
+  // Fetch wards sau khi districts được fetch xong (cho edit mode)
+  useEffect(() => {
+    if (isEditMode && initialValues && districtsLocal.length > 0 && wardsLocal.length === 0) {
+      // Tìm district trong districtsLocal array
+      const districtInLocal = districtsLocal.find(d => d.name === initialValues.district);
+      if (districtInLocal && districtInLocal.code) {
+        // Thêm delay nhỏ để đảm bảo districts đã được set
+        setTimeout(() => {
+          fetchWards(districtInLocal.code);
+        }, 100);
+      }
+    }
+  }, [isEditMode, initialValues, districtsLocal, wardsLocal.length, fetchWards]);
 
 
 
@@ -151,9 +212,31 @@ const NewAddressForm = ({
     };
     
     console.log('Final form data:', formData);
+
     
     if (onSubmit) {
       onSubmit(formData);
+    }
+  };
+
+  // Theo dõi thay đổi trong form
+  const handleFormChange = (changedFields, allFields) => {
+    if (isEditMode && initialValues) {
+      const currentValues = form.getFieldsValue();
+      const hasAnyChanges = Object.keys(currentValues).some(key => {
+        if (key === 'isDefault') {
+          return currentValues[key] !== initialValues[key];
+        }
+        return currentValues[key] !== initialValues[key];
+      });
+      
+      // Also check if province, district, or ward have changed in local state
+      const addressChanged = 
+        selectedProvinceLocal?.name !== initialValues.province ||
+        selectedDistrictLocal?.name !== initialValues.district ||
+        selectedWardLocal?.name !== initialValues.ward;
+      
+      setHasChanges(hasAnyChanges || addressChanged);
     }
   };
 
@@ -187,6 +270,7 @@ const NewAddressForm = ({
   };
 
   const handleDistrictSelect = async (district) => {
+    
     setSelectedDistrictLocal(district);
     setSelectedWardLocal(null);
     setActiveTab('ward');
@@ -197,12 +281,33 @@ const NewAddressForm = ({
       district: district.name,
       ward: undefined
     });
+    
+
+    
+    // Trigger form change detection
+    setTimeout(() => {
+      const currentValues = form.getFieldsValue();
+      const hasAnyChanges = Object.keys(currentValues).some(key => {
+        if (key === 'isDefault') {
+          return currentValues[key] !== initialValues[key];
+        }
+        return currentValues[key] !== initialValues[key];
+      });
+      
+      const addressChanged = 
+        selectedProvinceLocal?.name !== initialValues.province ||
+        district.name !== initialValues.district ||
+        null !== initialValues.ward;
+      
+      setHasChanges(hasAnyChanges || addressChanged);
+    }, 100);
 
     // Fetch wards
     try {
       const response = await fetch(`https://provinces.open-api.vn/api/d/${district.code}?depth=2`);
       const data = await response.json();
       setWardsLocal(data.wards || []);
+
     } catch (error) {
       console.error('Error fetching wards:', error);
       setWardsLocal([]);
@@ -213,11 +318,31 @@ const NewAddressForm = ({
   };
 
   const handleWardSelect = (ward) => {
+    
     setSelectedWardLocal(ward);
     setSearchText(''); // Reset search text
     
     // Update form
     form.setFieldsValue({ ward: ward.name });
+
+    
+    // Trigger form change detection
+    setTimeout(() => {
+      const currentValues = form.getFieldsValue();
+      const hasAnyChanges = Object.keys(currentValues).some(key => {
+        if (key === 'isDefault') {
+          return currentValues[key] !== initialValues[key];
+        }
+        return currentValues[key] !== initialValues[key];
+      });
+      
+      const addressChanged = 
+        selectedProvinceLocal?.name !== initialValues.province ||
+        selectedDistrictLocal?.name !== initialValues.district ||
+        ward.name !== initialValues.ward;
+      
+      setHasChanges(hasAnyChanges || addressChanged);
+    }, 100);
     
     // Update address input
     const fullAddress = `${selectedProvinceLocal.name}, ${selectedDistrictLocal.name}, ${ward.name}`;
@@ -306,7 +431,7 @@ const NewAddressForm = ({
 
   return (
     <Card size="small" style={{ marginTop: 16 }}>
-      <Form form={form} layout="vertical" onFinish={handleSubmit}>
+      <Form form={form} layout="vertical" onFinish={handleSubmit} onValuesChange={handleFormChange}>
         <Form.Item
           name="recipientName"
           label={<span>Tên người nhận <span style={{ color: 'red' }}>*</span></span>}
@@ -630,11 +755,21 @@ const NewAddressForm = ({
               loading={loading}
               icon={<PlusOutlined />}
               style={{ flex: 1 }}
-              disabled={!selectedProvinceLocal || !selectedDistrictLocal || !selectedWardLocal}
+              disabled={isEditMode && !hasChanges}
             >
               {isEditMode ? 'Cập nhật địa chỉ' : 'Lưu địa chỉ'}
             </Button>
           </div>
+          {isEditMode && !hasChanges && (
+            <div style={{ 
+              marginTop: 8, 
+              fontSize: '12px', 
+              color: '#999', 
+              textAlign: 'center' 
+            }}>
+              Chỉnh sửa thông tin để cập nhật địa chỉ
+            </div>
+          )}
         </Form.Item>
       
       </Form>

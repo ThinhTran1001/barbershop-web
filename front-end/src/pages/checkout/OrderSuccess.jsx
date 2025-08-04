@@ -18,6 +18,7 @@ import {
   CopyOutlined
 } from '@ant-design/icons';
 import { notification } from 'antd';
+import { useAuth } from '../../context/AuthContext';
 import '../../css/checkout/order-success.css';
 
 const { Title, Text, Paragraph } = Typography;
@@ -26,6 +27,7 @@ const OrderSuccess = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { clearCart } = useCartLoggedIn();
+  const { user } = useAuth();
   const { orderId, totalAmount } = location.state || {};
 
   useEffect(() => {
@@ -51,6 +53,20 @@ const OrderSuccess = () => {
     };
 
     clearCartOnSuccess();
+
+    // Xóa localStorage selectedAddress khi đặt hàng thành công
+    const clearSelectedAddress = () => {
+      try {
+        if (user && user.id) {
+          localStorage.removeItem(`selectedAddress_${user.id}`);
+          console.log('🧹 Cleared selectedAddress from localStorage after successful order (OrderSuccess page)');
+        }
+      } catch (error) {
+        console.error('Error clearing selectedAddress from localStorage:', error);
+      }
+    };
+
+    clearSelectedAddress();
 
     // Scroll to top
     window.scrollTo(0, 0);

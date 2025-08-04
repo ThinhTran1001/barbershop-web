@@ -86,7 +86,7 @@ export default function ProductList() {
 
   const handleBuyNow = (product) => {
     addToCart(product, 1);
-navigate(user ? "/cart" : "/cart-guest");
+    navigate(user ? "/cart" : "/cart-guest");
   };
 
   const goToProductDetail = (productId) => {
@@ -292,12 +292,18 @@ navigate(user ? "/cart" : "/cart-guest");
                     <span>{product.price.toLocaleString("vi-VN")} VND</span>
                   )}
                 </div>
-                <div className="item-buttons">
-                  <button className="purchase-button" onClick={() => handleBuyNow(product)}>Mua hàng</button>
-                  <button className="detail-button" onClick={() => goToProductDetail(product._id)}>
-                    Chi tiết
-                  </button>
-                </div>
+                                 <div className="item-buttons">
+                   <button 
+                     className={`purchase-button ${product.stock === 0 ? 'disabled' : ''}`} 
+                     onClick={() => handleBuyNow(product)}
+                     disabled={product.stock === 0}
+                   >
+                     {product.stock === 0 ? 'Hết hàng' : 'Mua hàng'}
+                   </button>
+                   <button className="detail-button" onClick={() => goToProductDetail(product._id)}>
+                     Chi tiết
+                   </button>
+                 </div>
               </div>
             </div>
           ))}

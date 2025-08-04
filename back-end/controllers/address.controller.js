@@ -298,7 +298,6 @@ exports.setDefaultAddress = async (req, res) => {
   }
 };
 
-// Kiểm tra địa chỉ đã soft delete cùng tỉnh/thành phố
 exports.checkSoftDeletedAddress = async (req, res) => {
   try {
     const { province } = req.body;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import "./ProductDetail.css";
 import {
   Rate,
@@ -200,6 +200,7 @@ const CustomWarningToast = ({ show, message, onClose }) => {
 const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { addToCart: addToGuestCart, cart: guestCart } = useCart();
   const { addToCart: addToUserCart, cart: userCart } = useUserCart();
@@ -262,11 +263,11 @@ const ProductDetail = () => {
     });
     console.log('🚨 Warning toast state after setState');
     
-    // Auto hide after 4 seconds
+    // Auto hide after 2 seconds
     setTimeout(() => {
       console.log('🚨 Auto hiding warning toast');
       hideWarningToast();
-    }, 4000);
+    }, 1500);
   };
 
   // Hide custom warning toast
@@ -280,6 +281,14 @@ const ProductDetail = () => {
       console.log('User logged in:', !!user);
       console.log('Product:', product.name);
       console.log('Quantity to add:', quantity);
+      console.log('Product stock:', product.stock);
+      
+      // Kiểm tra sản phẩm có hết hàng không
+      if (product.stock === 0) {
+        console.log('❌ Product is out of stock, cannot add to cart');
+        showWarningToast("Sản phẩm đã hết hàng");
+        return false;
+      }
       
       if (user) {
         const result = await addToUserCart(product, quantity);
@@ -367,6 +376,10 @@ const ProductDetail = () => {
     fetchProductAndReviews();
   }, [id]);
 
+
+
+
+
   const getImage = (path) => {
     if (imageMap[path]) return imageMap[path];
     if (path?.startsWith("/assets")) return path.substring(1);
@@ -387,6 +400,12 @@ const ProductDetail = () => {
 
   const handleAddToCart = async () => {
     if (product) {
+      // Kiểm tra sản phẩm có hết hàng không
+      if (product.stock === 0) {
+        showWarningToast("Sản phẩm đã hết hàng");
+        return;
+      }
+      
       // Kiểm tra quantity hợp lệ
       if (!quantity || quantity < 1 || isNaN(quantity) || 
           (typeof quantity === 'string' && quantity.trim() === '')) {
@@ -433,6 +452,12 @@ const ProductDetail = () => {
   };
 
   const handleBuyNow = async () => {
+    // Kiểm tra sản phẩm có hết hàng không
+    if (product.stock === 0) {
+      showWarningToast("Sản phẩm đã hết hàng");
+      return;
+    }
+    
     // Kiểm tra quantity hợp lệ
     if (!quantity || quantity < 1 || isNaN(quantity) || 
         (typeof quantity === 'string' && quantity.trim() === '')) {
@@ -606,8 +631,9 @@ const ProductDetail = () => {
               <InputNumber
                 min={1}
                 value={quantity}
+                disabled={product.stock === 0}
                 onChange={(val) => {
-                  // Chỉ xử lý khi value là số hợp lệ và >= 1
+                  // Cho phép user nhập số lượng bất kỳ, không giới hạn max
                   if (val && typeof val === 'number' && val >= 1) {
                     setQuantity(val);
                   } else {
@@ -626,12 +652,6 @@ const ProductDetail = () => {
               {getCurrentCartQuantity() > 0 && (
                 <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
                   Đã có {getCurrentCartQuantity()} sản phẩm trong giỏ hàng
-                  {getCurrentCartQuantity() >= product.stock && (
-                    <span style={{ color: '#ff4d4f', fontWeight: 'bold' }}> (Đã đạt tối đa)</span>
-                  )}
-                  {getCurrentCartQuantity() < product.stock && (
-                    <span> (Có thể thêm tối đa {product.stock - getCurrentCartQuantity()} sản phẩm)</span>
-                  )}
                 </div>
               )}
             </div>
@@ -642,6 +662,7 @@ const ProductDetail = () => {
                 icon={<ShoppingCartOutlined />}
                 className="add-cart-btn"
                 onClick={handleAddToCart}
+                disabled={product.stock === 0}
               >
                 Thêm vào giỏ hàng
               </Button>
@@ -649,9 +670,9 @@ const ProductDetail = () => {
                 type="default"
                 className="buy-now-btn"
                 onClick={handleBuyNow}
+                disabled={product.stock === 0}
               >
-                Mua ngay
-                {getCurrentCartQuantity() >= product.stock ? 'Đã đạt giới hạn' : 'Mua ngay'}
+                {product.stock === 0 ? 'Hết hàng' : 'Mua ngay'}
               </Button>
             </div>
 

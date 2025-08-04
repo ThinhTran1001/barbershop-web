@@ -127,3 +127,126 @@ exports.deleteProduct = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+exports.validateStock = async (req, res) => {
+  try {
+    const { items } = req.body; // items: [{productId, quantity}]
+    
+    if (!items || !Array.isArray(items)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Items array is required'
+      });
+    }
+
+    const validationResults = [];
+    const outOfStockItems = [];
+    const insufficientStockItems = [];
+
+    for (const item of items) {
+      const { productId, quantity } = item;
+      
+      if (!productId || !quantity || quantity <= 0) {
+        validationResults.push({
+          productId,
+          valid: false,
+          error: 'Invalid product ID or quantity'
+        });
+        continue;
+      }
+
+      const product = await Product.findById(productId);
+      
+      if (!product) {
+        validationResults.push({
+          productId,
+          valid: false,
+          error: 'Product not found'
+        });
+        continue;
+      }
+
+      if (!product.isActive) {
+        validationResults.push({
+          productId,
+          valid: false,
+          error: 'Product is not available'
+        });
+        continue;
+      }
+
+      if (product.stock <= 0) {
+        outOfStockItems.push({
+          productId,
+          productName: product.name,
+          currentStock: product.stock,
+          requestedQuantity: quantity
+        });
+        validationResults.push({
+          productId,
+          productName: product.name,
+          valid: false,
+          error: 'Out of stock',
+          currentStock: product.stock,
+          requestedQuantity: quantity
+        });
+        continue;
+      }
+
+      if (product.stock < quantity) {
+        insufficientStockItems.push({
+          productId,
+          productName: product.name,
+          currentStock: product.stock,
+          requestedQuantity: quantity
+        });
+        validationResults.push({
+          productId,
+          productName: product.name,
+          valid: false,
+          error: 'Insufficient stock',
+          currentStock: product.stock,
+          requestedQuantity: quantity
+        });
+        continue;
+      }
+
+      // Valid item
+      validationResults.push({
+        productId,
+        productName: product.name,
+        valid: true,
+        currentStock: product.stock,
+        requestedQuantity: quantity
+      });
+    }
+
+    const allValid = validationResults.every(result => result.valid);
+    const hasOutOfStock = outOfStockItems.length > 0;
+    const hasInsufficientStock = insufficientStockItems.length > 0;
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        allValid,
+        hasOutOfStock,
+        hasInsufficientStock,
+        outOfStockItems,
+        insufficientStockItems,
+        validationResults
+      },
+      message: allValid 
+        ? 'All items are available' 
+        : hasOutOfStock 
+          ? `${outOfStockItems.length} item(s) out of stock`
+          : `${insufficientStockItems.length} item(s) insufficient stock`
+    });
+
+  } catch (error) {
+    console.error('Error validating stock:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};

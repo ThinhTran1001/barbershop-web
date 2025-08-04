@@ -67,6 +67,10 @@ export default function CheckoutGuest() {
 
   /* ------------------ Lấy danh sách sản phẩm cần thanh toán ------------------ */
   const buyNowItems = location.state?.products;
+  const fromCart = location.state?.fromCart;
+  
+  // Nếu đến từ cart và có products được truyền, sử dụng products đó
+  // Nếu không có products được truyền, sử dụng tất cả cart items
   const itemsToCheckout = buyNowItems?.length ? buyNowItems : cart.items;
 
   /* ------------------ Helper ------------------ */
@@ -341,9 +345,23 @@ export default function CheckoutGuest() {
               {itemsToCheckout.map((item, idx) => (
                 <div key={idx} className="checkout-product-row">
                   <div className="checkout-product-image">
-                    <img src={item.image} alt={item.name} />
+                    <img 
+                      src={item.image} 
+                      alt={item.name}
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => navigate(`/products/${item.id}`)}
+                    />
                   </div>
-                  <div className="checkout-product-name">{item.name}</div>
+                  <div 
+                    className="checkout-product-name"
+                    style={{ 
+                      cursor: 'pointer',
+                      color: '#1890ff'
+                    }}
+                    onClick={() => navigate(`/products/${item.id}`)}
+                  >
+                    {item.name}
+                  </div>
                   <div className="checkout-product-quantity">x{item.quantity}</div>
                   <div className="checkout-product-price">
                     {item.discount > 0 ? (

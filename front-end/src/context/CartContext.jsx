@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { cartStorage } from '../utils/localStorage';
+import { getProducts } from '../services/api';
 
 const CartContext = createContext();
 
@@ -9,6 +10,7 @@ const REMOVE_FROM_CART = 'REMOVE_FROM_CART';
 const UPDATE_QUANTITY = 'UPDATE_QUANTITY';
 const CLEAR_CART = 'CLEAR_CART';
 const LOAD_CART = 'LOAD_CART';
+const SYNC_STOCK = 'SYNC_STOCK';
 
 // Cart reducer
 const cartReducer = (state, action) => {
@@ -59,6 +61,25 @@ const cartReducer = (state, action) => {
         items: action.payload.items || []
       };
 
+    case SYNC_STOCK:
+      return {
+        ...state,
+        items: state.items.map(item => {
+          const updatedProduct = action.payload.products.find(p => p._id === item.id || p.id === item.id);
+          if (updatedProduct) {
+            return {
+              ...item,
+              stock: updatedProduct.stock,
+              price: updatedProduct.price,
+              discount: updatedProduct.discount || 0,
+              name: updatedProduct.name,
+              image: updatedProduct.image
+            };
+          }
+          return item;
+        })
+      };
+
     default:
       return state;
   }
@@ -85,35 +106,32 @@ export const CartProvider = ({ children }) => {
 
   // Cart actions
   const addToCart = (product, quantity = 1) => {
-    // Kiểm tra stock limit trước khi thêm
+    // Kiểm tra sản phẩm có hết hàng không
+    if (product.stock === 0) {
+      console.log('❌ Cannot add out of stock product to cart:', product.name);
+      return false;
+    }
+    
     const existingItem = cart.items.find(item => item.id === (product.id || product._id));
-    const currentQuantity = existingItem ? existingItem.quantity : 0;
-    
-    // Nếu đã đạt stock limit, không thêm nữa
-    if (currentQuantity >= product.stock) {
-      console.log('❌ Cart quantity already at max, preventing addition');
-      return false;
-    }
-    
-    // Tính số lượng thực tế có thể thêm
-    const actualQuantityToAdd = Math.min(quantity, product.stock - currentQuantity);
-    
-    // Nếu không thể thêm gì cả
-    if (actualQuantityToAdd <= 0) {
-      console.log('❌ Cannot add any more items, stock limit reached');
-      return false;
-    }
     
     const cartItem = {
       id: product.id || product._id,
       name: product.name,
       price: product.price,
-      discount: product.discount || 0, // Thêm discount vào cart
+      discount: product.discount || 0,
       image: product.image,
       stock: product.stock,
-      quantity: actualQuantityToAdd
+      quantity: quantity
     };
-    dispatch({ type: ADD_TO_CART, payload: cartItem });
+    
+    if (existingItem) {
+      // Nếu sản phẩm đã có trong giỏ hàng, cộng thêm số lượng
+      dispatch({ type: UPDATE_QUANTITY, payload: { id: product.id || product._id, quantity: existingItem.quantity + quantity } });
+    } else {
+      // Nếu sản phẩm chưa có, thêm mới
+      dispatch({ type: ADD_TO_CART, payload: cartItem });
+    }
+    
     return true; // Trả về true khi thêm thành công
   };
 
@@ -144,6 +162,32 @@ export const CartProvider = ({ children }) => {
     return cart.items.length;
   };
 
+  // Sync stock with server
+  const syncStock = async () => {
+    try {
+      if (cart.items.length === 0) return;
+      
+      // Lấy danh sách product IDs từ cart
+      const productIds = cart.items.map(item => item.id);
+      
+      // Gọi API để lấy thông tin sản phẩm mới nhất
+      const response = await getProducts();
+      const products = response.data || [];
+      
+      // Lọc ra các sản phẩm có trong cart
+      const cartProducts = products.filter(product => 
+        productIds.includes(product._id) || productIds.includes(product.id)
+      );
+      
+      // Dispatch action để cập nhật stock
+      dispatch({ type: SYNC_STOCK, payload: { products: cartProducts } });
+      
+      console.log('✅ Cart stock synced with server');
+    } catch (error) {
+      console.error('❌ Error syncing cart stock:', error);
+    }
+  };
+
   const value = {
     cart,
     addToCart,
@@ -151,7 +195,8 @@ export const CartProvider = ({ children }) => {
     updateQuantity,
     clearCart,
     getCartTotal,
-    getCartCount
+    getCartCount,
+    syncStock
   };
 
   return (
@@ -161,7 +206,6 @@ export const CartProvider = ({ children }) => {
   );
 };
 
-// Custom hook to use cart context
 export const useCart = () => {
   const context = useContext(CartContext);
   if (!context) {

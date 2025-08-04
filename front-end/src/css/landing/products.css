@@ -158,6 +158,24 @@
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
+
+/* Disabled button styles */
+.purchase-button.disabled,
+.purchase-button:disabled {
+  background-color: #ccc !important;
+  color: #666 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.purchase-button.disabled:hover,
+.purchase-button:disabled:hover {
+  background-color: #ccc !important;
+  color: #666 !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
 .product-pagination {
   display: flex;
   justify-content: center;
